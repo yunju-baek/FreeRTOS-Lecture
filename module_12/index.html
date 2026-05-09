@@ -1,0 +1,799 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FreeRTOS Module 12 - Event Groups and Barrier Synchronization</title>
+  <style>
+:root {
+  --indigo:#2e315b; --blue:#2563a6; --teal:#147d83; --green:#2f7d4e;
+  --amber:#9a6a16; --violet:#6d4aa2; --graphite:#2b2f36; --muted:#637083;
+  --line:#d8dee9; --paper:#fff; --bg:#f4f6f9; --code:#eef2f7;
+  --soft-blue:#eef5fc; --soft-teal:#edf8f8; --soft-amber:#fff7e8;
+}
+* { box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { margin:0; background:var(--bg); color:var(--graphite); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans",Arial,sans-serif; line-height:1.44; }
+.nav { position:sticky; top:0; z-index:10; width:1280px; margin:0 auto; padding:10px 16px; background:rgba(244,246,249,.96); border-bottom:1px solid var(--line); color:#4f5969; font-size:15px; }
+.nav a { margin-right:8px; color:var(--blue); text-decoration:none; font-weight:800; }
+.deck { width:1280px; margin:0 auto; padding:28px 0 64px; }
+.slide { position:relative; width:1280px; min-height:720px; margin:0 0 32px; overflow:hidden; background:var(--paper); border:1px solid var(--line); box-shadow:0 18px 40px rgba(38,49,91,.12); page-break-after:always; }
+.slide-header { display:flex; justify-content:space-between; align-items:center; height:54px; padding:0 34px; background:var(--indigo); color:#fff; font-size:18px; }
+.context { font-weight:800; }
+.framing { color:#e1e6ff; font-size:16px; }
+.content { padding:30px 42px 58px; }
+h1,h2,h3,p { margin-top:0; }
+h1 { margin-bottom:14px; color:#fff; font-size:45px; line-height:1.08; letter-spacing:0; }
+h2 { margin-bottom:10px; color:#20243d; font-size:34px; line-height:1.12; letter-spacing:0; }
+h3 { margin-bottom:10px; color:var(--indigo); font-size:22px; letter-spacing:0; }
+.subtitle { max-width:1060px; margin-bottom:22px; color:#4a5260; font-size:22px; line-height:1.36; }
+.small { color:var(--muted); font-size:17px; }
+ul,ol { margin:0; padding-left:22px; }
+li { font-size:18.2px; }
+li + li { margin-top:6px; }
+code { padding:1px 5px; border-radius:4px; background:var(--code); color:#1d3152; font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace; font-size:.93em; }
+pre { margin:0; padding:15px 17px; border-radius:8px; background:#1f2633; color:#edf2ff; font-size:14.2px; line-height:1.42; overflow:hidden; white-space:pre-wrap; }
+pre code { padding:0; background:transparent; color:inherit; font-size:inherit; }
+.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+.grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
+.grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+.grid-13 { display:grid; grid-template-columns:1.12fr .88fr; gap:22px; align-items:stretch; }
+.grid-31 { display:grid; grid-template-columns:.82fr 1.18fr; gap:22px; align-items:stretch; }
+.panel { border:1px solid var(--line); border-radius:8px; padding:17px 19px; background:#fff; }
+.tint-blue { border-top:5px solid var(--blue); } .tint-teal { border-top:5px solid var(--teal); } .tint-green { border-top:5px solid var(--green); } .tint-amber { border-top:5px solid var(--amber); } .tint-violet { border-top:5px solid var(--violet); }
+.question { padding:16px 18px; border-left:6px solid var(--blue); background:var(--soft-blue); font-size:20px; }
+.callout { padding:16px 18px; border-left:6px solid var(--teal); background:var(--soft-teal); font-size:19px; }
+.warning { padding:16px 18px; border-left:6px solid var(--amber); background:var(--soft-amber); font-size:19px; }
+.takeaway { position:absolute; left:42px; right:120px; bottom:22px; color:#515a6b; font-size:17px; font-weight:700; }
+.page { position:absolute; right:36px; bottom:22px; color:#7a8290; font-size:16px; font-weight:800; }
+.cover { color:#fff; background:linear-gradient(120deg,rgba(46,49,91,.98),rgba(20,125,131,.9)),#2e315b; }
+.cover .slide-header { background:transparent; border-bottom:1px solid rgba(255,255,255,.24); }
+.cover .content { display:grid; grid-template-columns:1.08fr .92fr; gap:46px; align-items:center; padding-top:54px; }
+.cover .subtitle { color:#eef5ff; }
+.cover-card { min-height:390px; padding:28px; border:1px solid rgba(255,255,255,.35); border-radius:10px; background:rgba(255,255,255,.08); }
+.cover-card h3 { color:#fff; font-size:25px; }
+.cover-card li { color:#edf2ff; font-size:20px; }
+.icon-card { min-height:150px; display:grid; grid-template-columns:86px 1fr; gap:14px; align-items:center; border:1px solid var(--line); border-radius:8px; padding:15px; background:#fff; }
+.icon-card img { width:76px; height:76px; object-fit:contain; }
+.icon-card strong { display:block; color:var(--indigo); font-size:19px; margin-bottom:5px; }
+.icon-card span { display:block; color:#4e5969; font-size:16.5px; }
+.figure-frame { display:flex; align-items:center; justify-content:center; min-height:410px; border:1px solid var(--line); border-radius:10px; background:#fbfcfe; padding:18px; }
+.figure-frame img { max-width:100%; max-height:420px; object-fit:contain; }
+.figure-frame.tall img { max-height:505px; }
+.asset-note { margin-top:8px; color:var(--muted); font-size:15px; }
+.mini-table { width:100%; border-collapse:collapse; font-size:17px; }
+.mini-table th,.mini-table td { padding:9px 10px; border:1px solid var(--line); vertical-align:top; }
+.mini-table th { background:#eef2f7; color:var(--indigo); text-align:left; }
+.flow { display:grid; grid-template-columns:1fr 48px 1fr 48px 1fr; gap:10px; align-items:center; }
+.flowbox { min-height:112px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fff; text-align:center; font-size:17px; }
+.flowbox strong { display:block; margin-bottom:8px; color:var(--indigo); font-size:19px; }
+.arrow { text-align:center; color:var(--blue); font-size:32px; font-weight:900; }
+.timeline { display:grid; gap:12px; margin-top:10px; }
+.lane { display:grid; grid-template-columns:150px 1fr; gap:12px; align-items:center; }
+.lane-label { padding:10px 12px; border-radius:8px; background:#edf2ff; color:var(--indigo); font-weight:900; text-align:center; }
+.lane-body { display:flex; gap:6px; align-items:center; min-height:46px; padding:8px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+.bar { height:30px; border-radius:6px; color:#fff; font-size:14px; font-weight:800; display:flex; align-items:center; justify-content:center; }
+.run { background:var(--blue); } .block { background:var(--amber); } .idle { background:var(--green); } .tick { width:6px; height:36px; background:var(--teal); border-radius:4px; }
+.w80 { width:80px; } .w120 { width:120px; } .w180 { width:180px; } .w240 { width:240px; }
+.refs li { margin-top:9px; font-size:18px; }
+@media print { body{background:#fff;} .nav{display:none;} .deck{padding:0;} .slide{margin:0; box-shadow:none; border:0;} }
+
+.api-list { display:flex; flex-wrap:wrap; gap:10px; margin-top:10px; }
+.api-list code { display:inline-block; padding:8px 10px; font-size:17px; }
+.decision-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+.decision { min-height:132px; padding:13px; border:1px solid var(--line); border-top:5px solid var(--blue); border-radius:8px; background:#fff; font-size:16px; }
+.decision:nth-child(2) { border-top-color:var(--teal); }
+.decision:nth-child(3) { border-top-color:var(--amber); }
+.decision:nth-child(4) { border-top-color:var(--green); }
+.decision strong { display:block; color:var(--indigo); font-size:18px; margin-bottom:6px; }
+.lane-stack { display:grid; gap:12px; margin-top:12px; }
+.lane { display:grid; grid-template-columns:160px 1fr; gap:12px; align-items:center; }
+.lane-label { padding:10px 12px; border-radius:8px; background:#edf2ff; color:var(--indigo); font-weight:900; text-align:center; }
+.lane-body { min-height:48px; display:flex; gap:7px; align-items:center; padding:8px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+.seg { min-width:80px; height:30px; padding:0 10px; display:flex; align-items:center; justify-content:center; border-radius:6px; color:#fff; font-weight:900; font-size:14px; }
+.blue { background:var(--blue); } .teal { background:var(--teal); } .amber { background:var(--amber); } .green { background:var(--green); } .violet { background:var(--violet); }
+.w120 { width:120px; } .w180 { width:180px; } .w240 { width:240px; }
+.mini-arch { display:grid; grid-template-columns:1fr 48px 1fr 48px 1fr; gap:10px; align-items:center; }
+.arch-node { min-height:96px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fff; text-align:center; font-size:17px; }
+.arch-node strong { display:block; color:var(--indigo); font-size:19px; margin-bottom:7px; }
+.arrow { text-align:center; color:var(--blue); font-size:32px; font-weight:900; }
+.source-card { min-height:120px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fbfcfe; font-size:16.5px; }
+.source-card strong { display:block; color:var(--indigo); font-size:18px; margin-bottom:6px; }
+
+.bit-grid { display:grid; grid-template-columns:repeat(8,1fr); gap:8px; margin-top:14px; }
+.bit { min-height:70px; padding:9px; border:1px solid var(--line); border-radius:8px; background:#fff; text-align:center; font-size:14px; }
+.bit strong { display:block; color:var(--indigo); font-size:16px; margin-bottom:4px; }
+.bit.set { background:#e9f7f5; border-color:#14919b; }
+.flow4 { display:grid; grid-template-columns:1fr 40px 1fr 40px 1fr 40px 1fr; gap:8px; align-items:stretch; margin-top:16px; }
+.flow-node { min-height:116px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fff; font-size:16px; }
+.flow-node strong { display:block; color:var(--indigo); font-size:18px; margin-bottom:8px; }
+.flow-arrow { display:flex; align-items:center; justify-content:center; color:var(--blue); font-size:28px; font-weight:900; }
+.compare-rows { display:grid; gap:10px; margin-top:14px; }
+.compare-row { display:grid; grid-template-columns:170px 1fr 1fr; gap:10px; align-items:stretch; }
+.compare-head { padding:10px; border-radius:8px; background:var(--indigo); color:#fff; font-weight:900; text-align:center; }
+.compare-cell { min-height:52px; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:#fff; font-size:16px; }
+.icon-strip { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:16px; }
+.icon-mini { min-height:112px; padding:12px; border:1px solid var(--line); border-radius:8px; background:#fff; text-align:center; font-size:15px; }
+.icon-mini img { width:58px; height:58px; object-fit:contain; display:block; margin:0 auto 8px; }
+.mask-card { min-height:126px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fff; font-size:16px; }
+.mask-card strong { display:block; color:var(--indigo); font-size:18px; margin-bottom:8px; }
+.policy-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:14px; }
+.policy { min-height:150px; padding:14px; border:1px solid var(--line); border-top:5px solid var(--blue); border-radius:8px; background:#fff; font-size:16px; }
+.policy:nth-child(2){border-top-color:var(--teal);} .policy:nth-child(3){border-top-color:var(--amber);} .policy:nth-child(4){border-top-color:var(--green);}
+.policy strong { display:block; color:var(--indigo); font-size:18px; margin-bottom:8px; }
+</style>
+  <link rel="stylesheet" href="../shared_assets/slideshow.css">
+</head>
+<body>
+  <nav class="nav"><a href="#s1">01</a><a href="#s2">02</a><a href="#s3">03</a><a href="#s4">04</a><a href="#s5">05</a><a href="#s6">06</a><a href="#s7">07</a><a href="#s8">08</a><a href="#s9">09</a><a href="#s10">10</a><a href="#s11">11</a><a href="#s12">12</a><a href="#s13">13</a><a href="#s14">14</a><a href="#s15">15</a><a href="#s16">16</a><a href="#s17">17</a><a href="#s18">18</a><a href="#s19">19</a><a href="#s20">20</a><a href="#s21">21</a><a href="#s22">22</a><a href="#s23">23</a><a href="#s24">24</a><a href="#s25">25</a><a href="#s26">26</a><a href="#s27">27</a><a href="#s28">28</a><a href="#s29">29</a><a href="#s30">30</a><a href="#s31">31</a><a href="#s32">32</a><a href="#s33">33</a><a href="#s34">34</a><a href="#s35">35</a><a href="#s36">36</a><a href="#s37">37</a><a href="#s38">38</a><a href="#s39">39</a><a href="#s40">40</a><button class="slideshow-toggle" type="button" data-slideshow-start>Slideshow</button></nav>
+  
+  <div class="slideshow-controls" aria-label="Slideshow controls">
+    <button class="slide-control" type="button" data-slide-prev>Prev</button>
+    <span class="slide-counter" data-slide-counter>01 / 40</span>
+    <button class="slide-control" type="button" data-slide-next>Next</button>
+    <button class="slide-control" type="button" data-slide-fullscreen>Full</button>
+    <button class="slide-control" type="button" data-slide-fill aria-pressed="false">Fill</button>
+    <button class="slide-control" type="button" data-slide-exit>Exit</button>
+  </div>
+  <div class="slideshow-hint">Keys: Left/Right or PageUp/PageDown to move, Home/End to jump, S to toggle slideshow, F for fullscreen, Z for fit/fill, Esc to exit.</div>
+
+  <main class="deck">
+    
+    <section class="slide cover" id="s1">
+      <div class="slide-header"><div class="context">FreeRTOS Module 12</div><div class="framing">Event Groups and Barrier Synchronization</div></div>
+      <div class="content">
+        <div class="cover-grid">
+          <div>
+            <h1>Event Groups and Barrier Synchronization</h1>
+            <p>Event groups combine multiple boolean conditions into one waitable kernel object. The hard part is not setting a bit, but defining bit meaning, wait policy, and clear policy.</p>
+            <p class="cover-meta">Course: FreeRTOS Lecture<br>Embedded Systems Laboratory, Pusan National University<br>Instructor: Prof. Yunju Baek</p>
+          </div>
+          <div class="cover-card">
+            <h2>Learning path</h2>
+            <ul>
+              <li>EventBits_t, bit numbers, and named masks</li>
+              <li>Wait-any versus wait-all behavior</li>
+              <li>Clear-on-exit and bit lifetime</li>
+              <li>Barrier synchronization with xEventGroupSync</li>
+              <li>Object-choice review against queues and notifications</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="takeaway">First target: treat each bit as a named condition with an explicit lifetime.</div>
+      <div class="page">01</div>
+    </section>
+    <section class="slide" id="s2">
+      <div class="slide-header"><div class="context">FreeRTOS Module 12</div><div class="framing">Course Position</div></div>
+      <div class="content">
+        <h2>Course Position</h2>
+        
+      <p class="subtitle">Module 11 focused on resource ownership. Module 12 changes the synchronization shape to multiple boolean conditions.</p>
+      <div class="grid-3">
+        <div class="icon-card"><img src="../shared_assets/icons/event_bits_generated.png" alt=""><div><strong>Event bits</strong><span>Each bit represents one named condition.</span></div></div>
+        <div class="icon-card"><img src="../shared_assets/icons/event_group_flags.png" alt=""><div><strong>Wait policy</strong><span>A task can wait for any or all required bits.</span></div></div>
+        <div class="icon-card"><img src="../shared_assets/icons/blocked_waiting_state.png" alt=""><div><strong>Barrier</strong><span>Tasks can synchronize at a shared progress point.</span></div></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Event groups are condition sets, not payload transport.</div>
+      <div class="page">02</div>
+    </section>
+    <section class="slide" id="s3">
+      <div class="slide-header"><div class="context">FreeRTOS Module 12</div><div class="framing">Problem Frame</div></div>
+      <div class="content">
+        <h2>Problem Frame</h2>
+        
+      <div class="policy-grid">
+        <div class="policy"><strong>Status set</strong>Several subsystems become ready independently, and one task needs to observe the combined status.</div>
+        <div class="policy"><strong>Wait-any</strong>A task should wake when at least one of several conditions becomes true.</div>
+        <div class="policy"><strong>Wait-all</strong>A task should wake only after a full set of conditions becomes true.</div>
+        <div class="policy"><strong>Barrier</strong>Several tasks reach a synchronization point and should proceed only when all have arrived.</div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The design question is the wait condition, not the API call.</div>
+      <div class="page">03</div>
+    </section>
+    <section class="slide" id="s4">
+      <div class="slide-header"><div class="context">FreeRTOS Module 12</div><div class="framing">Terminology Before APIs</div></div>
+      <div class="content">
+        <h2>Terminology Before APIs</h2>
+        
+      <table class="mini-table"><thead><tr><th>Term</th><th>Meaning in this module</th></tr></thead><tbody><tr><td><strong>Event group</strong></td><td>A FreeRTOS object that stores multiple event bits.</td></tr><tr><td><strong>EventBits_t</strong></td><td>The integer type used to hold event bits returned from event group APIs.</td></tr><tr><td><strong>Event bit</strong></td><td>One boolean condition represented by a bit position.</td></tr><tr><td><strong>Bit mask</strong></td><td>A named combination of bits used to set, clear, or wait for conditions.</td></tr><tr><td><strong>Wait any</strong></td><td>A wait policy that unblocks when at least one requested bit is set.</td></tr><tr><td><strong>Wait all</strong></td><td>A wait policy that unblocks only when all requested bits are set.</td></tr><tr><td><strong>Clear on exit</strong></td><td>A wait option that clears selected bits automatically after a successful wait.</td></tr><tr><td><strong>Barrier synchronization</strong></td><td>A pattern where tasks set arrival bits and wait until the group condition is complete.</td></tr></tbody></table>
+    
+      </div>
+      <div class="takeaway">The bit&#x27;s name and lifetime are part of the design.</div>
+      <div class="page">04</div>
+    </section>
+    <section class="slide" id="s5">
+      <div class="slide-header"><div class="context">FreeRTOS Module 12</div><div class="framing">Primary Visual Anchor</div></div>
+      <div class="content">
+        <h2>Primary Visual Anchor</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_9_1_event_flag_to_bit_number_mapping_in_a_variable_of_type_eventbits_t.png" alt="Kernel Book Figure 9.1 event bit mapping"></div>
+        <div class="panel tint-blue"><h3>Reading Order</h3><ul><li>Map each named condition to one bit number.</li><li>Use masks instead of magic numeric constants.</li><li>Remember that not all EventBits_t bits are necessarily user bits.</li><li>Connect mask readability to code review quality.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Figure 9.1.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Event group design begins with named bit mapping.</div>
+      <div class="page">05</div>
+    </section>
+    <section class="slide" id="s6">
+      <div class="slide-header"><div class="context">FreeRTOS Module 12</div><div class="framing">Bit Mask Naming Discipline</div></div>
+      <div class="content">
+        <h2>Bit Mask Naming Discipline</h2>
+        
+      <p class="subtitle">Readable masks make event groups reviewable.</p>
+      <div class="grid-3">
+        <div class="mask-card"><strong>Single condition</strong><code>NET_READY_BIT</code><br><code>SENSOR_READY_BIT</code><br><code>STORAGE_READY_BIT</code></div>
+        <div class="mask-card"><strong>Combined condition</strong><code>ALL_READY_BITS</code><br>Network, sensor, and storage ready together.</div>
+        <div class="mask-card"><strong>Review rule</strong>Every bit should have one meaning, one owner for setting, and a documented clear policy.</div>
+      </div>
+      <div class="bit-grid">
+        <div class="bit set"><strong>bit 0</strong>NET</div><div class="bit set"><strong>bit 1</strong>SENSOR</div><div class="bit"><strong>bit 2</strong>STORAGE</div><div class="bit"><strong>bit 3</strong>RADIO</div>
+        <div class="bit"><strong>bit 4</strong>ERROR</div><div class="bit"><strong>bit 5</strong>SYNC A</div><div class="bit"><strong>bit 6</strong>SYNC B</div><div class="bit"><strong>bit 7</strong>SYNC C</div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A magic bit constant is a future bug report waiting politely.</div>
+      <div class="page">06</div>
+    </section>
+    <section class="slide" id="s7">
+      <div class="slide-header"><div class="context">FreeRTOS Module 12</div><div class="framing">Event Group Value Example</div></div>
+      <div class="content">
+        <h2>Event Group Value Example</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_9_2_an_event_group_in_which_only_bits_1_4_and_7_are_set_and_all_the_other_ev.png" alt="Kernel Book Figure 9.2 event group example"></div>
+        <div class="panel tint-teal"><h3>Reading Focus</h3><ul><li>The event group value is a bitset, not a queue.</li><li>Several conditions can be true at the same time.</li><li>A task can wait for a subset of bits.</li><li>Reading returned bits is evidence for why the task woke.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Figure 9.2.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The returned bit value should be interpreted as condition evidence.</div>
+      <div class="page">07</div>
+    </section>
+    <section class="slide" id="s8">
+      <div class="slide-header"><div class="context">FreeRTOS Module 12</div><div class="framing">API Surface Map</div></div>
+      <div class="content">
+        <h2>API Surface Map</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Create</h3><div class="api-list"><code>xEventGroupCreate()</code><code>xEventGroupCreateStatic()</code><code>vEventGroupDelete()</code></div></div>
+        <div class="panel tint-teal"><h3>Set and clear</h3><div class="api-list"><code>xEventGroupSetBits()</code><code>xEventGroupClearBits()</code><code>xEventGroupSetBitsFromISR()</code></div></div>
+        <div class="panel tint-amber"><h3>Wait and sync</h3><div class="api-list"><code>xEventGroupWaitBits()</code><code>xEventGroupSync()</code><code>xEventGroupGetBits()</code></div></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Group event APIs by create, bit mutation, and wait policy.</div>
+      <div class="page">08</div>
+    </section>
+    <section class="slide" id="s9">
+      <div class="slide-header"><div class="context">FreeRTOS Module 12</div><div class="framing">Configuration and Build Switches</div></div>
+      <div class="content">
+        <h2>Configuration and Build Switches</h2>
+        
+      <div class="grid-2">
+        <div class="panel tint-blue"><h3>Configuration items</h3><div class="api-list"><code>configUSE_TIMERS</code><code>configSUPPORT_STATIC_ALLOCATION</code><code>configUSE_TRACE_FACILITY</code><code>EventBits_t usable bits</code><code>timeout policy</code></div></div>
+        <div class="panel tint-green"><h3>Review questions</h3><ul><li>Are event groups enabled through the required kernel configuration?</li><li>Does the design require static allocation?</li><li>Are FromISR bit operations routed through timer daemon behavior where applicable?</li><li>Is timeout behavior explicit for every wait?</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Event group behavior depends on configuration and caller context.</div>
+      <div class="page">09</div>
+    </section>
+    <section class="slide" id="s10">
+      <div class="slide-header"><div class="context">FreeRTOS Module 12</div><div class="framing">Wait-Any Policy</div></div>
+      <div class="content">
+        <h2>Wait-Any Policy</h2>
+        
+      <div class="flow4">
+        <div class="flow-node"><strong>Task waits</strong>Requested bits: NET or SENSOR or STORAGE.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>One bit set</strong>Any one requested condition becomes true.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Task unblocks</strong>Returned bits tell which condition caused success.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Handler branch</strong>Task handles each set bit deliberately.</div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Wait-any is useful when several conditions can independently trigger work.</div>
+      <div class="page">10</div>
+    </section>
+    <section class="slide" id="s11">
+      <div class="slide-header"><div class="context">FreeRTOS Module 12</div><div class="framing">Kernel Book Figure 9.3: Wait Any Output</div></div>
+      <div class="content">
+        <h2>Kernel Book Figure 9.3: Wait Any Output</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_9_3_the_output_produced_when_example_9_1_is_executed_with_xwaitforallbits_se.jpg" alt="Kernel Book Figure 9.3 wait any output"></div>
+        <div class="panel tint-blue"><h3>Reading Focus</h3><ul><li>This output corresponds to wait-any behavior.</li><li>A task can proceed before the full bit set is present.</li><li>Returned bits should be checked, not ignored.</li><li>Output evidence should match the selected wait policy.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Figure 9.3.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Output should be read as evidence for wait policy.</div>
+      <div class="page">11</div>
+    </section>
+    <section class="slide" id="s12">
+      <div class="slide-header"><div class="context">FreeRTOS Module 12</div><div class="framing">Wait-All Policy</div></div>
+      <div class="content">
+        <h2>Wait-All Policy</h2>
+        
+      <div class="flow4">
+        <div class="flow-node"><strong>Task waits</strong>Requested bits: NET and SENSOR and STORAGE.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Partial set</strong>Some bits are ready but the task remains Blocked.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>All bits set</strong>The complete mask becomes true before timeout.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Task unblocks</strong>Returned value confirms the satisfied condition set.</div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Wait-all is useful for readiness gates and startup dependency checks.</div>
+      <div class="page">12</div>
+    </section>
+    <section class="slide" id="s13">
+      <div class="slide-header"><div class="context">FreeRTOS Module 12</div><div class="framing">Kernel Book Figure 9.4: Wait All Output</div></div>
+      <div class="content">
+        <h2>Kernel Book Figure 9.4: Wait All Output</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_9_4_the_output_produced_when_example_9_1_is_executed_with_xwaitforallbits_se.jpg" alt="Kernel Book Figure 9.4 wait all output"></div>
+        <div class="panel tint-teal"><h3>Reading Focus</h3><ul><li>This output corresponds to wait-all behavior.</li><li>The task should not proceed on partial readiness.</li><li>Timeout must be designed for missing conditions.</li><li>Compare directly against Figure 9.3.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Figure 9.4.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Wait-any and wait-all are different synchronization contracts.</div>
+      <div class="page">13</div>
+    </section>
+    <section class="slide" id="s14">
+      <div class="slide-header"><div class="context">FreeRTOS Module 12</div><div class="framing">Clear-On-Exit Policy</div></div>
+      <div class="content">
+        <h2>Clear-On-Exit Policy</h2>
+        
+      <div class="compare-rows">
+        <div class="compare-row"><div class="compare-head">Question</div><div class="compare-head">Clear on exit</div><div class="compare-head">Leave bits set</div></div>
+        <div class="compare-row"><div class="compare-cell">Future waits</div><div class="compare-cell">The condition must happen again before another wait succeeds.</div><div class="compare-cell">Future waits may succeed immediately.</div></div>
+        <div class="compare-row"><div class="compare-cell">Best fit</div><div class="compare-cell">Event-like conditions that should be consumed.</div><div class="compare-cell">State-like conditions that remain true until explicitly cleared.</div></div>
+        <div class="compare-row"><div class="compare-cell">Risk</div><div class="compare-cell">Another task may miss a bit if policy is wrong.</div><div class="compare-cell">A task may wake repeatedly on stale state.</div></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Bit lifetime must be designed, not left to default intuition.</div>
+      <div class="page">14</div>
+    </section>
+    <section class="slide" id="s15">
+      <div class="slide-header"><div class="context">FreeRTOS Module 12</div><div class="framing">Barrier Synchronization with xEventGroupSync</div></div>
+      <div class="content">
+        <h2>Barrier Synchronization with xEventGroupSync</h2>
+        
+      <div class="flow4">
+        <div class="flow-node"><strong>Task A</strong>Sets ARRIVED_A and waits for all arrival bits.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Task B</strong>Sets ARRIVED_B and waits for all arrival bits.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Task C</strong>Sets ARRIVED_C and completes the full mask.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Release</strong>All tasks can continue past the synchronization point.</div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A barrier is a collective progress condition.</div>
+      <div class="page">15</div>
+    </section>
+    <section class="slide" id="s16">
+      <div class="slide-header"><div class="context">FreeRTOS Module 12</div><div class="framing">Kernel Book Figure 9.5: Barrier Example</div></div>
+      <div class="content">
+        <h2>Kernel Book Figure 9.5: Barrier Example</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_9_5_the_output_produced_when_example_9_2_is_executed.jpg" alt="Kernel Book Figure 9.5 barrier example output"></div>
+        <div class="panel tint-green"><h3>Reading Focus</h3><ul><li>Read the output as barrier evidence.</li><li>Tasks reach the sync point at different times.</li><li>No task should proceed until the full condition is satisfied.</li><li>Timeout policy prevents permanent waiting.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Figure 9.5.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Barrier output should demonstrate collective release.</div>
+      <div class="page">16</div>
+    </section>
+    <section class="slide" id="s17">
+      <div class="slide-header"><div class="context">FreeRTOS Module 12</div><div class="framing">Caller Context Rules</div></div>
+      <div class="content">
+        <h2>Caller Context Rules</h2>
+        
+      <table class="mini-table">
+        <thead><tr><th>Operation</th><th>Task context</th><th>ISR context</th><th>Review question</th></tr></thead>
+        <tbody>
+          <tr><td>Wait bits</td><td>Allowed with timeout policy</td><td>Not a blocking ISR operation</td><td>What happens on timeout?</td></tr>
+          <tr><td>Set bits</td><td>Direct task-context API</td><td>Use documented FromISR variant and understand deferred service behavior</td><td>Can a higher-priority task wake?</td></tr>
+          <tr><td>Clear bits</td><td>Task-context clear or clear-on-exit</td><td>Review carefully; avoid unclear ownership</td><td>Who owns bit lifetime?</td></tr>
+          <tr><td>Sync barrier</td><td>Task-context collective wait</td><td>Not an ISR barrier</td><td>Can every participant reach the barrier?</td></tr>
+        </tbody>
+      </table>
+    
+      </div>
+      <div class="takeaway">Event group APIs are still caller-context dependent.</div>
+      <div class="page">17</div>
+    </section>
+    <section class="slide" id="s18">
+      <div class="slide-header"><div class="context">FreeRTOS Module 12</div><div class="framing">Event Group Versus Semaphore</div></div>
+      <div class="content">
+        <h2>Event Group Versus Semaphore</h2>
+        
+      <div class="compare-rows">
+        <div class="compare-row"><div class="compare-head">Aspect</div><div class="compare-head">Event group</div><div class="compare-head">Semaphore</div></div>
+        <div class="compare-row"><div class="compare-cell">Meaning</div><div class="compare-cell">Multiple named boolean conditions.</div><div class="compare-cell">One signal or count.</div></div>
+        <div class="compare-row"><div class="compare-cell">Wait condition</div><div class="compare-cell">Any or all selected bits.</div><div class="compare-cell">Take one object or count.</div></div>
+        <div class="compare-row"><div class="compare-cell">Payload</div><div class="compare-cell">None.</div><div class="compare-cell">None.</div></div>
+        <div class="compare-row"><div class="compare-cell">Risk</div><div class="compare-cell">Wrong clear policy or unnamed bits.</div><div class="compare-cell">Lost signal or count saturation.</div></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Use event groups when the condition set itself matters.</div>
+      <div class="page">18</div>
+    </section>
+    <section class="slide" id="s19">
+      <div class="slide-header"><div class="context">FreeRTOS Module 12</div><div class="framing">Event Group Versus Queue</div></div>
+      <div class="content">
+        <h2>Event Group Versus Queue</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/infographics/object_selection_map.png" alt="Object selection map"></div>
+        <div class="panel tint-blue"><h3>Decision Filter</h3><ul><li>Use an event group when no payload is needed.</li><li>Use a queue when each event has data, order, or identity.</li><li>Use a notification when one task is the direct receiver.</li><li>Use a semaphore when a single signal or count is clearer.</li></ul><p class="asset-note">Shared generated infographic asset.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Bits are not messages.</div>
+      <div class="page">19</div>
+    </section>
+    <section class="slide" id="s20">
+      <div class="slide-header"><div class="context">FreeRTOS Module 12</div><div class="framing">Event Group Versus Task Notification</div></div>
+      <div class="content">
+        <h2>Event Group Versus Task Notification</h2>
+        
+      <div class="grid-2">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_10_1_a_communication_object_being_used_to_send_an_event_from_one_task_to_anot.png" alt="Communication object event"></div>
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_10_2_a_task_notification_used_to_send_an_event_directly_from_one_task_to_anot.png" alt="Task notification direct event"></div>
+      </div>
+      <div class="callout" style="margin-top:14px;">Task notifications are often lighter when exactly one task receives the event; event groups are clearer when multiple named conditions are combined.</div>
+    
+      </div>
+      <div class="takeaway">The receiver model matters as much as the bit model.</div>
+      <div class="page">20</div>
+    </section>
+    <section class="slide" id="s21">
+      <div class="slide-header"><div class="context">FreeRTOS Module 12</div><div class="framing">Pattern Board</div></div>
+      <div class="content">
+        <h2>Pattern Board</h2>
+        
+      <div class="decision-grid"><div class="decision"><strong>Startup readiness</strong>Tasks set subsystem-ready bits; a coordinator waits for all required bits.</div><div class="decision"><strong>Mode flags</strong>A controller waits for any mode-change condition, then checks returned bits.</div><div class="decision"><strong>Fault aggregation</strong>Several error bits describe current system fault state.</div><div class="decision"><strong>Barrier sync</strong>Participants set arrival bits and wait for the full mask through xEventGroupSync().</div></div>
+      <div class="icon-strip">
+        <div class="icon-mini"><img src="../shared_assets/icons/event_bits_generated.png" alt="">Bit masks</div>
+        <div class="icon-mini"><img src="../shared_assets/icons/blocked_waiting_state.png" alt="">Blocked wait</div>
+        <div class="icon-mini"><img src="../shared_assets/icons/task_execution.png" alt="">Task release</div>
+        <div class="icon-mini"><img src="../shared_assets/icons/trace_diagnostics.png" alt="">Trace evidence</div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Patterns make the bit lifetime easier to discuss.</div>
+      <div class="page">21</div>
+    </section>
+    <section class="slide" id="s22">
+      <div class="slide-header"><div class="context">FreeRTOS Module 12</div><div class="framing">Mini Case: System Startup Readiness</div></div>
+      <div class="content">
+        <h2>Mini Case: System Startup Readiness</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Bits</h3><ul><li>NET_READY_BIT.</li><li>SENSOR_READY_BIT.</li><li>STORAGE_READY_BIT.</li><li>CLOCK_READY_BIT.</li></ul></div>
+        <div class="panel tint-teal"><h3>Wait policy</h3><ul><li>Coordinator waits for all ready bits.</li><li>Timeout leads to degraded mode or startup failure.</li><li>Returned bits document missing subsystem.</li></ul></div>
+        <div class="panel tint-green"><h3>Clear policy</h3><ul><li>Ready bits may remain set while subsystem is ready.</li><li>Failure bits may clear only through owner task.</li><li>Policy should be written next to mask definitions.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Startup readiness is a natural wait-all design.</div>
+      <div class="page">22</div>
+    </section>
+    <section class="slide" id="s23">
+      <div class="slide-header"><div class="context">FreeRTOS Module 12</div><div class="framing">Mini Case: Fault Flags</div></div>
+      <div class="content">
+        <h2>Mini Case: Fault Flags</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Fault sources</h3><ul><li>Overtemperature.</li><li>Communication timeout.</li><li>Storage error.</li><li>Sensor invalid.</li></ul></div>
+        <div class="panel tint-amber"><h3>Policy choices</h3><ul><li>Wait-any wakes fault monitor.</li><li>Bits remain set until owner clears the fault.</li><li>Queue is needed if each fault carries payload.</li></ul></div>
+        <div class="panel tint-green"><h3>Evidence</h3><ul><li>Current bit snapshot.</li><li>First occurrence timestamp.</li><li>Clear owner log.</li><li>Recovery result.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Event groups can summarize state, but they do not preserve event history by themselves.</div>
+      <div class="page">23</div>
+    </section>
+    <section class="slide" id="s24">
+      <div class="slide-header"><div class="context">FreeRTOS Module 12</div><div class="framing">Mini Case: Multi-Task Barrier</div></div>
+      <div class="content">
+        <h2>Mini Case: Multi-Task Barrier</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Participants</h3><ul><li>Sensor calibration task.</li><li>Communication setup task.</li><li>Storage mount task.</li></ul></div>
+        <div class="panel tint-teal"><h3>Barrier condition</h3><ul><li>Each task sets its arrival bit.</li><li>Each task waits for all arrival bits.</li><li>Timeout identifies missing participant.</li></ul></div>
+        <div class="panel tint-amber"><h3>Risk</h3><ul><li>One task cannot reach barrier.</li><li>A bit is cleared too early.</li><li>Barrier reused without reset policy.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Barrier synchronization requires a reuse and timeout story.</div>
+      <div class="page">24</div>
+    </section>
+    <section class="slide" id="s25">
+      <div class="slide-header"><div class="context">FreeRTOS Module 12</div><div class="framing">Failure Modes Worth Naming Early</div></div>
+      <div class="content">
+        <h2>Failure Modes Worth Naming Early</h2>
+        
+      <div class="grid-3"><div class="panel tint-blue"><h3>Unnamed bits</h3><ul><li>Magic constants hide condition meaning.</li><li>Bit reuse creates conflicting interpretations.</li><li>Fix with named masks and a bit table.</li></ul></div><div class="panel tint-teal"><h3>Wrong clear policy</h3><ul><li>Bits disappear before another task observes them.</li><li>Stale bits wake tasks repeatedly.</li><li>Fix by documenting clear ownership.</li></ul></div><div class="panel tint-amber"><h3>Payload expectation</h3><ul><li>A bit says that something happened but carries no data.</li><li>Ordering and history are not preserved.</li><li>Fix with queue, stream, message buffer, or notification value.</li></ul></div></div>
+    
+      </div>
+      <div class="takeaway">Event group bugs often start as unclear bit lifetime.</div>
+      <div class="page">25</div>
+    </section>
+    <section class="slide" id="s26">
+      <div class="slide-header"><div class="context">FreeRTOS Module 12</div><div class="framing">Diagnostic Evidence</div></div>
+      <div class="content">
+        <h2>Diagnostic Evidence</h2>
+        
+      <div class="icon-strip">
+        <div class="icon-mini"><img src="../shared_assets/icons/event_group_flags.png" alt="">Bit snapshot</div>
+        <div class="icon-mini"><img src="../shared_assets/icons/trace_diagnostics.png" alt="">Trace</div>
+        <div class="icon-mini"><img src="../shared_assets/icons/timing_deadline.png" alt="">Timeout</div>
+        <div class="icon-mini"><img src="../shared_assets/icons/debugging_boundary.png" alt="">Clear owner</div>
+      </div>
+      <div class="grid-3" style="margin-top:18px;">
+        <div class="panel tint-blue"><h3>State evidence</h3><ul><li>Current EventBits_t value.</li><li>Returned bits from wait call.</li><li>Named mask table.</li></ul></div>
+        <div class="panel tint-teal"><h3>Timing evidence</h3><ul><li>Wait start timestamp.</li><li>Bit set timestamp.</li><li>Timeout or unblock timestamp.</li></ul></div>
+        <div class="panel tint-amber"><h3>Ownership evidence</h3><ul><li>Which task sets each bit.</li><li>Which task clears each bit.</li><li>Clear-on-exit policy.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Debugging event groups means logging bit value and policy.</div>
+      <div class="page">26</div>
+    </section>
+    <section class="slide" id="s27">
+      <div class="slide-header"><div class="context">FreeRTOS Module 12</div><div class="framing">Trace View for Event Bits</div></div>
+      <div class="content">
+        <h2>Trace View for Event Bits</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_12_6_figure_12_6_freertos_trace_kernel_object_history_view_one_of_more_than_2.png" alt="Kernel object history trace view"></div>
+        <div class="panel tint-blue"><h3>Reading Focus</h3><ul><li>Trace set, clear, and wait operations.</li><li>Match bit changes with task state transitions.</li><li>Look for repeated wakeups from stale bits.</li><li>Use object history to verify clear policy.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Chapter 12 trace figure.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Event group trace should explain why a task woke.</div>
+      <div class="page">27</div>
+    </section>
+    <section class="slide" id="s28">
+      <div class="slide-header"><div class="context">FreeRTOS Module 12</div><div class="framing">Tutorial 15 Reading Path</div></div>
+      <div class="content">
+        <h2>Tutorial 15 Reading Path</h2>
+        
+      <div class="flow4">
+        <div class="flow-node"><strong>Define bits</strong>Find masks and write their meanings in words.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Set bits</strong>Find which task or event source sets each bit.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Wait bits</strong>Mark wait-any or wait-all and clear-on-exit values.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Explain output</strong>Use returned bits to explain observed behavior.</div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Tutorial 15 should be read as bit-policy evidence.</div>
+      <div class="page">28</div>
+    </section>
+    <section class="slide" id="s29">
+      <div class="slide-header"><div class="context">FreeRTOS Module 12</div><div class="framing">Tutorial 16 Reading Path</div></div>
+      <div class="content">
+        <h2>Tutorial 16 Reading Path</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Barrier participants</h3><ul><li>Find every task that calls xEventGroupSync().</li><li>List its arrival bit.</li><li>List the full synchronization mask.</li></ul></div>
+        <div class="panel tint-teal"><h3>Release condition</h3><ul><li>Predict which task arrives first.</li><li>Predict who waits.</li><li>Predict when all tasks proceed.</li></ul></div>
+        <div class="panel tint-green"><h3>Variation</h3><ul><li>Delay one participant.</li><li>Add timeout handling.</li><li>Repeat barrier and define reset policy.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Tutorial 16 is a collective synchronization reading exercise.</div>
+      <div class="page">29</div>
+    </section>
+    <section class="slide" id="s30">
+      <div class="slide-header"><div class="context">FreeRTOS Module 12</div><div class="framing">Source Reading: event_groups.c</div></div>
+      <div class="content">
+        <h2>Source Reading: event_groups.c</h2>
+        
+      <div class="grid-3">
+        <div class="source-card"><strong>Wait path</strong>Read how wait-any and wait-all conditions are checked.</div>
+        <div class="source-card"><strong>Clear path</strong>Find where clear-on-exit and explicit clear operations affect bits.</div>
+        <div class="source-card"><strong>Sync path</strong>Trace how xEventGroupSync sets arrival bits and waits for the full mask.</div>
+      </div>
+      <div class="warning" style="margin-top:22px;">Source reading should connect bit value changes with task Blocked and Ready transitions.</div>
+    
+      </div>
+      <div class="takeaway">The implementation clarifies bit lifetime and wait policy.</div>
+      <div class="page">30</div>
+    </section>
+    <section class="slide" id="s31">
+      <div class="slide-header"><div class="context">FreeRTOS Module 12</div><div class="framing">Source Reading: tasks.c and timers.c Links</div></div>
+      <div class="content">
+        <h2>Source Reading: tasks.c and timers.c Links</h2>
+        
+      <div class="grid-2">
+        <div class="panel tint-blue"><h3>tasks.c connection</h3><ul><li>Event group waits block tasks.</li><li>Bit setting can unblock one or more tasks.</li><li>Timeout behavior follows scheduler lists.</li></ul></div>
+        <div class="panel tint-teal"><h3>timers.c connection</h3><ul><li>Some FromISR event group operations use daemon-task service behavior.</li><li>Timer service capacity can affect deferred bit setting.</li><li>Review configUSE_TIMERS and daemon priority when ISR paths are used.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Event groups connect synchronization policy to scheduler and service-task behavior.</div>
+      <div class="page">31</div>
+    </section>
+    <section class="slide" id="s32">
+      <div class="slide-header"><div class="context">FreeRTOS Module 12</div><div class="framing">Design Decision Table</div></div>
+      <div class="content">
+        <h2>Design Decision Table</h2>
+        
+      <table class="mini-table">
+        <thead><tr><th>Decision</th><th>Question</th><th>Evidence</th></tr></thead>
+        <tbody>
+          <tr><td>Bit meaning</td><td>What exact condition does each bit represent?</td><td>Named mask table and owner task</td></tr>
+          <tr><td>Wait policy</td><td>Should a task wake on any bit or all bits?</td><td>Wait-any or wait-all output and returned bits</td></tr>
+          <tr><td>Clear policy</td><td>Are bits event-like or state-like?</td><td>Clear-on-exit setting and explicit clear owner</td></tr>
+          <tr><td>Barrier reuse</td><td>Can this barrier be used repeatedly?</td><td>Reset policy and timeout handling</td></tr>
+          <tr><td>Object alternative</td><td>Is payload, order, or direct receiver required?</td><td>Queue, message buffer, or notification comparison</td></tr>
+        </tbody>
+      </table>
+    
+      </div>
+      <div class="takeaway">Event group design review should force bit meaning and lifetime onto the page.</div>
+      <div class="page">32</div>
+    </section>
+    <section class="slide" id="s33">
+      <div class="slide-header"><div class="context">FreeRTOS Module 12</div><div class="framing">Testing Checklist</div></div>
+      <div class="content">
+        <h2>Testing Checklist</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Nominal path</h3><ul><li>Set one bit and verify wait-any behavior.</li><li>Set full mask and verify wait-all behavior.</li><li>Run barrier with all participants arriving.</li></ul></div>
+        <div class="panel tint-teal"><h3>Pressure path</h3><ul><li>Delay one participant.</li><li>Set multiple bits before wait begins.</li><li>Repeat barrier sequence.</li></ul></div>
+        <div class="panel tint-green"><h3>Failure path</h3><ul><li>Timeout returns expected bit snapshot.</li><li>Wrong clear policy is visible.</li><li>Payload requirement triggers object redesign.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A good event-group lab checks both bit value and task state.</div>
+      <div class="page">33</div>
+    </section>
+    <section class="slide" id="s34">
+      <div class="slide-header"><div class="context">FreeRTOS Module 12</div><div class="framing">Code Review Checklist</div></div>
+      <div class="content">
+        <h2>Code Review Checklist</h2>
+        
+      <div class="grid-2">
+        <div class="panel tint-blue"><h3>Mechanism review</h3><ul><li>Are masks named?</li><li>Are usable bits respected?</li><li>Are return values and returned bits checked?</li><li>Is timeout policy explicit?</li></ul></div>
+        <div class="panel tint-green"><h3>Design review</h3><ul><li>Does each bit have one meaning?</li><li>Who sets and clears each bit?</li><li>Is wait-any or wait-all justified?</li><li>Should this be a queue or notification instead?</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Review bit policy before reviewing API syntax.</div>
+      <div class="page">34</div>
+    </section>
+    <section class="slide" id="s35">
+      <div class="slide-header"><div class="context">FreeRTOS Module 12</div><div class="framing">Classroom Board Questions</div></div>
+      <div class="content">
+        <h2>Classroom Board Questions</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>What does the bit mean?</h3><ul><li>Condition name.</li><li>Setter.</li><li>Clear owner.</li><li>State-like or event-like.</li></ul></div>
+        <div class="panel tint-teal"><h3>What wakes the task?</h3><ul><li>Any bit.</li><li>All bits.</li><li>Timeout.</li><li>Barrier completion.</li></ul></div>
+        <div class="panel tint-amber"><h3>What is missing?</h3><ul><li>Payload.</li><li>Ordering.</li><li>History.</li><li>Direct receiver.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">These questions keep event-group designs honest.</div>
+      <div class="page">35</div>
+    </section>
+    <section class="slide" id="s36">
+      <div class="slide-header"><div class="context">FreeRTOS Module 12</div><div class="framing">Project Boundary Check</div></div>
+      <div class="content">
+        <h2>Project Boundary Check</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Build</h3><ul><li>Define three named ready bits.</li><li>Create wait-any and wait-all examples.</li><li>Log returned EventBits_t values.</li></ul></div>
+        <div class="panel tint-teal"><h3>Modify</h3><ul><li>Toggle clear-on-exit.</li><li>Delay one barrier participant.</li><li>Replace event group with queue when payload is needed.</li></ul></div>
+        <div class="panel tint-green"><h3>Explain</h3><ul><li>Draw bit lifetime.</li><li>Explain why each task woke.</li><li>Document timeout and clear policy.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The lab output should be a bit table plus observed task-state evidence.</div>
+      <div class="page">36</div>
+    </section>
+    <section class="slide" id="s37">
+      <div class="slide-header"><div class="context">FreeRTOS Module 12</div><div class="framing">Review Questions</div></div>
+      <div class="content">
+        <h2>Review Questions</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Question 1</h3><p>Why should event group bits be named masks rather than numeric constants?</p></div>
+        <div class="panel tint-teal"><h3>Question 2</h3><p>How do wait-any, wait-all, and clear-on-exit combine to change future behavior?</p></div>
+        <div class="panel tint-amber"><h3>Question 3</h3><p>When should an event group be replaced by a queue or task notification?</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A strong answer names bit meaning, wait policy, clear policy, and object alternative.</div>
+      <div class="page">37</div>
+    </section>
+    <section class="slide" id="s38">
+      <div class="slide-header"><div class="context">FreeRTOS Module 12</div><div class="framing">One-Slide Summary</div></div>
+      <div class="content">
+        <h2>One-Slide Summary</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Mechanism</h3><ul><li>EventBits_t stores named condition bits.</li><li>Tasks wait for any or all selected bits.</li><li>Returned bits explain wake-up cause.</li></ul></div>
+        <div class="panel tint-teal"><h3>Design rule</h3><ul><li>Define bit meaning and setter.</li><li>Define clear policy.</li><li>Use barrier sync only with timeout and reuse policy.</li></ul></div>
+        <div class="panel tint-green"><h3>Evidence</h3><ul><li>Bit snapshot.</li><li>Returned EventBits_t.</li><li>Trace of set, clear, wait, and timeout.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Event groups are powerful when bit meaning and lifetime are explicit.</div>
+      <div class="page">38</div>
+    </section>
+    <section class="slide" id="s39">
+      <div class="slide-header"><div class="context">FreeRTOS Module 12</div><div class="framing">Bridge to Module 13</div></div>
+      <div class="content">
+        <h2>Bridge to Module 13</h2>
+        
+      <p class="subtitle">Module 13 moves to task notifications, a lighter direct-to-task mechanism that can often replace semaphores or event groups when there is exactly one receiver.</p>
+      <div class="grid-3">
+        <div class="icon-card"><img src="../shared_assets/icons/event_group_flags.png" alt=""><div><strong>Event group</strong><span>Multiple named conditions in one object.</span></div></div>
+        <div class="icon-card"><img src="../shared_assets/icons/direct_task_notification.png" alt=""><div><strong>Task notification</strong><span>Direct event or value sent to one task.</span></div></div>
+        <div class="icon-card"><img src="../shared_assets/icons/task_notification_generated.png" alt=""><div><strong>Lightweight path</strong><span>Often avoids a separate kernel object.</span></div></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The next module narrows the receiver model to one task.</div>
+      <div class="page">39</div>
+    </section>
+    <section class="slide" id="s40">
+      <div class="slide-header"><div class="context">FreeRTOS Module 12</div><div class="framing">References and Further Reading</div></div>
+      <div class="content">
+        <h2>References and Further Reading</h2>
+        
+      <p class="subtitle">References used in this module are separated from optional deeper reading.</p>
+      <div class="grid-2">
+        <div class="panel tint-blue">
+          <h3>References Used</h3>
+          <ul class="refs">
+            <li>FreeRTOS Kernel Book, Chapter 9, Event Groups.</li>
+            <li>FreeRTOS Kernel Book, Figures 9.1, 9.2, 9.3, 9.4, and 9.5.</li>
+            <li>FreeRTOS Kernel Book, Chapter 10, task notification comparison figures 10.1 and 10.2.</li>
+            <li>FreeRTOS Kernel Book, Chapter 12 trace figure for kernel object history.</li>
+            <li>Lab Project FreeRTOS Tutorials, Tutorial 15 and Tutorial 16.</li>
+            <li>FreeRTOS Kernel source: event_groups.c, tasks.c, and timers.c.</li>
+          </ul>
+        </div>
+        <div class="panel tint-green">
+          <h3>Further Reading</h3>
+          <ul class="refs">
+            <li>FreeRTOS API reference: event group create, set, clear, wait, and sync APIs.</li>
+            <li>FreeRTOS API reference: task notifications as a direct-to-task alternative.</li>
+            <li>FreeRTOSConfig.h notes for static allocation, timer daemon requirements, and trace support.</li>
+            <li>Operating systems reading on condition variables, barriers, and bitset-based event flags.</li>
+          </ul>
+        </div>
+      </div>
+    
+      </div>
+      <div class="takeaway">References should support traceability and direct further study.</div>
+      <div class="page">40</div>
+    </section>
+  </main>
+  <script src="../shared_assets/slideshow.js"></script>
+</body>
+</html>

@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FreeRTOS Module 00 Image Deck</title>
+  <link rel="stylesheet" href="../shared_assets/slideshow.css">
+  <style>
+    :root {
+      --bg: #eef1f6;
+      --ink: #1f2742;
+      --accent: #2563a6;
+      --line: #d8deea;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      padding: 14px 22px;
+      background: rgba(255,255,255,.94);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(8px);
+      overflow-x: auto;
+    }
+    .nav a, .nav button {
+      color: var(--accent);
+      font-weight: 800;
+      text-decoration: none;
+      border: 0;
+      background: transparent;
+      cursor: pointer;
+      font: inherit;
+      white-space: nowrap;
+    }
+    .deck {
+      width: min(1540px, calc(100vw - 42px));
+      margin: 28px auto 54px;
+      display: grid;
+      gap: 30px;
+    }
+    .slide {
+      position: relative;
+      margin: 0 auto;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      min-height: auto;
+      padding: 0;
+      background: #111827;
+      border: 1px solid rgba(20,32,54,.18);
+      box-shadow: 0 18px 44px rgba(25,39,70,.14);
+      overflow: hidden;
+    }
+    .slide-image {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #111827;
+    }
+    .page {
+      position: absolute;
+      right: 18px;
+      bottom: 14px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: rgba(8,16,32,.62);
+      color: rgba(255,255,255,.86);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+    .slideshow-ui {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 50;
+      display: flex;
+      gap: 8px;
+      padding: 8px;
+      border-radius: 12px;
+      background: rgba(255,255,255,.92);
+      border: 1px solid var(--line);
+      box-shadow: 0 12px 30px rgba(20,32,54,.18);
+    }
+    .slideshow-ui button {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <nav class="nav"><a href="#s1">01</a><a href="#s2">02</a><a href="#s3">03</a><a href="#s4">04</a><a href="#s5">05</a><a href="#s6">06</a><a href="#s7">07</a><a href="#s8">08</a><a href="#s9">09</a><a href="#s10">10</a><a href="#s11">11</a><a href="#s12">12</a><a href="#s13">13</a><a href="#s14">14</a><a href="#s15">15</a><a href="#s16">16</a><a href="#s17">17</a><a href="#s18">18</a><a href="#s19">19</a><a href="#s20">20</a><a href="#s21">21</a><a href="#s22">22</a><button class="slideshow-toggle" type="button" data-slideshow-start>Slideshow</button></nav>
+  <main class="deck">
+    <section class="slide image-slide" id="s1">
+      <img class="slide-image" src="assets/slides/module_00_image_slide_01.png" alt="RTOS Fundamentals and FreeRTOS Orientation">
+      <div class="page">1 / 22</div>
+    </section>
+    <section class="slide image-slide" id="s2">
+      <img class="slide-image" src="assets/slides/module_00_image_slide_02.png" alt="Position of Module 00">
+      <div class="page">2 / 22</div>
+    </section>
+    <section class="slide image-slide" id="s3">
+      <img class="slide-image" src="assets/slides/module_00_image_slide_03.png" alt="Embedded Firmware Before an RTOS">
+      <div class="page">3 / 22</div>
+    </section>
+    <section class="slide image-slide" id="s4">
+      <img class="slide-image" src="assets/slides/module_00_image_slide_04.png" alt="When a Loop Stops Scaling">
+      <div class="page">4 / 22</div>
+    </section>
+    <section class="slide image-slide" id="s5">
+      <img class="slide-image" src="assets/slides/module_00_image_slide_05.png" alt="Real-Time Means Predictable, Not Fast">
+      <div class="page">5 / 22</div>
+    </section>
+    <section class="slide image-slide" id="s6">
+      <img class="slide-image" src="assets/slides/module_00_image_slide_06.png" alt="Hard and Soft Real-Time Requirements">
+      <div class="page">6 / 22</div>
+    </section>
+    <section class="slide image-slide" id="s7">
+      <img class="slide-image" src="assets/slides/module_00_image_slide_07.png" alt="Multitasking on a Single Core">
+      <div class="page">7 / 22</div>
+    </section>
+    <section class="slide image-slide" id="s8">
+      <img class="slide-image" src="assets/slides/module_00_image_slide_08.png" alt="What the Scheduler Decides">
+      <div class="page">8 / 22</div>
+    </section>
+    <section class="slide image-slide" id="s9">
+      <img class="slide-image" src="assets/slides/module_00_image_slide_09.png" alt="What FreeRTOS Is">
+      <div class="page">9 / 22</div>
+    </section>
+    <section class="slide image-slide" id="s10">
+      <img class="slide-image" src="assets/slides/module_00_image_slide_10.png" alt="FreeRTOS in the Firmware Image">
+      <div class="page">10 / 22</div>
+    </section>
+    <section class="slide image-slide" id="s11">
+      <img class="slide-image" src="assets/slides/module_00_image_slide_11.png" alt="Terminology: Task, Thread, Process">
+      <div class="page">11 / 22</div>
+    </section>
+    <section class="slide image-slide" id="s12">
+      <img class="slide-image" src="assets/slides/module_00_image_slide_12.png" alt="Why Use an RTOS?">
+      <div class="page">12 / 22</div>
+    </section>
+    <section class="slide image-slide" id="s13">
+      <img class="slide-image" src="assets/slides/module_00_image_slide_13.png" alt="Event-Driven Firmware">
+      <div class="page">13 / 22</div>
+    </section>
+    <section class="slide image-slide" id="s14">
+      <img class="slide-image" src="assets/slides/module_00_image_slide_14.png" alt="Interrupts Stay Short">
+      <div class="page">14 / 22</div>
+    </section>
+    <section class="slide image-slide" id="s15">
+      <img class="slide-image" src="assets/slides/module_00_image_slide_15.png" alt="FreeRTOS Kernel Feature Map">
+      <div class="page">15 / 22</div>
+    </section>
+    <section class="slide image-slide" id="s16">
+      <img class="slide-image" src="assets/slides/module_00_image_slide_16.png" alt="From Feature Names to Course Modules">
+      <div class="page">16 / 22</div>
+    </section>
+    <section class="slide image-slide" id="s17">
+      <img class="slide-image" src="assets/slides/module_00_image_slide_17.png" alt="FreeRTOS Value Proposition">
+      <div class="page">17 / 22</div>
+    </section>
+    <section class="slide image-slide" id="s18">
+      <img class="slide-image" src="assets/slides/module_00_image_slide_18.png" alt="FreeRTOS, OpenRTOS, and SafeRTOS">
+      <div class="page">18 / 22</div>
+    </section>
+    <section class="slide image-slide" id="s19">
+      <img class="slide-image" src="assets/slides/module_00_image_slide_19.png" alt="Why NUCLEO-F439ZI for This Course">
+      <div class="page">19 / 22</div>
+    </section>
+    <section class="slide image-slide" id="s20">
+      <img class="slide-image" src="assets/slides/module_00_image_slide_20.png" alt="Project Boundary Check">
+      <div class="page">20 / 22</div>
+    </section>
+    <section class="slide image-slide" id="s21">
+      <img class="slide-image" src="assets/slides/module_00_image_slide_21.png" alt="Bridge to Module 01">
+      <div class="page">21 / 22</div>
+    </section>
+    <section class="slide image-slide" id="s22">
+      <img class="slide-image" src="assets/slides/module_00_image_slide_22.png" alt="References and Further Reading">
+      <div class="page">22 / 22</div>
+    </section>
+  </main>
+  <div class="slideshow-ui" data-slideshow-controls>
+    <button type="button" data-slideshow-prev>Prev</button>
+    <button type="button" data-slideshow-next>Next</button>
+    <button type="button" data-slideshow-fullscreen>Full</button>
+    <button type="button" data-slideshow-fill>Fill</button>
+    <button type="button" data-slideshow-exit>Exit</button>
+  </div>
+  <script src="../shared_assets/slideshow.js"></script>
+</body>
+</html>

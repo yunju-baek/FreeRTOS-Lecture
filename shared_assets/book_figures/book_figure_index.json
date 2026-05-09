@@ -1,0 +1,704 @@
+[
+  {
+    "chapter_file": "ch03.md",
+    "figure": "3.1",
+    "title": "Figure 3.1 RAM being allocated from the heap\\_1 array each time a task is created",
+    "caption": "RAM being allocated from the heap\\_1 array each time a task is created",
+    "source_media": "media/image05.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_3_1_ram_being_allocated_from_the_heap_1_array_each_time_a_task_is_created.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch03.md",
+    "figure": "3.2",
+    "title": "Figure 3.2 RAM being allocated and freed from the heap\\_2 array as tasks are created and deleted",
+    "caption": "RAM being allocated and freed from the heap\\_2 array as tasks are created and deleted",
+    "source_media": "media/image06.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_3_2_ram_being_allocated_and_freed_from_the_heap_2_array_as_tasks_are_created.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch03.md",
+    "figure": "3.3",
+    "title": "Figure 3.3 RAM being allocated and freed from the heap\\_4 array",
+    "caption": "RAM being allocated and freed from the heap\\_4 array",
+    "source_media": "media/image07.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_3_3_ram_being_allocated_and_freed_from_the_heap_4_array.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch03.md",
+    "figure": "3.4",
+    "title": "Figure 3.4 Memory Map",
+    "caption": "Memory Map",
+    "source_media": "media/image08.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_3_4_memory_map.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch04.md",
+    "figure": "4.1",
+    "title": "Figure 4.1 Top level task states and transitions",
+    "caption": "Top level task states and transitions",
+    "source_media": "media/figure_4.1_top_level_task_states.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_4_1_top_level_task_states_and_transitions.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch04.md",
+    "figure": "4.3",
+    "title": "Figure 4.3 The actual execution pattern of the two Example 4.1 tasks",
+    "caption": "The actual execution pattern of the two Example 4.1 tasks",
+    "source_media": "media/figure_4.3_example_4.1_execution_pattern.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_4_3_the_actual_execution_pattern_of_the_two_example_4_1_tasks.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch04.md",
+    "figure": "4.4",
+    "title": "Figure 4.4 The execution sequence expanded to show the tick interrupt executing",
+    "caption": "The execution sequence expanded to show the tick interrupt executing",
+    "source_media": "media/figure_4.4_expanded_execution_sequence_with_tick_interrupt.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_4_4_the_execution_sequence_expanded_to_show_the_tick_interrupt_executing.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch04.md",
+    "figure": "4.6",
+    "title": "Figure 4.6 The execution pattern when one task has a higher priority than the...",
+    "caption": "The execution pattern when one task has a higher priority than the",
+    "source_media": "media/figure_4.6_execution_pattern_higher_priority_task.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_4_6_the_execution_pattern_when_one_task_has_a_higher_priority_than_the.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch04.md",
+    "figure": "4.7",
+    "title": "Figure 4.7 Full task state machine",
+    "caption": "Full task state machine",
+    "source_media": "media/figure_4.7_full_task_state_machine.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_4_7_full_task_state_machine.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch04.md",
+    "figure": "4.9",
+    "title": "Figure 4.9 The execution sequence when the tasks use vTaskDelay() in place of the null loop",
+    "caption": "The execution sequence when the tasks use vTaskDelay() in place of",
+    "source_media": "media/figure_4.9_vTaskDelay_execution_sequence.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_4_9_the_execution_sequence_when_the_tasks_use_vtaskdelay_in_place_of.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch04.md",
+    "figure": "4.10",
+    "title": "Figure 4.10 Bold lines indicate the state transitions performed by the tasks...",
+    "caption": "Bold lines indicate the state transitions performed by the tasks",
+    "source_media": "media/figure_4.10_example_4.4_state_machine.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_4_10_bold_lines_indicate_the_state_transitions_performed_by_the_tasks.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch04.md",
+    "figure": "4.12",
+    "title": "Figure 4.12 The execution pattern of Example 4.6",
+    "caption": "The execution pattern of Example 4.6",
+    "source_media": "media/figure_4.11_example_4.6_execution_pattern.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_4_12_the_execution_pattern_of_example_4_6.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch04.md",
+    "figure": "4.14",
+    "title": "Figure 4.14 The sequence of task execution when running Example 4.8",
+    "caption": "The sequence of task execution when running Example 4.8",
+    "source_media": "media/figure_4.14_example_4.8_execution_sequence.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_4_14_the_sequence_of_task_execution_when_running_example_4_8.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch04.md",
+    "figure": "4.17",
+    "title": "Figure 4.17 The execution sequence for Example 4.9",
+    "caption": "The execution sequence for Example 4.9",
+    "source_media": "media/figure_4.17_example_4.9_execution_sequence.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_4_17_the_execution_sequence_for_example_4_9.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch04.md",
+    "figure": "4.18",
+    "title": "Figure 4.18 Execution pattern highlighting task prioritization and preemption...",
+    "caption": "Execution pattern highlighting task prioritization and preemption",
+    "source_media": "media/figure_4.18_preemption_execution_pattern.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_4_18_execution_pattern_highlighting_task_prioritization_and_preemption.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch04.md",
+    "figure": "4.19",
+    "title": "Figure 4.19 Execution pattern highlighting task prioritization and time slicing...",
+    "caption": "Execution pattern highlighting task prioritization and time slicing",
+    "source_media": "media/figure_4.19_time_slicing_execution_pattern.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_4_19_execution_pattern_highlighting_task_prioritization_and_time_slicing.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch04.md",
+    "figure": "4.20",
+    "title": "Figure 4.20 The execution pattern for the same scenario as shown in Figure 4.19...",
+    "caption": "The execution pattern for the same scenario as shown in Figure 4.19,",
+    "source_media": "media/figure_4.20_time_slicing_with_yield_execution_pattern.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_4_20_the_execution_pattern_for_the_same_scenario_as_shown_in_figure_4_19.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch04.md",
+    "figure": "4.21",
+    "title": "Figure 4.21 Execution pattern that demonstrates how tasks of equal priority can...",
+    "caption": "Execution pattern that demonstrates how tasks of equal priority can",
+    "source_media": "media/figure_4.21_equal_priority_without_time_slicing_execution_pattern.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_4_21_execution_pattern_that_demonstrates_how_tasks_of_equal_priority_can.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch04.md",
+    "figure": "4.22",
+    "title": "Figure 4.22 Execution pattern demonstrating the behavior of the cooperative scheduler",
+    "caption": "Execution pattern demonstrating the behavior of the cooperative scheduler",
+    "source_media": "media/figure_4.22_cooperative_scheduler_execution_pattern.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_4_22_execution_pattern_demonstrating_the_behavior_of_the_cooperative_schedule.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch05.md",
+    "figure": "5.1",
+    "title": "Figure 5.1 An example sequence of writes to, and reads from a queue",
+    "caption": "An example sequence of writes to, and reads from a queue",
+    "source_media": "media/image31.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_5_1_an_example_sequence_of_writes_to_and_reads_from_a_queue.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch05.md",
+    "figure": "5.2",
+    "title": "Figure 5.2 The output produced when Example 5.1 is executed",
+    "caption": "The output produced when Example 5.1 is executed",
+    "source_media": "media/image32.jpg",
+    "asset": "html_slides/shared_assets/book_figures/figure_5_2_the_output_produced_when_example_5_1_is_executed.jpg",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch05.md",
+    "figure": "5.3",
+    "title": "Figure 5.3 The sequence of execution produced by Example 5.1",
+    "caption": "The sequence of execution produced by Example 5.1",
+    "source_media": "media/image33.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_5_3_the_sequence_of_execution_produced_by_example_5_1.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch05.md",
+    "figure": "5.4",
+    "title": "Figure 5.4 An example scenario where structures are sent on a queue",
+    "caption": "An example scenario where structures are sent on a queue",
+    "source_media": "media/image34.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_5_4_an_example_scenario_where_structures_are_sent_on_a_queue.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch05.md",
+    "figure": "5.5",
+    "title": "Figure 5.5 The output produced by Example 5.2",
+    "caption": "The output produced by Example 5.2",
+    "source_media": "media/image35.jpg",
+    "asset": "html_slides/shared_assets/book_figures/figure_5_5_the_output_produced_by_example_5_2.jpg",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch05.md",
+    "figure": "5.6",
+    "title": "Figure 5.6 The sequence of execution produced by Example 5.2",
+    "caption": "The sequence of execution produced by Example 5.2",
+    "source_media": "media/image36.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_5_6_the_sequence_of_execution_produced_by_example_5_2.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch05.md",
+    "figure": "5.7",
+    "title": "Figure 5.7 The output produced when Example 5.3 is executed",
+    "caption": "The output produced when Example 5.3 is executed",
+    "source_media": "media/image37.jpg",
+    "asset": "html_slides/shared_assets/book_figures/figure_5_7_the_output_produced_when_example_5_3_is_executed.jpg",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch06.md",
+    "figure": "6.1",
+    "title": "Figure 6.1 The difference in behavior between one-shot and auto-reload software timers",
+    "caption": "The difference in behavior between one-shot and auto-reload software timers",
+    "source_media": "media/image38.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_6_1_the_difference_in_behavior_between_one_shot_and_auto_reload_software_tim.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch06.md",
+    "figure": "6.2",
+    "title": "Figure 6.2 Auto-reload software timer states and transitions",
+    "caption": "Auto-reload software timer states and transitions",
+    "source_media": "media/image39.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_6_2_auto_reload_software_timer_states_and_transitions.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch06.md",
+    "figure": "6.3",
+    "title": "Figure 6.3 One-shot software timer states and transitions",
+    "caption": "One-shot software timer states and transitions",
+    "source_media": "media/image39.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_6_3_one_shot_software_timer_states_and_transitions.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch06.md",
+    "figure": "6.4",
+    "title": "Figure 6.4 The timer command queue being used by a software timer API function to communicate with the RTOS daemon task",
+    "caption": "The timer command queue being used by a software timer API function to communicate with the RTOS daemon task",
+    "source_media": "media/image41.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_6_4_the_timer_command_queue_being_used_by_a_software_timer_api_function_to_c.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch06.md",
+    "figure": "6.5",
+    "title": "Figure 6.5 The execution pattern when the priority of a task calling xTimerStart() is above the priority of the daemon task",
+    "caption": "The execution pattern when the priority of a task calling xTimerStart() is above the priority of the daemon task",
+    "source_media": "media/image42.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_6_5_the_execution_pattern_when_the_priority_of_a_task_calling_xtimerstart_is.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch06.md",
+    "figure": "6.6",
+    "title": "Figure 6.6 The execution pattern when the priority of a task calling xTimerStart() is below the priority of the daemon task",
+    "caption": "The execution pattern when the priority of a task calling xTimerStart() is below the priority of the daemon task",
+    "source_media": "media/image43.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_6_6_the_execution_pattern_when_the_priority_of_a_task_calling_xtimerstart_is.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch06.md",
+    "figure": "6.7",
+    "title": "Figure 6.7 The output produced when Example 6.1 is executed",
+    "caption": "The output produced when Example 6.1 is executed",
+    "source_media": "media/image44.jpg",
+    "asset": "html_slides/shared_assets/book_figures/figure_6_7_the_output_produced_when_example_6_1_is_executed.jpg",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch06.md",
+    "figure": "6.8",
+    "title": "Figure 6.8 The output produced when Example 6.2 is executed",
+    "caption": "The output produced when Example 6.2 is executed",
+    "source_media": "media/image45.jpg",
+    "asset": "html_slides/shared_assets/book_figures/figure_6_8_the_output_produced_when_example_6_2_is_executed.jpg",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch06.md",
+    "figure": "6.9",
+    "title": "Figure 6.9 Starting and resetting a software timer that has a period of 6 ticks",
+    "caption": "Starting and resetting a software timer that has a period of 6 ticks",
+    "source_media": "media/image46.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_6_9_starting_and_resetting_a_software_timer_that_has_a_period_of_6_ticks.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch06.md",
+    "figure": "6.10",
+    "title": "Figure 6.10 The output produced when Example 6.3 is executed",
+    "caption": "The output produced when Example 6.3 is executed",
+    "source_media": "media/image47.jpg",
+    "asset": "html_slides/shared_assets/book_figures/figure_6_10_the_output_produced_when_example_6_3_is_executed.jpg",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch07.md",
+    "figure": "7.1",
+    "title": "Figure 7.1 Completing interrupt processing in a high priority task",
+    "caption": "Completing interrupt processing in a high priority task",
+    "source_media": "media/image48.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_7_1_completing_interrupt_processing_in_a_high_priority_task.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch07.md",
+    "figure": "7.2",
+    "title": "Figure 7.2 Using a binary semaphore to implement deferred interrupt processing",
+    "caption": "Using a binary semaphore to implement deferred interrupt processing",
+    "source_media": "media/image49.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_7_2_using_a_binary_semaphore_to_implement_deferred_interrupt_processing.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch07.md",
+    "figure": "7.3",
+    "title": "Figure 7.3 Using a binary semaphore to synchronize a task with an interrupt",
+    "caption": "Using a binary semaphore to synchronize a task with an interrupt",
+    "source_media": "media/image50.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_7_3_using_a_binary_semaphore_to_synchronize_a_task_with_an_interrupt.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch07.md",
+    "figure": "7.4",
+    "title": "Figure 7.4 The output produced when Example 7.1 is executed",
+    "caption": "The output produced when Example 7.1 is executed",
+    "source_media": "media/image51.jpg",
+    "asset": "html_slides/shared_assets/book_figures/figure_7_4_the_output_produced_when_example_7_1_is_executed.jpg",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch07.md",
+    "figure": "7.5",
+    "title": "Figure 7.5 The sequence of execution when Example 7.1 is executed",
+    "caption": "The sequence of execution when Example 7.1 is executed",
+    "source_media": "media/image51.jpg",
+    "asset": "html_slides/shared_assets/book_figures/figure_7_5_the_sequence_of_execution_when_example_7_1_is_executed.jpg",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch07.md",
+    "figure": "7.6",
+    "title": "Figure 7.6 The scenario when one interrupt occurs before the task has finished processing the first event",
+    "caption": "The scenario when one interrupt occurs before the task has finished processing the first event",
+    "source_media": "media/image53.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_7_6_the_scenario_when_one_interrupt_occurs_before_the_task_has_finished_proc.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch07.md",
+    "figure": "7.7",
+    "title": "Figure 7.7 The scenario when two interrupts occur before the task has finished processing the first event",
+    "caption": "The scenario when two interrupts occur before the task has finished processing the first event",
+    "source_media": "media/image53.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_7_7_the_scenario_when_two_interrupts_occur_before_the_task_has_finished_proc.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch07.md",
+    "figure": "7.8",
+    "title": "Figure 7.8 Using a counting semaphore to 'count' events",
+    "caption": "Using a counting semaphore to 'count' events",
+    "source_media": "media/image55.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_7_8_using_a_counting_semaphore_to_count_events.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch07.md",
+    "figure": "7.9",
+    "title": "Figure 7.9 The output produced when Example 7.2 is executed",
+    "caption": "The output produced when Example 7.2 is executed",
+    "source_media": "media/image56.jpg",
+    "asset": "html_slides/shared_assets/book_figures/figure_7_9_the_output_produced_when_example_7_2_is_executed.jpg",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch07.md",
+    "figure": "7.10",
+    "title": "Figure 7.10 The output produced when Example 7.3 is executed",
+    "caption": "The output produced when Example 7.3 is executed",
+    "source_media": "media/image57.jpg",
+    "asset": "html_slides/shared_assets/book_figures/figure_7_10_the_output_produced_when_example_7_3_is_executed.jpg",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch07.md",
+    "figure": "7.11",
+    "title": "Figure 7.11 The sequence of execution when Example 7.3 is executed",
+    "caption": "The sequence of execution when Example 7.3 is executed",
+    "source_media": "media/image57.jpg",
+    "asset": "html_slides/shared_assets/book_figures/figure_7_11_the_sequence_of_execution_when_example_7_3_is_executed.jpg",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch07.md",
+    "figure": "7.12",
+    "title": "Figure 7.12 The output produced when Example 7.4 is executed",
+    "caption": "The output produced when Example 7.4 is executed",
+    "source_media": "media/image59.jpg",
+    "asset": "html_slides/shared_assets/book_figures/figure_7_12_the_output_produced_when_example_7_4_is_executed.jpg",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch07.md",
+    "figure": "7.13",
+    "title": "Figure 7.13 The sequence of execution produced by Example 7.4",
+    "caption": "The sequence of execution produced by Example 7.4",
+    "source_media": "media/image59.jpg",
+    "asset": "html_slides/shared_assets/book_figures/figure_7_13_the_sequence_of_execution_produced_by_example_7_4.jpg",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch07.md",
+    "figure": "7.14",
+    "title": "Figure 7.14 Constants affecting interrupt nesting behavior",
+    "caption": "Constants affecting interrupt nesting behavior",
+    "source_media": "media/image61.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_7_14_constants_affecting_interrupt_nesting_behavior.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch07.md",
+    "figure": "7.15",
+    "title": "Figure 7.15 How a priority of binary 101 is stored by a Cortex-M microcontroller that implements four priority bits",
+    "caption": "How a priority of binary 101 is stored by a Cortex-M microcontroller that implements four priority bits",
+    "source_media": "media/image62.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_7_15_how_a_priority_of_binary_101_is_stored_by_a_cortex_m_microcontroller_tha.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch08.md",
+    "figure": "8.1",
+    "title": "Figure 8.1 Mutual exclusion implemented using a mutex",
+    "caption": "Mutual exclusion implemented using a mutex",
+    "source_media": "media/image63.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_8_1_mutual_exclusion_implemented_using_a_mutex.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch08.md",
+    "figure": "8.2",
+    "title": "Figure 8.2 The output produced when Example 8.1 is executed",
+    "caption": "The output produced when Example 8.1 is executed",
+    "source_media": "media/image64.jpg",
+    "asset": "html_slides/shared_assets/book_figures/figure_8_2_the_output_produced_when_example_8_1_is_executed.jpg",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch08.md",
+    "figure": "8.3",
+    "title": "Figure 8.3 A possible sequence of execution for Example 8.1",
+    "caption": "A possible sequence of execution for Example 8.1",
+    "source_media": "media/image65.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_8_3_a_possible_sequence_of_execution_for_example_8_1.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch08.md",
+    "figure": "8.4",
+    "title": "Figure 8.4 A worst case priority inversion scenario",
+    "caption": "A worst case priority inversion scenario",
+    "source_media": "media/image66.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_8_4_a_worst_case_priority_inversion_scenario.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch08.md",
+    "figure": "8.5",
+    "title": "Figure 8.5 Priority inheritance minimizing the effect of priority inversion",
+    "caption": "Priority inheritance minimizing the effect of priority inversion",
+    "source_media": "media/image67.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_8_5_priority_inheritance_minimizing_the_effect_of_priority_inversion.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch08.md",
+    "figure": "8.6",
+    "title": "Figure 8.6 A possible sequence of execution when tasks that have the same priority use the same mutex",
+    "caption": "A possible sequence of execution when tasks that have the same priority use the same mutex",
+    "source_media": "media/image68.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_8_6_a_possible_sequence_of_execution_when_tasks_that_have_the_same_priority.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch08.md",
+    "figure": "8.7",
+    "title": "Figure 8.7 A sequence of execution that could occur if two instances of the task shown by Listing 8.15 are created at the same priority",
+    "caption": "A sequence of execution that could occur if two instances of the task shown by Listing 8.15 are created at the same priority",
+    "source_media": "media/image69.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_8_7_a_sequence_of_execution_that_could_occur_if_two_instances_of_the_task_sh.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch08.md",
+    "figure": "8.8",
+    "title": "Figure 8.8 The output produced when Example 8.2 is executed",
+    "caption": "The output produced when Example 8.2 is executed",
+    "source_media": "media/image70.jpg",
+    "asset": "html_slides/shared_assets/book_figures/figure_8_8_the_output_produced_when_example_8_2_is_executed.jpg",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch09.md",
+    "figure": "9.1",
+    "title": "Figure 9.1 Event flag to bit number mapping in a variable of type EventBits\\_t",
+    "caption": "Event flag to bit number mapping in a variable of type EventBits\\_t",
+    "source_media": "media/image71.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_9_1_event_flag_to_bit_number_mapping_in_a_variable_of_type_eventbits_t.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch09.md",
+    "figure": "9.2",
+    "title": "Figure 9.2 An event group in which only bits 1, 4 and 7 are set, and all the other event flags are clear, making the event group's value 0x92",
+    "caption": "An event group in which only bits 1, 4 and 7 are set, and all the other event flags are clear, making the event group's value 0x92",
+    "source_media": "media/image72.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_9_2_an_event_group_in_which_only_bits_1_4_and_7_are_set_and_all_the_other_ev.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch09.md",
+    "figure": "9.3",
+    "title": "Figure 9.3 The output produced when Example 9.1 is executed with xWaitForAllBits set to pdFALSE",
+    "caption": "The output produced when Example 9.1 is executed with xWaitForAllBits set to pdFALSE",
+    "source_media": "media/image73.jpg",
+    "asset": "html_slides/shared_assets/book_figures/figure_9_3_the_output_produced_when_example_9_1_is_executed_with_xwaitforallbits_se.jpg",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch09.md",
+    "figure": "9.4",
+    "title": "Figure 9.4 The output produced when Example 9.1 is executed with xWaitForAllBits set to pdTRUE",
+    "caption": "The output produced when Example 9.1 is executed with xWaitForAllBits set to pdTRUE",
+    "source_media": "media/image74.jpg",
+    "asset": "html_slides/shared_assets/book_figures/figure_9_4_the_output_produced_when_example_9_1_is_executed_with_xwaitforallbits_se.jpg",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch09.md",
+    "figure": "9.5",
+    "title": "Figure 9.5 The output produced when Example 9.2 is executed",
+    "caption": "The output produced when Example 9.2 is executed",
+    "source_media": "media/image75.jpg",
+    "asset": "html_slides/shared_assets/book_figures/figure_9_5_the_output_produced_when_example_9_2_is_executed.jpg",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch10.md",
+    "figure": "10.1",
+    "title": "Figure 10.1 A communication object being used to send an event from one task to another",
+    "caption": "A communication object being used to send an event from one task to another",
+    "source_media": "media/image76.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_10_1_a_communication_object_being_used_to_send_an_event_from_one_task_to_anot.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch10.md",
+    "figure": "10.2",
+    "title": "Figure 10.2 A task notification used to send an event directly from one task to another",
+    "caption": "A task notification used to send an event directly from one task to another",
+    "source_media": "media/image77.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_10_2_a_task_notification_used_to_send_an_event_directly_from_one_task_to_anot.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch10.md",
+    "figure": "10.3",
+    "title": "Figure 10.3 The output produced when Example 7.1 is executed",
+    "caption": "The output produced when Example 7.1 is executed",
+    "source_media": "media/image78.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_10_3_the_output_produced_when_example_7_1_is_executed.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch10.md",
+    "figure": "10.4",
+    "title": "Figure 10.4 The sequence of execution when Example 10.1 is executed",
+    "caption": "The sequence of execution when Example 10.1 is executed",
+    "source_media": "media/image78.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_10_4_the_sequence_of_execution_when_example_10_1_is_executed.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch10.md",
+    "figure": "10.5",
+    "title": "Figure 10.5 The output produced when Example 10.2 is executed",
+    "caption": "The output produced when Example 10.2 is executed",
+    "source_media": "media/image80.jpg",
+    "asset": "html_slides/shared_assets/book_figures/figure_10_5_the_output_produced_when_example_10_2_is_executed.jpg",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch10.md",
+    "figure": "10.6",
+    "title": "Figure 10.6 The communication paths from the application tasks to the cloud server, and back again",
+    "caption": "The communication paths from the application tasks to the cloud server, and back again",
+    "source_media": "media/image81.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_10_6_the_communication_paths_from_the_application_tasks_to_the_cloud_server_a.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch12.md",
+    "figure": "12.1",
+    "title": "Figure 12.1 FreeRTOS+Trace includes more than 20 interconnected views",
+    "caption": "FreeRTOS+Trace includes more than 20 interconnected views",
+    "source_media": "media/image82.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_12_1_freertos_trace_includes_more_than_20_interconnected_views.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch12.md",
+    "figure": "12.2",
+    "title": "Figure 12.2 FreeRTOS+Trace main trace view - one of more than 20 interconnected trace views",
+    "caption": "FreeRTOS+Trace main trace view - one of more than 20 interconnected trace views",
+    "source_media": "media/image82.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_12_2_freertos_trace_main_trace_view_one_of_more_than_20_interconnected_trace.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch12.md",
+    "figure": "12.3",
+    "title": "Figure 12.3 FreeRTOS+Trace CPU load view - one of more than 20 interconnected trace views",
+    "caption": "FreeRTOS+Trace CPU load view - one of more than 20 interconnected trace views",
+    "source_media": "media/image82.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_12_3_freertos_trace_cpu_load_view_one_of_more_than_20_interconnected_trace_vi.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch12.md",
+    "figure": "12.4",
+    "title": "Figure 12.4 FreeRTOS+Trace response time view - one of more than 20 interconnected trace views",
+    "caption": "Figure 12.4 FreeRTOS+Trace response time view - one of more than 20 interconnected trace views",
+    "source_media": "media/image82.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_12_4_figure_12_4_freertos_trace_response_time_view_one_of_more_than_20_interc.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch12.md",
+    "figure": "12.5",
+    "title": "Figure 12.5 FreeRTOS+Trace user event plot view - one of more than 20 interconnected trace views",
+    "caption": "Figure 12.5 FreeRTOS+Trace user event plot view - one of more than 20 interconnected trace views",
+    "source_media": "media/image82.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_12_5_figure_12_5_freertos_trace_user_event_plot_view_one_of_more_than_20_inte.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch12.md",
+    "figure": "12.6",
+    "title": "Figure 12.6 FreeRTOS+Trace kernel object history view - one of more than 20 interconnected trace views",
+    "caption": "Figure 12.6 FreeRTOS+Trace kernel object history view - one of more than 20 interconnected trace views",
+    "source_media": "media/image82.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_12_6_figure_12_6_freertos_trace_kernel_object_history_view_one_of_more_than_2.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch12.md",
+    "figure": "12.7",
+    "title": "Figure 12.7 Example output generated by vTaskListTasks()",
+    "caption": "Example output generated by vTaskListTasks()",
+    "source_media": "media/image88.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_12_7_example_output_generated_by_vtasklisttasks.png",
+    "status": "copied"
+  },
+  {
+    "chapter_file": "ch12.md",
+    "figure": "12.8",
+    "title": "Figure 12.8 Example output generated by vTaskGetRunTimeStatistics()",
+    "caption": "Example output generated by vTaskGetRunTimeStatistics()",
+    "source_media": "media/image89.png",
+    "asset": "html_slides/shared_assets/book_figures/figure_12_8_example_output_generated_by_vtaskgetruntimestatistics.png",
+    "status": "copied"
+  }
+]

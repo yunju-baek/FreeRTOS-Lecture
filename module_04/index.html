@@ -1,0 +1,808 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FreeRTOS Module 04 - Scheduling Policies and Execution Patterns</title>
+  <style>
+:root {
+  --indigo:#2e315b; --blue:#2563a6; --teal:#147d83; --green:#2f7d4e;
+  --amber:#9a6a16; --violet:#6d4aa2; --graphite:#2b2f36; --muted:#637083;
+  --line:#d8dee9; --paper:#fff; --bg:#f4f6f9; --code:#eef2f7;
+  --soft-blue:#eef5fc; --soft-teal:#edf8f8; --soft-amber:#fff7e8;
+}
+* { box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { margin:0; background:var(--bg); color:var(--graphite); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans",Arial,sans-serif; line-height:1.44; }
+.nav { position:sticky; top:0; z-index:10; width:1280px; margin:0 auto; padding:10px 16px; background:rgba(244,246,249,.96); border-bottom:1px solid var(--line); color:#4f5969; font-size:15px; }
+.nav a { margin-right:8px; color:var(--blue); text-decoration:none; font-weight:800; }
+.deck { width:1280px; margin:0 auto; padding:28px 0 64px; }
+.slide { position:relative; width:1280px; min-height:720px; margin:0 0 32px; overflow:hidden; background:var(--paper); border:1px solid var(--line); box-shadow:0 18px 40px rgba(38,49,91,.12); page-break-after:always; }
+.slide-header { display:flex; justify-content:space-between; align-items:center; height:54px; padding:0 34px; background:var(--indigo); color:#fff; font-size:18px; }
+.context { font-weight:800; }
+.framing { color:#e1e6ff; font-size:16px; }
+.content { padding:30px 42px 58px; }
+h1,h2,h3,p { margin-top:0; }
+h1 { margin-bottom:14px; color:#fff; font-size:45px; line-height:1.08; letter-spacing:0; }
+h2 { margin-bottom:10px; color:#20243d; font-size:34px; line-height:1.12; letter-spacing:0; }
+h3 { margin-bottom:10px; color:var(--indigo); font-size:22px; letter-spacing:0; }
+.subtitle { max-width:1060px; margin-bottom:22px; color:#4a5260; font-size:22px; line-height:1.36; }
+.small { color:var(--muted); font-size:17px; }
+ul,ol { margin:0; padding-left:22px; }
+li { font-size:18.2px; }
+li + li { margin-top:6px; }
+code { padding:1px 5px; border-radius:4px; background:var(--code); color:#1d3152; font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace; font-size:.93em; }
+pre { margin:0; padding:15px 17px; border-radius:8px; background:#1f2633; color:#edf2ff; font-size:14.2px; line-height:1.42; overflow:hidden; white-space:pre-wrap; }
+pre code { padding:0; background:transparent; color:inherit; font-size:inherit; }
+.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+.grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
+.grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+.grid-13 { display:grid; grid-template-columns:1.12fr .88fr; gap:22px; align-items:stretch; }
+.grid-31 { display:grid; grid-template-columns:.82fr 1.18fr; gap:22px; align-items:stretch; }
+.panel { border:1px solid var(--line); border-radius:8px; padding:17px 19px; background:#fff; }
+.tint-blue { border-top:5px solid var(--blue); } .tint-teal { border-top:5px solid var(--teal); } .tint-green { border-top:5px solid var(--green); } .tint-amber { border-top:5px solid var(--amber); } .tint-violet { border-top:5px solid var(--violet); }
+.question { padding:16px 18px; border-left:6px solid var(--blue); background:var(--soft-blue); font-size:20px; }
+.callout { padding:16px 18px; border-left:6px solid var(--teal); background:var(--soft-teal); font-size:19px; }
+.warning { padding:16px 18px; border-left:6px solid var(--amber); background:var(--soft-amber); font-size:19px; }
+.takeaway { position:absolute; left:42px; right:120px; bottom:22px; color:#515a6b; font-size:17px; font-weight:700; }
+.page { position:absolute; right:36px; bottom:22px; color:#7a8290; font-size:16px; font-weight:800; }
+.cover { color:#fff; background:linear-gradient(120deg,rgba(46,49,91,.98),rgba(20,125,131,.9)),#2e315b; }
+.cover .slide-header { background:transparent; border-bottom:1px solid rgba(255,255,255,.24); }
+.cover .content { display:grid; grid-template-columns:1.08fr .92fr; gap:46px; align-items:center; padding-top:54px; }
+.cover .subtitle { color:#eef5ff; }
+.cover-card { min-height:390px; padding:28px; border:1px solid rgba(255,255,255,.35); border-radius:10px; background:rgba(255,255,255,.08); }
+.cover-card h3 { color:#fff; font-size:25px; }
+.cover-card li { color:#edf2ff; font-size:20px; }
+.icon-card { min-height:150px; display:grid; grid-template-columns:86px 1fr; gap:14px; align-items:center; border:1px solid var(--line); border-radius:8px; padding:15px; background:#fff; }
+.icon-card img { width:76px; height:76px; object-fit:contain; }
+.icon-card strong { display:block; color:var(--indigo); font-size:19px; margin-bottom:5px; }
+.icon-card span { display:block; color:#4e5969; font-size:16.5px; }
+.figure-frame { display:flex; align-items:center; justify-content:center; min-height:410px; border:1px solid var(--line); border-radius:10px; background:#fbfcfe; padding:18px; }
+.figure-frame img { max-width:100%; max-height:420px; object-fit:contain; }
+.figure-frame.tall img { max-height:505px; }
+.asset-note { margin-top:8px; color:var(--muted); font-size:15px; }
+.mini-table { width:100%; border-collapse:collapse; font-size:17px; }
+.mini-table th,.mini-table td { padding:9px 10px; border:1px solid var(--line); vertical-align:top; }
+.mini-table th { background:#eef2f7; color:var(--indigo); text-align:left; }
+.flow { display:grid; grid-template-columns:1fr 48px 1fr 48px 1fr; gap:10px; align-items:center; }
+.flowbox { min-height:112px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fff; text-align:center; font-size:17px; }
+.flowbox strong { display:block; margin-bottom:8px; color:var(--indigo); font-size:19px; }
+.arrow { text-align:center; color:var(--blue); font-size:32px; font-weight:900; }
+.timeline { display:grid; gap:12px; margin-top:10px; }
+.lane { display:grid; grid-template-columns:150px 1fr; gap:12px; align-items:center; }
+.lane-label { padding:10px 12px; border-radius:8px; background:#edf2ff; color:var(--indigo); font-weight:900; text-align:center; }
+.lane-body { display:flex; gap:6px; align-items:center; min-height:46px; padding:8px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+.bar { height:30px; border-radius:6px; color:#fff; font-size:14px; font-weight:800; display:flex; align-items:center; justify-content:center; }
+.run { background:var(--blue); } .block { background:var(--amber); } .idle { background:var(--green); } .tick { width:6px; height:36px; background:var(--teal); border-radius:4px; }
+.w80 { width:80px; } .w120 { width:120px; } .w180 { width:180px; } .w240 { width:240px; }
+.refs li { margin-top:9px; font-size:18px; }
+@media print { body{background:#fff;} .nav{display:none;} .deck{padding:0;} .slide{margin:0; box-shadow:none; border:0;} }
+
+.policy-table td:first-child { font-weight:900; color:var(--indigo); }
+.macro-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:12px; }
+.macro { padding:13px 14px; border:1px solid var(--line); border-radius:8px; background:#fff; font-size:17px; }
+.macro strong { display:block; color:var(--indigo); margin-bottom:5px; font-size:18px; }
+.wide-note { padding:15px 18px; border:1px solid var(--line); border-radius:8px; background:#fbfcfe; font-size:18px; }
+.two-lane { display:grid; grid-template-columns:160px 1fr; gap:12px; margin-top:12px; align-items:center; }
+.lane-name { padding:10px 12px; border-radius:8px; background:#edf2ff; color:var(--indigo); font-weight:900; text-align:center; }
+.lane-seq { display:flex; gap:7px; align-items:center; min-height:50px; border:1px solid var(--line); border-radius:8px; padding:9px; background:#fff; }
+.seg { height:31px; min-width:72px; padding:0 10px; border-radius:6px; color:#fff; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:900; }
+.a { background:var(--blue); } .b { background:var(--teal); } .c { background:var(--amber); } .idle { background:var(--green); }
+.tickline { width:5px; height:40px; border-radius:4px; background:var(--violet); }
+</style>
+  <link rel="stylesheet" href="../shared_assets/slideshow.css">
+</head>
+<body>
+  <nav class="nav"><a href="#s1">01</a><a href="#s2">02</a><a href="#s3">03</a><a href="#s4">04</a><a href="#s5">05</a><a href="#s6">06</a><a href="#s7">07</a><a href="#s8">08</a><a href="#s9">09</a><a href="#s10">10</a><a href="#s11">11</a><a href="#s12">12</a><a href="#s13">13</a><a href="#s14">14</a><a href="#s15">15</a><a href="#s16">16</a><a href="#s17">17</a><a href="#s18">18</a><a href="#s19">19</a><a href="#s20">20</a><a href="#s21">21</a><a href="#s22">22</a><a href="#s23">23</a><a href="#s24">24</a><a href="#s25">25</a><a href="#s26">26</a><a href="#s27">27</a><a href="#s28">28</a><a href="#s29">29</a><a href="#s30">30</a><a href="#s31">31</a><a href="#s32">32</a><a href="#s33">33</a><a href="#s34">34</a><a href="#s35">35</a><a href="#s36">36</a><a href="#s37">37</a><a href="#s38">38</a><a href="#s39">39</a><a href="#s40">40</a>    <button class="slideshow-toggle" type="button" data-slideshow-start>Slideshow</button>
+  </nav>
+
+  <div class="slideshow-controls" aria-label="Slideshow controls">
+    <button class="slide-control" type="button" data-slide-prev>Prev</button>
+    <span class="slide-counter" data-slide-counter>01 / 40</span>
+    <button class="slide-control" type="button" data-slide-next>Next</button>
+    <button class="slide-control" type="button" data-slide-fullscreen>Full</button>
+    <button class="slide-control" type="button" data-slide-fill aria-pressed="false">Fill</button>
+    <button class="slide-control" type="button" data-slide-exit>Exit</button>
+  </div>
+  <div class="slideshow-hint">Keys: Left/Right or PageUp/PageDown to move, Home/End to jump, S to toggle slideshow, F for fullscreen, Z for fit/fill, Esc to exit.</div>
+
+  <main class="deck">
+    
+    <section class="slide cover" id="s1">
+      <div class="slide-header"><div class="context">FreeRTOS Module 04</div><div class="framing">Scheduling Policies and Execution Patterns</div></div>
+      <div class="content">
+        <div>
+          <h1>Scheduling Policies and Execution Patterns</h1>
+          <p class="subtitle">The scheduler still selects Ready tasks by priority, but configuration decides when the kernel may interrupt a task and how equal-priority tasks share CPU time.</p>
+        </div>
+        <div class="cover-card">
+          <h3>Module Contract</h3>
+          <ul><li>Compare preemptive scheduling, preemptive scheduling without time slicing, and cooperative scheduling.</li><li>Explain how CPU-bound and I/O-bound tasks change observed behavior.</li><li>Read configUSE_PREEMPTION, configUSE_TIME_SLICING, and configIDLE_SHOULD_YIELD as behavior choices.</li><li>Use Kernel Book timelines and Tutorials 06-08 as scheduling experiments.</li></ul>
+        </div>
+      </div>
+      <div class="page">01</div>
+    </section>
+    <section class="slide" id="s2">
+      <div class="slide-header"><div class="context">FreeRTOS Module 04</div><div class="framing">From State Rules to Policy Rules</div></div>
+      <div class="content">
+        <h2>From State Rules to Policy Rules</h2>
+        
+  <p class="subtitle">Module 03 answered which tasks are eligible. Module 04 answers when the current Running task can be replaced.</p>
+  <div class="grid-3">
+    <div class="icon-card"><img src="../shared_assets/icons/ready_task_queue.png" alt=""><div><strong>Eligibility</strong><span>Only Ready tasks can be selected by the scheduler.</span></div></div>
+    <div class="icon-card"><img src="../shared_assets/icons/preemption_handoff.png" alt=""><div><strong>Replacement</strong><span>A policy decides whether a newly Ready task can take over immediately.</span></div></div>
+    <div class="icon-card"><img src="../shared_assets/icons/time_slicing_timeline.png" alt=""><div><strong>Sharing</strong><span>Equal-priority tasks may or may not rotate on tick boundaries.</span></div></div>
+  </div>
+
+      </div>
+      <div class="takeaway">Scheduling policy changes replacement rules, not the meaning of task state.</div>
+      <div class="page">02</div>
+    </section>
+    <section class="slide" id="s3">
+      <div class="slide-header"><div class="context">FreeRTOS Module 04</div><div class="framing">Why Policy Is Not Just an Option</div></div>
+      <div class="content">
+        <h2>Why Policy Is Not Just an Option</h2>
+        
+  <p class="subtitle">The same task functions can produce very different logs when scheduler configuration changes.</p>
+  <div class="grid-3">
+    <div class="panel tint-blue"><h3>Responsiveness</h3><ul><li>Preemption can let urgent tasks run as soon as they become Ready.</li><li>Cooperative mode waits for yield or blocking.</li><li>Tick timing can affect equal-priority sharing.</li></ul></div>
+    <div class="panel tint-teal"><h3>Predictability</h3><ul><li>Cooperative code can be easier to trace when tasks follow strict yield rules.</li><li>No time slicing can reduce context switches.</li><li>Equal-priority CPU-bound tasks need explicit design discipline.</li></ul></div>
+    <div class="panel tint-amber"><h3>Protection</h3><ul><li>More asynchronous replacement means more attention to shared resources.</li><li>Critical sections and mutexes matter more once preemption is enabled.</li><li>Poorly chosen priority can hide design bugs.</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">Scheduler policy is an architecture decision because it changes failure modes.</div>
+      <div class="page">03</div>
+    </section>
+    <section class="slide" id="s4">
+      <div class="slide-header"><div class="context">FreeRTOS Module 04</div><div class="framing">Vocabulary Before Policy Diagrams</div></div>
+      <div class="content">
+        <h2>Vocabulary Before Policy Diagrams</h2>
+        
+  <p class="subtitle">These terms appear in the official figures and tutorials.</p>
+  <table class="mini-table">
+    <thead><tr><th>Term</th><th>Meaning in this module</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Preemption</strong></td><td>A Ready task with higher priority can replace the currently Running task without waiting for voluntary yield.</td></tr>
+      <tr><td><strong>Time slicing</strong></td><td>Equal-priority Ready tasks can rotate on tick boundaries.</td></tr>
+      <tr><td><strong>Cooperative scheduling</strong></td><td>A task keeps running until it blocks or explicitly calls taskYIELD().</td></tr>
+      <tr><td><strong>CPU-bound task</strong></td><td>A task that can keep executing without naturally blocking for I/O, time, or synchronization.</td></tr>
+      <tr><td><strong>I/O-bound task</strong></td><td>A task that often blocks while waiting for time, data, or an external event.</td></tr>
+      <tr><td><strong>Idle task</strong></td><td>The kernel-created lowest-priority task that runs when no application task is Ready.</td></tr>
+    </tbody>
+  </table>
+
+      </div>
+      <div class="takeaway">A policy word should tell students when a context switch can happen.</div>
+      <div class="page">04</div>
+    </section>
+    <section class="slide" id="s5">
+      <div class="slide-header"><div class="context">FreeRTOS Module 04</div><div class="framing">Policy Selection Macros</div></div>
+      <div class="content">
+        <h2>Policy Selection Macros</h2>
+        
+  <p class="subtitle">The three policies in this module are selected mostly through two FreeRTOSConfig.h macros.</p>
+  <table class="mini-table policy-table">
+    <thead><tr><th>Scheduling algorithm</th><th>configUSE_PREEMPTION</th><th>configUSE_TIME_SLICING</th><th>Key behavior</th></tr></thead>
+    <tbody>
+      <tr><td>Preemptive with time slicing</td><td>1</td><td>1</td><td>Higher priority preempts; equal priority rotates on ticks.</td></tr>
+      <tr><td>Preemptive without time slicing</td><td>1</td><td>0</td><td>Higher priority preempts; equal priority does not rotate just because a tick occurred.</td></tr>
+      <tr><td>Cooperative</td><td>0</td><td>Not used</td><td>Tasks switch only when the Running task blocks or yields.</td></tr>
+    </tbody>
+  </table>
+
+      </div>
+      <div class="takeaway">The table is a behavior table, not a config cheat sheet.</div>
+      <div class="page">05</div>
+    </section>
+    <section class="slide" id="s6">
+      <div class="slide-header"><div class="context">FreeRTOS Module 04</div><div class="framing">Generated Comparison Visual</div></div>
+      <div class="content">
+        <h2>Generated Comparison Visual</h2>
+        
+  <div class="grid-13">
+    <div class="figure-frame tall"><img src="../shared_assets/infographics/scheduling_policy_comparison.png" alt="Scheduling policy comparison"></div>
+    <div class="panel tint-blue">
+      <h3>Reading Order</h3>
+      <ul><li>The first row combines higher-priority preemption with equal-priority rotation.</li><li>The second row keeps preemption but removes tick-based equal-priority rotation.</li><li>The third row waits for yield or block even when a higher-priority task becomes Ready.</li><li>The diagram should be read as three different answers to the same scheduling question.</li></ul>
+      <p class="asset-note">Generated shared infographic: scheduling_policy_comparison.png</p>
+    </div>
+  </div>
+
+      </div>
+      <div class="takeaway">Use this image to separate the three policies before diving into book figures.</div>
+      <div class="page">06</div>
+    </section>
+    <section class="slide" id="s7">
+      <div class="slide-header"><div class="context">FreeRTOS Module 04</div><div class="framing">Fixed Priority Foundation</div></div>
+      <div class="content">
+        <h2>Fixed Priority Foundation</h2>
+        
+  <p class="subtitle">All three policies in this module still use task priority. The difference is when the Running task can be replaced.</p>
+  <div class="flow">
+    <div class="flowbox"><strong>Task becomes Ready</strong>by creation, timeout, event, or ISR handoff</div>
+    <div class="arrow">&rarr;</div>
+    <div class="flowbox"><strong>Priority comparison</strong>higher priority wins over lower priority</div>
+    <div class="arrow">&rarr;</div>
+    <div class="flowbox"><strong>Policy rule</strong>immediate preemption, tick rotation, or voluntary switch</div>
+  </div>
+  <div class="callout" style="margin-top:22px;">A fixed priority scheduler does not automatically lower or raise task priorities based on how long a task has waited.</div>
+
+      </div>
+      <div class="takeaway">Policy modifies switching points; priority still orders Ready tasks.</div>
+      <div class="page">07</div>
+    </section>
+    <section class="slide" id="s8">
+      <div class="slide-header"><div class="context">FreeRTOS Module 04</div><div class="framing">Preemptive Scheduling</div></div>
+      <div class="content">
+        <h2>Preemptive Scheduling</h2>
+        
+  <p class="subtitle">In preemptive mode, a higher-priority task becoming Ready can interrupt the currently Running task.</p>
+  <div class="grid-3">
+    <div class="panel tint-blue"><h3>Trigger</h3><ul><li>An ISR unblocks a task.</li><li>A delay expires on a tick.</li><li>A queue, semaphore, or notification wakes a task.</li></ul></div>
+    <div class="panel tint-teal"><h3>Decision</h3><ul><li>The newly Ready task has higher priority.</li><li>The current task loses the CPU.</li><li>The scheduler selects the higher-priority task.</li></ul></div>
+    <div class="panel tint-green"><h3>Design Effect</h3><ul><li>Better responsiveness for urgent work.</li><li>More interleaving around shared state.</li><li>Need for mutexes, critical sections, or lock-free discipline.</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">Preemption is a responsiveness tool and a concurrency risk multiplier.</div>
+      <div class="page">08</div>
+    </section>
+    <section class="slide" id="s9">
+      <div class="slide-header"><div class="context">FreeRTOS Module 04</div><div class="framing">Book Figure 4.18: Preemption</div></div>
+      <div class="content">
+        <h2>Book Figure 4.18: Preemption</h2>
+        
+  <div class="grid-13">
+    <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_4_18_execution_pattern_highlighting_task_prioritization_and_preemption.png" alt="Kernel Book Figure 4.18"></div>
+    <div class="panel tint-teal">
+      <h3>How to teach it</h3>
+      <ul><li>Find the instant a higher-priority task becomes Ready.</li><li>Ask why the current task cannot keep running.</li><li>Separate preemption from time slicing; this figure is about priority replacement.</li><li>Connect the figure back to Module 03 Ready and Running vocabulary.</li></ul>
+      <p class="asset-note">Source: Kernel Book Figure 4.18.</p>
+    </div>
+  </div>
+
+      </div>
+      <div class="takeaway">The figure makes preemption visible as a timeline, not a slogan.</div>
+      <div class="page">09</div>
+    </section>
+    <section class="slide" id="s10">
+      <div class="slide-header"><div class="context">FreeRTOS Module 04</div><div class="framing">Time Slicing</div></div>
+      <div class="content">
+        <h2>Time Slicing</h2>
+        
+  <p class="subtitle">Time slicing is about equal-priority Ready tasks. It does not make lower-priority tasks compete with higher-priority tasks.</p>
+  <div class="grid-2">
+    <div class="panel tint-blue"><h3>What time slicing does</h3><ul><li>A tick boundary can move execution to another Ready task at the same priority.</li><li>It gives CPU-bound equal-priority tasks a rotation rule.</li><li>It can make logs appear interleaved even when priorities match.</li></ul></div>
+    <div class="panel tint-amber"><h3>What time slicing does not do</h3><ul><li>It does not override priority.</li><li>It does not rescue lower-priority tasks from a higher-priority busy loop.</li><li>It does not guarantee deadline satisfaction.</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">Time slicing is a same-priority sharing rule.</div>
+      <div class="page">10</div>
+    </section>
+    <section class="slide" id="s11">
+      <div class="slide-header"><div class="context">FreeRTOS Module 04</div><div class="framing">Book Figure 4.19: Equal-Priority Rotation</div></div>
+      <div class="content">
+        <h2>Book Figure 4.19: Equal-Priority Rotation</h2>
+        
+  <div class="grid-13">
+    <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_4_19_execution_pattern_highlighting_task_prioritization_and_time_slicing.png" alt="Kernel Book Figure 4.19"></div>
+    <div class="panel tint-blue">
+      <h3>Reading Focus</h3>
+      <ul><li>Track only tasks at the same priority first.</li><li>Mark the tick boundaries that create new time slices.</li><li>Then add the higher-priority task and observe preemption separately.</li><li>Use the idle task line to discuss configIDLE_SHOULD_YIELD later.</li></ul>
+      <p class="asset-note">Source: Kernel Book Figure 4.19.</p>
+    </div>
+  </div>
+
+      </div>
+      <div class="takeaway">Equal-priority sharing is easier to understand before adding idle-yield behavior.</div>
+      <div class="page">11</div>
+    </section>
+    <section class="slide" id="s12">
+      <div class="slide-header"><div class="context">FreeRTOS Module 04</div><div class="framing">configIDLE_SHOULD_YIELD</div></div>
+      <div class="content">
+        <h2>configIDLE_SHOULD_YIELD</h2>
+        
+  <p class="subtitle">When application tasks run at idle priority, the idle task can either take normal slices or yield to them.</p>
+  <div class="grid-2">
+    <div class="panel tint-blue"><h3>Set to 0</h3><ul><li>The idle task remains in the time-sliced rotation.</li><li>Idle-priority application tasks share CPU with idle.</li><li>Useful for understanding the pure time slicing behavior.</li></ul></div>
+    <div class="panel tint-green"><h3>Set to 1</h3><ul><li>The idle task yields if other idle-priority tasks are Ready.</li><li>Application work at idle priority gets more opportunity.</li><li>The yielded task may not receive the entire remaining slice.</li></ul></div>
+  </div>
+  <div class="warning" style="margin-top:22px;">This macro only matters for tasks at idle priority. It is not a general fairness switch.</div>
+
+      </div>
+      <div class="takeaway">The idle task is part of scheduling behavior, not just a background detail.</div>
+      <div class="page">12</div>
+    </section>
+    <section class="slide" id="s13">
+      <div class="slide-header"><div class="context">FreeRTOS Module 04</div><div class="framing">Book Figure 4.20: Idle Should Yield</div></div>
+      <div class="content">
+        <h2>Book Figure 4.20: Idle Should Yield</h2>
+        
+  <div class="grid-13">
+    <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_4_20_the_execution_pattern_for_the_same_scenario_as_shown_in_figure_4_19.png" alt="Kernel Book Figure 4.20"></div>
+    <div class="panel tint-green">
+      <h3>Comparison Prompt</h3>
+      <ul><li>Compare this directly with Figure 4.19.</li><li>Ask which task yields and why.</li><li>Point out that the replacement is still at idle priority.</li><li>Use it as a reminder that config macros can change visible behavior without changing task code.</li></ul>
+      <p class="asset-note">Source: Kernel Book Figure 4.20.</p>
+    </div>
+  </div>
+
+      </div>
+      <div class="takeaway">Small configuration changes can have visible scheduling consequences.</div>
+      <div class="page">13</div>
+    </section>
+    <section class="slide" id="s14">
+      <div class="slide-header"><div class="context">FreeRTOS Module 04</div><div class="framing">Preemptive Without Time Slicing</div></div>
+      <div class="content">
+        <h2>Preemptive Without Time Slicing</h2>
+        
+  <p class="subtitle">When time slicing is disabled, equal-priority CPU-bound tasks do not rotate just because ticks occur.</p>
+  <div class="grid-3">
+    <div class="panel tint-blue"><h3>Still Preemptive</h3><ul><li>Higher-priority Ready tasks can still interrupt.</li><li>Priority remains the dominant ordering rule.</li><li>ISR unblocking can still trigger a switch.</li></ul></div>
+    <div class="panel tint-teal"><h3>No Tick Rotation</h3><ul><li>Equal-priority tasks need block or yield points.</li><li>A CPU-bound task can keep running.</li><li>Context switches may be fewer.</li></ul></div>
+    <div class="panel tint-amber"><h3>Design Risk</h3><ul><li>Equal-priority tasks can receive very different CPU time.</li><li>A missing yield can look like starvation.</li><li>Log order becomes less intuitive for beginners.</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">Turning off time slicing removes one sharing mechanism, not priority preemption.</div>
+      <div class="page">14</div>
+    </section>
+    <section class="slide" id="s15">
+      <div class="slide-header"><div class="context">FreeRTOS Module 04</div><div class="framing">Book Figure 4.21: No Time Slicing Risk</div></div>
+      <div class="content">
+        <h2>Book Figure 4.21: No Time Slicing Risk</h2>
+        
+  <div class="grid-13">
+    <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_4_21_execution_pattern_that_demonstrates_how_tasks_of_equal_priority_can.png" alt="Kernel Book Figure 4.21"></div>
+    <div class="panel tint-amber">
+      <h3>What students should notice</h3>
+      <ul><li>Equal priority alone does not guarantee equal CPU share.</li><li>Ticks still happen, but they do not rotate equal-priority tasks.</li><li>A running task can continue until it blocks, yields, or is preempted by a higher-priority task.</li><li>This is a policy choice that demands coding discipline.</li></ul>
+      <p class="asset-note">Source: Kernel Book Figure 4.21.</p>
+    </div>
+  </div>
+
+      </div>
+      <div class="takeaway">This figure is a good antidote to the myth that equal priority means fairness.</div>
+      <div class="page">15</div>
+    </section>
+    <section class="slide" id="s16">
+      <div class="slide-header"><div class="context">FreeRTOS Module 04</div><div class="framing">Cooperative Scheduling</div></div>
+      <div class="content">
+        <h2>Cooperative Scheduling</h2>
+        
+  <p class="subtitle">In cooperative mode, the scheduler does not preempt the Running task when a higher-priority task becomes Ready.</p>
+  <div class="grid-3">
+    <div class="panel tint-blue"><h3>Switch Points</h3><ul><li>Running task blocks.</li><li>Running task calls taskYIELD().</li><li>Scheduler starts before any task is running.</li></ul></div>
+    <div class="panel tint-teal"><h3>Possible Advantage</h3><ul><li>Fewer unexpected interleavings.</li><li>Task boundaries can be easier to reason about.</li><li>Shared data may need fewer protections if rules are strict.</li></ul></div>
+    <div class="panel tint-amber"><h3>Primary Risk</h3><ul><li>A task that forgets to yield can create large latency.</li><li>A higher-priority Ready task can be forced to wait.</li><li>Coding rules become part of the scheduler policy.</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">Cooperative scheduling moves responsibility from the kernel policy to the task code.</div>
+      <div class="page">16</div>
+    </section>
+    <section class="slide" id="s17">
+      <div class="slide-header"><div class="context">FreeRTOS Module 04</div><div class="framing">Book Figure 4.22: Cooperative Behavior</div></div>
+      <div class="content">
+        <h2>Book Figure 4.22: Cooperative Behavior</h2>
+        
+  <div class="grid-13">
+    <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_4_22_execution_pattern_demonstrating_the_behavior_of_the_cooperative_schedule.png" alt="Kernel Book Figure 4.22"></div>
+    <div class="panel tint-violet">
+      <h3>Reading Focus</h3>
+      <ul><li>Find when a higher-priority task becomes Ready.</li><li>Ask why it does not run immediately.</li><li>Locate the yield or block point that finally permits a switch.</li><li>Use this figure to contrast readiness with actual execution.</li></ul>
+      <p class="asset-note">Source: Kernel Book Figure 4.22.</p>
+    </div>
+  </div>
+
+      </div>
+      <div class="takeaway">The cooperative scheduler makes Ready and Running visibly different.</div>
+      <div class="page">17</div>
+    </section>
+    <section class="slide" id="s18">
+      <div class="slide-header"><div class="context">FreeRTOS Module 04</div><div class="framing">taskYIELD() in Policy Context</div></div>
+      <div class="content">
+        <h2>taskYIELD() in Policy Context</h2>
+        
+  <p class="subtitle"><code>taskYIELD()</code> has different importance depending on the scheduler policy.</p>
+  <table class="mini-table">
+    <thead><tr><th>Policy</th><th>What taskYIELD() means</th><th>Common misunderstanding</th></tr></thead>
+    <tbody>
+      <tr><td>Preemptive with time slicing</td><td>Voluntary reschedule; ticks may already rotate equal priority tasks.</td><td>Assuming yield is required for every switch.</td></tr>
+      <tr><td>Preemptive without time slicing</td><td>Important way for equal-priority tasks to share CPU if they do not block.</td><td>Assuming equal priority alone creates fairness.</td></tr>
+      <tr><td>Cooperative</td><td>One of the only ways to switch while the task remains Ready.</td><td>Forgetting that higher priority Ready tasks still wait.</td></tr>
+    </tbody>
+  </table>
+
+      </div>
+      <div class="takeaway">Yield does not block the task; it creates a scheduling opportunity.</div>
+      <div class="page">18</div>
+    </section>
+    <section class="slide" id="s19">
+      <div class="slide-header"><div class="context">FreeRTOS Module 04</div><div class="framing">Blocking, Yielding, and Preemption</div></div>
+      <div class="content">
+        <h2>Blocking, Yielding, and Preemption</h2>
+        
+  <p class="subtitle">Students need to separate three different reasons that another task may run.</p>
+  <div class="grid-3">
+    <div class="panel tint-blue"><h3>Blocking</h3><ul><li>Current task cannot continue until a condition changes.</li><li>Task leaves the Ready set.</li><li>Lower-priority tasks may run if no higher task is Ready.</li></ul></div>
+    <div class="panel tint-teal"><h3>Yielding</h3><ul><li>Current task remains Ready.</li><li>Scheduler is asked to choose again.</li><li>Same task may run again if it is still the best candidate.</li></ul></div>
+    <div class="panel tint-green"><h3>Preemption</h3><ul><li>A higher-priority task becomes Ready.</li><li>Kernel policy allows immediate replacement.</li><li>Current task is interrupted without voluntary yield.</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">The same visible effect, another task running, can have three different causes.</div>
+      <div class="page">19</div>
+    </section>
+    <section class="slide" id="s20">
+      <div class="slide-header"><div class="context">FreeRTOS Module 04</div><div class="framing">CPU-Bound and I/O-Bound Tasks</div></div>
+      <div class="content">
+        <h2>CPU-Bound and I/O-Bound Tasks</h2>
+        
+  <p class="subtitle">Scheduler policy becomes visible when tasks have different natural blocking behavior.</p>
+  <div class="grid-2">
+    <div class="panel tint-blue"><h3>CPU-bound task</h3><ul><li>Can keep executing for a long time.</li><li>Needs explicit delay, yield, or lower priority if it is background work.</li><li>Reveals differences between time slicing and no time slicing.</li></ul></div>
+    <div class="panel tint-green"><h3>I/O-bound task</h3><ul><li>Often blocks waiting for data, time, or synchronization.</li><li>Naturally gives other tasks CPU opportunities.</li><li>Usually interacts more cleanly with preemptive scheduling.</li></ul></div>
+  </div>
+  <div class="two-lane"><div class="lane-name">CPU-bound</div><div class="lane-seq"><div class="seg a">Run</div><div class="seg a">Run</div><div class="seg a">Run</div><div class="seg a">Run</div></div></div>
+  <div class="two-lane"><div class="lane-name">I/O-bound</div><div class="lane-seq"><div class="seg b">Run</div><div class="seg c">Block</div><div class="seg b">Run</div><div class="seg c">Block</div></div></div>
+
+      </div>
+      <div class="takeaway">A task&#x27;s blocking behavior is as important as its priority.</div>
+      <div class="page">20</div>
+    </section>
+    <section class="slide" id="s21">
+      <div class="slide-header"><div class="context">FreeRTOS Module 04</div><div class="framing">Idle Task Responsibilities</div></div>
+      <div class="content">
+        <h2>Idle Task Responsibilities</h2>
+        
+  <p class="subtitle">The idle task is a kernel-created task at the lowest priority. It should not be starved forever.</p>
+  <div class="grid-3">
+    <div class="panel tint-blue"><h3>Always present</h3><ul><li>Created when the scheduler starts.</li><li>Runs when no higher priority task is Ready.</li><li>Provides evidence of spare CPU time.</li></ul></div>
+    <div class="panel tint-teal"><h3>Cleanup role</h3><ul><li>Frees resources from deleted tasks.</li><li>Requires CPU time to perform cleanup.</li><li>Starving idle can delay cleanup indefinitely.</li></ul></div>
+    <div class="panel tint-green"><h3>Hook use</h3><ul><li>Optional idle hook can do very low priority work.</li><li>Must not block or suspend itself.</li><li>Must return in a reasonable time.</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">Seeing the idle task run is often a sign of system slack, not wasted time.</div>
+      <div class="page">21</div>
+    </section>
+    <section class="slide" id="s22">
+      <div class="slide-header"><div class="context">FreeRTOS Module 04</div><div class="framing">Idle Hook Constraints</div></div>
+      <div class="content">
+        <h2>Idle Hook Constraints</h2>
+        
+  <p class="subtitle">The idle hook is tempting for background work, but it has strict constraints.</p>
+  <div class="api-list"><code>configUSE_IDLE_HOOK</code><code>vApplicationIdleHook()</code><code>configIDLE_SHOULD_YIELD</code></div>
+  <div class="grid-2" style="margin-top:22px;">
+    <div class="panel tint-green"><h3>Reasonable use</h3><ul><li>Increment a diagnostic counter.</li><li>Enter a low-power preparation path.</li><li>Run tiny nonblocking background checks.</li></ul></div>
+    <div class="panel tint-amber"><h3>Unsafe use</h3><ul><li>Blocking on a queue or semaphore.</li><li>Performing long parsing or printing.</li><li>Preventing idle cleanup from returning.</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">Idle hook work must be tiny, nonblocking, and easy to review.</div>
+      <div class="page">22</div>
+    </section>
+    <section class="slide" id="s23">
+      <div class="slide-header"><div class="context">FreeRTOS Module 04</div><div class="framing">Configuration Surface</div></div>
+      <div class="content">
+        <h2>Configuration Surface</h2>
+        
+  <p class="subtitle">The relevant build choices are few, but their effects are broad.</p>
+  <div class="macro-grid">
+    <div class="macro"><strong>configUSE_PREEMPTION</strong>Controls whether higher-priority Ready tasks can preempt the Running task.</div>
+    <div class="macro"><strong>configUSE_TIME_SLICING</strong>Controls tick rotation among equal-priority Ready tasks in preemptive mode.</div>
+    <div class="macro"><strong>configIDLE_SHOULD_YIELD</strong>Controls whether idle yields to other idle-priority Ready tasks.</div>
+    <div class="macro"><strong>configUSE_IDLE_HOOK</strong>Enables application idle hook callback.</div>
+    <div class="macro"><strong>configTICK_RATE_HZ</strong>Sets tick frequency, which also shapes time slicing resolution.</div>
+    <div class="macro"><strong>configMAX_PRIORITIES</strong>Defines the available priority ladder.</div>
+  </div>
+
+      </div>
+      <div class="takeaway">A scheduling experiment should change one macro at a time.</div>
+      <div class="page">23</div>
+    </section>
+    <section class="slide" id="s24">
+      <div class="slide-header"><div class="context">FreeRTOS Module 04</div><div class="framing">Tutorial 06: Preemptive With Time Slicing</div></div>
+      <div class="content">
+        <h2>Tutorial 06: Preemptive With Time Slicing</h2>
+        
+  <p class="subtitle">Tutorial 06 uses <code>configUSE_PREEMPTION = 1</code> and <code>configUSE_TIME_SLICING = 1</code>.</p>
+  <div class="grid-3">
+    <div class="panel tint-blue"><h3>Before running</h3><ul><li>Identify equal-priority tasks.</li><li>Mark CPU-bound loops.</li><li>Predict tick-based alternation.</li></ul></div>
+    <div class="panel tint-teal"><h3>What to watch</h3><ul><li>Interleaving log lines.</li><li>Tick-driven switches.</li><li>Higher priority preemption if present.</li></ul></div>
+    <div class="panel tint-green"><h3>Teaching point</h3><ul><li>Time slicing is same-priority sharing.</li><li>Preemption is still priority-based.</li><li>The two ideas are independent.</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">Tutorial 06 is the baseline policy experiment.</div>
+      <div class="page">24</div>
+    </section>
+    <section class="slide" id="s25">
+      <div class="slide-header"><div class="context">FreeRTOS Module 04</div><div class="framing">Tutorial 07: Preemptive Without Time Slicing</div></div>
+      <div class="content">
+        <h2>Tutorial 07: Preemptive Without Time Slicing</h2>
+        
+  <p class="subtitle">Tutorial 07 keeps preemption but disables time slicing.</p>
+  <div class="grid-3">
+    <div class="panel tint-blue"><h3>Before running</h3><ul><li>Keep the task code comparable to Tutorial 06.</li><li>Change only configUSE_TIME_SLICING.</li><li>Predict equal-priority behavior.</li></ul></div>
+    <div class="panel tint-teal"><h3>What to watch</h3><ul><li>One equal-priority task may keep running.</li><li>Switches occur on block, yield, or higher priority event.</li><li>Tick interrupts no longer rotate equal tasks.</li></ul></div>
+    <div class="panel tint-amber"><h3>Teaching point</h3><ul><li>No time slicing can reduce switches.</li><li>It can also create unfair CPU distribution.</li><li>Coding rules must compensate.</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">Tutorial 07 shows why equal priority is not the same as equal CPU time.</div>
+      <div class="page">25</div>
+    </section>
+    <section class="slide" id="s26">
+      <div class="slide-header"><div class="context">FreeRTOS Module 04</div><div class="framing">Tutorial 08: Cooperative Scheduling</div></div>
+      <div class="content">
+        <h2>Tutorial 08: Cooperative Scheduling</h2>
+        
+  <p class="subtitle">Tutorial 08 uses <code>configUSE_PREEMPTION = 0</code>.</p>
+  <div class="grid-3">
+    <div class="panel tint-blue"><h3>Before running</h3><ul><li>Find yield or block points.</li><li>Predict where a Ready task must wait.</li><li>Check whether time slicing applies.</li></ul></div>
+    <div class="panel tint-teal"><h3>What to watch</h3><ul><li>Higher-priority Ready task waiting.</li><li>Switch only at taskYIELD() or blocking calls.</li><li>Logs that look stable until one task fails to cooperate.</li></ul></div>
+    <div class="panel tint-amber"><h3>Teaching point</h3><ul><li>Cooperative mode moves scheduling responsibility into application code.</li><li>It can be predictable only when tasks follow strict rules.</li><li>A missing yield is a latency bug.</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">Tutorial 08 makes voluntary scheduling visible.</div>
+      <div class="page">26</div>
+    </section>
+    <section class="slide" id="s27">
+      <div class="slide-header"><div class="context">FreeRTOS Module 04</div><div class="framing">Experiment Design for Students</div></div>
+      <div class="content">
+        <h2>Experiment Design for Students</h2>
+        
+  <p class="subtitle">A good scheduling experiment isolates one variable.</p>
+  <table class="mini-table">
+    <thead><tr><th>Experiment</th><th>Hold constant</th><th>Change</th><th>Expected evidence</th></tr></thead>
+    <tbody>
+      <tr><td>Time slicing on/off</td><td>Task code and priorities</td><td>configUSE_TIME_SLICING</td><td>Equal-priority log interleaving changes</td></tr>
+      <tr><td>Preemption on/off</td><td>Ready events and priorities</td><td>configUSE_PREEMPTION</td><td>Higher-priority Ready task either interrupts or waits</td></tr>
+      <tr><td>Yield location</td><td>Cooperative mode</td><td>taskYIELD() placement</td><td>Switch point moves in the timeline</td></tr>
+    </tbody>
+  </table>
+
+      </div>
+      <div class="takeaway">Do not let students change code, priority, and configuration at the same time.</div>
+      <div class="page">27</div>
+    </section>
+    <section class="slide" id="s28">
+      <div class="slide-header"><div class="context">FreeRTOS Module 04</div><div class="framing">Timeline Reading Practice</div></div>
+      <div class="content">
+        <h2>Timeline Reading Practice</h2>
+        
+  <p class="subtitle">Convert logs into scheduling explanations.</p>
+  <div class="two-lane"><div class="lane-name">Ready</div><div class="lane-seq"><div class="seg a">Task A</div><div class="seg b">Task B</div><div class="seg c">Task C</div><div class="tickline"></div><div class="seg b">Task B</div><div class="seg c">Task C</div></div></div>
+  <div class="two-lane"><div class="lane-name">Running</div><div class="lane-seq"><div class="seg a">A</div><div class="seg b">B</div><div class="tickline"></div><div class="seg c">C</div><div class="tickline"></div><div class="seg b">B</div></div></div>
+  <div class="grid-3" style="margin-top:22px;">
+    <div class="panel tint-blue"><h3>Ask first</h3><p>Did a higher-priority task become Ready?</p></div>
+    <div class="panel tint-teal"><h3>Ask second</h3><p>Are the tasks at equal priority?</p></div>
+    <div class="panel tint-green"><h3>Ask third</h3><p>Was the switch caused by tick, block, yield, or ISR?</p></div>
+  </div>
+
+      </div>
+      <div class="takeaway">A timeline without a cause is only a picture.</div>
+      <div class="page">28</div>
+    </section>
+    <section class="slide" id="s29">
+      <div class="slide-header"><div class="context">FreeRTOS Module 04</div><div class="framing">Responsiveness and Fairness Trade-Off</div></div>
+      <div class="content">
+        <h2>Responsiveness and Fairness Trade-Off</h2>
+        
+  <p class="subtitle">Scheduling policies trade different kinds of behavior; no policy is universally best.</p>
+  <div class="grid-3">
+    <div class="panel tint-blue"><h3>Preemptive with time slicing</h3><ul><li>Responsive to higher priority work.</li><li>Fairer among equal-priority CPU-bound tasks.</li><li>More interleaving to review.</li></ul></div>
+    <div class="panel tint-teal"><h3>Preemptive without time slicing</h3><ul><li>Still responsive to higher priority work.</li><li>Fewer equal-priority context switches.</li><li>Needs explicit sharing discipline.</li></ul></div>
+    <div class="panel tint-green"><h3>Cooperative</h3><ul><li>Predictable when yield rules are strict.</li><li>Less surprise around shared state.</li><li>Can create latency if tasks do not cooperate.</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">Choose policy by system behavior, not by habit.</div>
+      <div class="page">29</div>
+    </section>
+    <section class="slide" id="s30">
+      <div class="slide-header"><div class="context">FreeRTOS Module 04</div><div class="framing">Priority Map Strategy</div></div>
+      <div class="content">
+        <h2>Priority Map Strategy</h2>
+        
+  <p class="subtitle">Scheduling policy is easier to reason about when the priority map is small and intentional.</p>
+  <table class="mini-table">
+    <thead><tr><th>Priority role</th><th>Typical task kind</th><th>Blocking expectation</th></tr></thead>
+    <tbody>
+      <tr><td>High</td><td>Urgent event worker or control loop</td><td>Short bounded work, periodic or event wait</td></tr>
+      <tr><td>Middle</td><td>Sensor processing, communication protocol task</td><td>Queue, buffer, or notification wait</td></tr>
+      <tr><td>Low</td><td>Logging, statistics, background maintenance</td><td>Often blocked, yields to urgent work</td></tr>
+      <tr><td>Idle</td><td>Idle task and optional idle-priority application work</td><td>Must not block inside idle hook</td></tr>
+    </tbody>
+  </table>
+
+      </div>
+      <div class="takeaway">A priority map should describe urgency and blocking behavior together.</div>
+      <div class="page">30</div>
+    </section>
+    <section class="slide" id="s31">
+      <div class="slide-header"><div class="context">FreeRTOS Module 04</div><div class="framing">Failure Mode: High-Priority Busy Loop</div></div>
+      <div class="content">
+        <h2>Failure Mode: High-Priority Busy Loop</h2>
+        
+  <p class="subtitle">A high-priority task that never blocks can make the rest of the system look broken.</p>
+  <div class="grid-3">
+    <div class="panel tint-amber"><h3>Symptom</h3><ul><li>Lower-priority logs disappear.</li><li>Idle counter stops increasing.</li><li>Timers or communication tasks seem late.</li></ul></div>
+    <div class="panel tint-blue"><h3>Cause</h3><ul><li>The task remains Ready and Running.</li><li>No delay, wait, or yield point exists.</li><li>Priority prevents lower tasks from being selected.</li></ul></div>
+    <div class="panel tint-green"><h3>Fix direction</h3><ul><li>Add appropriate blocking.</li><li>Lower priority if the work is background.</li><li>Split long work into bounded chunks.</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">A busy loop is often a scheduling bug disguised as normal C code.</div>
+      <div class="page">31</div>
+    </section>
+    <section class="slide" id="s32">
+      <div class="slide-header"><div class="context">FreeRTOS Module 04</div><div class="framing">Failure Mode: Equal Priority without Sharing</div></div>
+      <div class="content">
+        <h2>Failure Mode: Equal Priority without Sharing</h2>
+        
+  <p class="subtitle">Equal priority does not automatically mean equal CPU share.</p>
+  <div class="grid-2">
+    <div class="panel tint-amber"><h3>When it happens</h3><ul><li>configUSE_TIME_SLICING is 0.</li><li>A task does not block or yield.</li><li>Tasks are CPU-bound at the same priority.</li></ul></div>
+    <div class="panel tint-green"><h3>Evidence</h3><ul><li>One equal-priority task dominates the log.</li><li>Tick count advances but tasks do not rotate.</li><li>Adding yield or blocking changes behavior.</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">Fairness requires a policy or a coding rule.</div>
+      <div class="page">32</div>
+    </section>
+    <section class="slide" id="s33">
+      <div class="slide-header"><div class="context">FreeRTOS Module 04</div><div class="framing">Failure Mode: Cooperative Latency</div></div>
+      <div class="content">
+        <h2>Failure Mode: Cooperative Latency</h2>
+        
+  <p class="subtitle">In cooperative mode, a higher-priority Ready task can still wait behind a lower-priority Running task.</p>
+  <div class="warning">If the Running task forgets to call taskYIELD() or block, responsiveness depends on how long that task keeps the CPU.</div>
+  <div class="grid-2" style="margin-top:22px;">
+    <div class="panel tint-blue"><h3>Diagnostic clue</h3><ul><li>A high-priority task is Ready but not Running.</li><li>The switch happens only after a yield or block.</li><li>Moving yield changes latency.</li></ul></div>
+    <div class="panel tint-green"><h3>Design rule</h3><ul><li>Every long loop must have a planned switch point.</li><li>Blocking APIs should express real wait conditions.</li><li>Cooperative mode requires code review discipline.</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">Cooperative scheduling is only as good as the cooperation rule.</div>
+      <div class="page">33</div>
+    </section>
+    <section class="slide" id="s34">
+      <div class="slide-header"><div class="context">FreeRTOS Module 04</div><div class="framing">Diagnostics View</div></div>
+      <div class="content">
+        <h2>Diagnostics View</h2>
+        
+  <p class="subtitle">Scheduling diagnosis needs state, counters, and timestamps.</p>
+  <div class="grid-3">
+    <div class="panel tint-blue"><h3>State</h3><ul><li>Ready but not Running</li><li>Blocked duration</li><li>Idle task execution</li><li>Task list snapshot</li></ul></div>
+    <div class="panel tint-teal"><h3>Timing</h3><ul><li>Tick count</li><li>Log timestamps</li><li>Runtime stats</li><li>Trace timeline</li></ul></div>
+    <div class="panel tint-green"><h3>Counters</h3><ul><li>Idle hook counter</li><li>Context switch trace</li><li>Queue depth or missed event count</li><li>Loop iteration counter</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">A scheduling issue should be diagnosed before changing priorities.</div>
+      <div class="page">34</div>
+    </section>
+    <section class="slide" id="s35">
+      <div class="slide-header"><div class="context">FreeRTOS Module 04</div><div class="framing">Source Reading: tasks.c and FreeRTOSConfig.h</div></div>
+      <div class="content">
+        <h2>Source Reading: tasks.c and FreeRTOSConfig.h</h2>
+        
+  <p class="subtitle">Read source and configuration together.</p>
+  <div class="grid-2">
+    <div class="panel tint-blue"><h3>In tasks.c</h3><ul><li>Ready list selection.</li><li>Yield path.</li><li>Tick processing path.</li><li>Idle task creation and idle hook call point.</li></ul></div>
+    <div class="panel tint-green"><h3>In FreeRTOSConfig.h</h3><ul><li>configUSE_PREEMPTION.</li><li>configUSE_TIME_SLICING.</li><li>configIDLE_SHOULD_YIELD.</li><li>configUSE_IDLE_HOOK.</li></ul></div>
+  </div>
+  <div class="callout" style="margin-top:22px;">The point is not to memorize implementation details, but to connect a macro to a visible execution pattern.</div>
+
+      </div>
+      <div class="takeaway">Source reading should explain the timeline.</div>
+      <div class="page">35</div>
+    </section>
+    <section class="slide" id="s36">
+      <div class="slide-header"><div class="context">FreeRTOS Module 04</div><div class="framing">Mini Case: Sensor, Control, Logger</div></div>
+      <div class="content">
+        <h2>Mini Case: Sensor, Control, Logger</h2>
+        
+  <p class="subtitle">Use this small system to reason about policy choices.</p>
+  <table class="mini-table">
+    <thead><tr><th>Task</th><th>Priority</th><th>Behavior</th><th>Scheduling concern</th></tr></thead>
+    <tbody>
+      <tr><td>ControlTask</td><td>3</td><td>Periodic control loop</td><td>Should not wait behind background work</td></tr>
+      <tr><td>SensorTask</td><td>2</td><td>Periodic sampling and queue send</td><td>Should block between samples</td></tr>
+      <tr><td>CommTask</td><td>2</td><td>Protocol processing</td><td>Equal priority with SensorTask needs clear sharing rule</td></tr>
+      <tr><td>LoggerTask</td><td>1</td><td>Background output</td><td>Should not become CPU-bound at high priority</td></tr>
+    </tbody>
+  </table>
+
+      </div>
+      <div class="takeaway">A policy discussion is clearer with task roles and blocking behavior visible.</div>
+      <div class="page">36</div>
+    </section>
+    <section class="slide" id="s37">
+      <div class="slide-header"><div class="context">FreeRTOS Module 04</div><div class="framing">Project Boundary Check</div></div>
+      <div class="content">
+        <h2>Project Boundary Check</h2>
+        
+  <p class="subtitle">Compact activity for class or after-class self study.</p>
+  <div class="grid-3">
+    <div class="panel tint-blue"><h3>Policy toggle</h3><ul><li>Run the same task code with time slicing on and off.</li><li>Record which equal-priority task runs after each tick.</li><li>Explain the result using the policy table.</li></ul></div>
+    <div class="panel tint-teal"><h3>CPU-bound loop</h3><ul><li>Add a bounded busy loop to one task.</li><li>Predict which tasks lose CPU time.</li><li>Add delay or yield and compare.</li></ul></div>
+    <div class="panel tint-green"><h3>Cooperative rule</h3><ul><li>Move taskYIELD() in cooperative mode.</li><li>Measure when another task starts.</li><li>Write one coding rule for long loops.</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">The lab should change one scheduling cause at a time.</div>
+      <div class="page">37</div>
+    </section>
+    <section class="slide" id="s38">
+      <div class="slide-header"><div class="context">FreeRTOS Module 04</div><div class="framing">Review Questions</div></div>
+      <div class="content">
+        <h2>Review Questions</h2>
+        
+  <p class="subtitle">Questions that should force mechanism-level answers.</p>
+  <div class="grid-3">
+    <div class="panel tint-blue"><h3>Priority</h3><p>Can time slicing make a lower-priority task run while a higher-priority task is Ready?</p></div>
+    <div class="panel tint-teal"><h3>Policy</h3><p>What remains true when time slicing is disabled but preemption stays enabled?</p></div>
+    <div class="panel tint-green"><h3>Cooperation</h3><p>Why can cooperative scheduling create latency even when a high-priority task is Ready?</p></div>
+  </div>
+
+      </div>
+      <div class="takeaway">If the answer does not mention Ready, Running, priority, or switch point, it is probably too shallow.</div>
+      <div class="page">38</div>
+    </section>
+    <section class="slide" id="s39">
+      <div class="slide-header"><div class="context">FreeRTOS Module 04</div><div class="framing">Bridge to Module 05</div></div>
+      <div class="content">
+        <h2>Bridge to Module 05</h2>
+        
+  <p class="subtitle">Scheduling decides which task runs. Memory management decides whether the objects and stacks that make those tasks possible remain reliable.</p>
+  <div class="grid-3">
+    <div class="icon-card"><img src="../shared_assets/icons/heap_blocks_generated.png" alt=""><div><strong>Heap</strong><span>Dynamic object creation consumes FreeRTOS heap.</span></div></div>
+    <div class="icon-card"><img src="../shared_assets/icons/stack_gauge_generated.png" alt=""><div><strong>Stack</strong><span>Each task needs enough stack for its execution path.</span></div></div>
+    <div class="icon-card"><img src="../shared_assets/icons/trace_screen_generated.png" alt=""><div><strong>Diagnostics</strong><span>Scheduling symptoms often need memory evidence too.</span></div></div>
+  </div>
+
+      </div>
+      <div class="takeaway">Module 05 shifts from CPU-time behavior to memory reliability.</div>
+      <div class="page">39</div>
+    </section>
+    <section class="slide" id="s40">
+      <div class="slide-header"><div class="context">FreeRTOS Module 04</div><div class="framing">References and Further Reading</div></div>
+      <div class="content">
+        <h2>References and Further Reading</h2>
+        
+  <div class="grid-2">
+    <div class="panel tint-blue">
+      <h3>References Used</h3>
+      <ul class="refs">
+        <li>FreeRTOS Kernel Book, Chapter 4: Task Management, Section 4.8 The Idle Task and the Idle Task Hook.</li>
+        <li>FreeRTOS Kernel Book, Chapter 4: Task Management, Section 4.12 Scheduling Algorithms.</li>
+        <li>FreeRTOS Kernel Book, Figures 4.18, 4.19, 4.20, 4.21, and 4.22.</li>
+        <li>Lab Project FreeRTOS Tutorials 06, 07, and 08.</li>
+      </ul>
+    </div>
+    <div class="panel tint-green">
+      <h3>Further Reading</h3>
+      <ul class="refs">
+        <li>FreeRTOSConfig.h reference: configUSE_PREEMPTION, configUSE_TIME_SLICING, configIDLE_SHOULD_YIELD, and configUSE_IDLE_HOOK.</li>
+        <li>FreeRTOS API reference: taskYIELD(), vTaskDelay(), vTaskDelayUntil(), and task control APIs.</li>
+        <li>Operating systems review: fixed-priority scheduling, round-robin scheduling, and cooperative scheduling.</li>
+        <li>Kernel source reading: tasks.c ready list selection, yield path, tick processing, and idle hook path.</li>
+      </ul>
+    </div>
+  </div>
+
+      </div>
+      <div class="takeaway">References make the policy choices traceable to official material.</div>
+      <div class="page">40</div>
+    </section>
+  </main>
+  <script src="../shared_assets/slideshow.js"></script>
+</body>
+</html>

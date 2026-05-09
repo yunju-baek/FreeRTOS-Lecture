@@ -1,0 +1,847 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FreeRTOS Module 01 - RTOS Perspective and Project Structure</title>
+  <style>
+    :root {
+      --indigo: #2e315b;
+      --blue: #2563a6;
+      --teal: #147d83;
+      --green: #2f7d4e;
+      --amber: #9a6a16;
+      --violet: #6d4aa2;
+      --graphite: #2b2f36;
+      --muted: #637083;
+      --line: #d8dee9;
+      --paper: #ffffff;
+      --bg: #f4f6f9;
+      --code: #eef2f7;
+      --soft-blue: #eef5fc;
+      --soft-teal: #edf8f8;
+      --soft-amber: #fff7e8;
+      --soft-green: #eef8f1;
+      --soft-violet: #f4effb;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--graphite);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Arial, sans-serif;
+      line-height: 1.46;
+    }
+
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      width: 1280px;
+      margin: 0 auto;
+      padding: 10px 16px;
+      background: rgba(244, 246, 249, 0.96);
+      border-bottom: 1px solid var(--line);
+      color: #4f5969;
+      font-size: 15px;
+    }
+
+    .nav a {
+      margin-right: 8px;
+      color: var(--blue);
+      text-decoration: none;
+      font-weight: 800;
+    }
+
+    .deck { width: 1280px; margin: 0 auto; padding: 28px 0 64px; }
+    .slide {
+      position: relative;
+      width: 1280px;
+      min-height: 720px;
+      margin: 0 0 32px;
+      overflow: hidden;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 40px rgba(38, 49, 91, 0.12);
+      page-break-after: always;
+    }
+
+    .slide-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      height: 54px;
+      padding: 0 34px;
+      background: var(--indigo);
+      color: #fff;
+      font-size: 18px;
+    }
+
+    .context { font-weight: 800; }
+    .framing { color: #e1e6ff; font-size: 16px; }
+    .content { padding: 30px 42px 58px; }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { margin-bottom: 14px; color: #fff; font-size: 45px; line-height: 1.08; letter-spacing: 0; }
+    h2 { margin-bottom: 10px; color: #20243d; font-size: 35px; line-height: 1.12; letter-spacing: 0; }
+    h3 { margin-bottom: 10px; color: var(--indigo); font-size: 22px; letter-spacing: 0; }
+    .subtitle { max-width: 1060px; margin-bottom: 20px; color: #4a5260; font-size: 21px; line-height: 1.35; }
+    .small { color: var(--muted); font-size: 16px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .grid-13 { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 22px; }
+    .grid-31 { display: grid; grid-template-columns: 0.86fr 1.14fr; gap: 22px; }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px 18px;
+      background: #fff;
+    }
+    .panel p, .panel li { font-size: 18px; }
+    ul, ol { margin: 0; padding-left: 22px; }
+    li + li { margin-top: 6px; }
+    .tint-blue { border-top: 5px solid var(--blue); }
+    .tint-teal { border-top: 5px solid var(--teal); }
+    .tint-green { border-top: 5px solid var(--green); }
+    .tint-amber { border-top: 5px solid var(--amber); }
+    .tint-violet { border-top: 5px solid var(--violet); }
+
+    code {
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: var(--code);
+      color: #1d3152;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 0.93em;
+    }
+    pre {
+      margin: 0;
+      padding: 15px 17px;
+      border-radius: 8px;
+      background: #1f2633;
+      color: #edf2ff;
+      font-size: 14px;
+      line-height: 1.42;
+      overflow: hidden;
+      white-space: pre-wrap;
+    }
+    pre code { padding: 0; background: transparent; color: inherit; font-size: inherit; }
+
+    .takeaway {
+      position: absolute;
+      left: 42px;
+      right: 120px;
+      bottom: 22px;
+      color: #515a6b;
+      font-size: 17px;
+      font-weight: 700;
+    }
+    .page { position: absolute; right: 36px; bottom: 22px; color: #7a8290; font-size: 16px; font-weight: 800; }
+
+    .cover {
+      color: #fff;
+      background: linear-gradient(120deg, rgba(46, 49, 91, 0.98), rgba(20, 125, 131, 0.92)), #2e315b;
+    }
+    .cover .slide-header { background: transparent; border-bottom: 1px solid rgba(255, 255, 255, 0.24); }
+    .cover .content { display: grid; grid-template-columns: 1.08fr 0.92fr; gap: 42px; align-items: center; padding-top: 52px; }
+    .cover .subtitle { color: #eef5ff; }
+    .cover .meta { margin-top: 34px; color: #dbe5ff; font-size: 20px; }
+    .cover-card { min-height: 390px; padding: 26px; border: 1px solid rgba(255, 255, 255, 0.35); border-radius: 10px; background: rgba(255, 255, 255, 0.08); }
+    .cover-card h3 { color: #fff; font-size: 25px; }
+    .cover-card li { color: #edf2ff; font-size: 19px; }
+
+    .question { padding: 15px 17px; border-left: 6px solid var(--blue); background: var(--soft-blue); font-size: 19px; }
+    .callout { padding: 15px 17px; border-left: 6px solid var(--teal); background: var(--soft-teal); font-size: 19px; }
+    .warning { padding: 15px 17px; border-left: 6px solid var(--amber); background: var(--soft-amber); font-size: 19px; }
+
+    .icon-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .icon-card {
+      min-height: 148px;
+      display: grid;
+      grid-template-columns: 78px 1fr;
+      column-gap: 12px;
+      align-items: start;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 15px;
+      background: #fff;
+    }
+    .icon {
+      display: block;
+      width: 72px;
+      height: auto;
+      max-height: 72px;
+      object-fit: contain;
+      aspect-ratio: 1 / 1;
+      border-radius: 8px;
+      grid-row: 1 / span 2;
+    }
+    .icon-card strong { display: block; color: var(--indigo); font-size: 19px; margin-bottom: 4px; }
+    .icon-card p { margin: 0; font-size: 16.5px; color: #4b5566; grid-column: 2; }
+
+    .infographic {
+      border: 1px solid #d8dee9;
+      border-radius: 10px;
+      background: #fbfcfe;
+      padding: 16px;
+      box-shadow: 0 10px 24px rgba(30, 40, 70, 0.08);
+    }
+    .flow { display: grid; grid-template-columns: 1fr 48px 1fr 48px 1fr; gap: 10px; align-items: center; }
+    .flow.two { grid-template-columns: 1fr 48px 1fr; }
+    .flowbox {
+      min-height: 94px;
+      padding: 13px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      text-align: center;
+      font-size: 16.5px;
+    }
+    .flowbox strong { display: block; margin-bottom: 7px; color: var(--indigo); font-size: 18px; }
+    .arrow { text-align: center; color: var(--blue); font-size: 30px; font-weight: 900; }
+
+    .lane { display: grid; grid-template-columns: 170px 1fr; gap: 12px; align-items: center; margin-bottom: 10px; }
+    .lane-label { padding: 10px 12px; border-radius: 8px; background: #edf2ff; color: var(--indigo); font-weight: 900; text-align: center; }
+    .lane-body { padding: 11px 14px; border-left: 5px solid var(--blue); border-radius: 8px; background: #fff; border: 1px solid var(--line); font-size: 17px; }
+
+    .mini-table { width: 100%; border-collapse: collapse; font-size: 16.5px; }
+    .mini-table th, .mini-table td { padding: 9px 10px; border: 1px solid var(--line); vertical-align: top; }
+    .mini-table th { background: #eef2f7; color: var(--indigo); text-align: left; }
+
+    .layer-stack { display: grid; gap: 10px; }
+    .layer { display: grid; grid-template-columns: 220px 1fr; gap: 14px; align-items: start; padding: 12px 15px; border: 1px solid var(--line); border-left: 6px solid var(--blue); border-radius: 8px; background: #fbfcfe; font-size: 17px; }
+    .layer:nth-child(2) { border-left-color: var(--teal); }
+    .layer:nth-child(3) { border-left-color: var(--green); }
+    .layer:nth-child(4) { border-left-color: var(--violet); }
+    .layer strong { display: block; color: var(--indigo); font-size: 20px; }
+
+    .macro-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .macro { padding: 12px 13px; border: 1px solid var(--line); border-radius: 8px; background: #fff; font-size: 16.5px; }
+    .macro strong { display: block; color: var(--indigo); margin-bottom: 5px; font-size: 18px; }
+
+    .infographic-card {
+      border: 1px solid #d8dee9;
+      border-radius: 10px;
+      background: #fff;
+      padding: 10px;
+      box-shadow: 0 12px 24px rgba(28, 34, 48, 0.08);
+    }
+    .infographic-card img { display: block; width: 100%; border-radius: 7px; }
+    .image-layout { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 20px; align-items: stretch; }
+
+    @media print {
+      body { background: #fff; }
+      .nav { display: none; }
+      .slideshow-controls,
+      .slideshow-hint { display: none !important; }
+      .deck { width: 100%; padding: 0; }
+      .slide { width: 100%; min-height: 100vh; margin: 0; border: none; box-shadow: none; }
+    }
+  </style>
+  <link rel="stylesheet" href="../shared_assets/slideshow.css">
+</head>
+<body>
+  <nav class="nav" aria-label="Slide navigation">
+    <a href="#s1">01</a><a href="#s2">02</a><a href="#s3">03</a><a href="#s4">04</a><a href="#s5">05</a><a href="#s6">06</a><a href="#s7">07</a><a href="#s8">08</a><a href="#s9">09</a><a href="#s10">10</a><a href="#s11">11</a><a href="#s12">12</a>
+    <a href="#s13">13</a><a href="#s14">14</a><a href="#s15">15</a><a href="#s16">16</a><a href="#s17">17</a><a href="#s18">18</a><a href="#s19">19</a><a href="#s20">20</a><a href="#s21">21</a><a href="#s22">22</a><a href="#s23">23</a><a href="#s24">24</a>
+    <a href="#s25">25</a><a href="#s26">26</a><a href="#s27">27</a><a href="#s28">28</a><a href="#s29">29</a><a href="#s30">30</a><a href="#s31">31</a><a href="#s32">32</a><a href="#s33">33</a><a href="#s34">34</a><a href="#s35">35</a><a href="#s36">36</a><a href="#s37">37</a>
+    <span>FreeRTOS Module 01 - RTOS Perspective and Project Structure</span>
+    <button class="slideshow-toggle" type="button" data-slideshow-start>Slideshow</button>
+  </nav>
+
+  <div class="slideshow-controls" aria-label="Slideshow controls">
+    <button class="slide-control" type="button" data-slide-prev>Prev</button>
+    <span class="slide-counter" data-slide-counter>01 / 37</span>
+    <button class="slide-control" type="button" data-slide-next>Next</button>
+    <button class="slide-control" type="button" data-slide-fullscreen>Full</button>
+    <button class="slide-control" type="button" data-slide-fill aria-pressed="false">Fill</button>
+    <button class="slide-control" type="button" data-slide-exit>Exit</button>
+  </div>
+  <div class="slideshow-hint">Keys: Left/Right or PageUp/PageDown to move, Home/End to jump, S to toggle slideshow, F for fullscreen, Z for fit/fill, Esc to exit.</div>
+
+  <main class="deck">
+    <section class="slide cover" id="s1">
+      <div class="slide-header"><div class="context">Module 01 - FreeRTOS Foundations</div><div class="framing">From program structure to execution structure</div></div>
+      <div class="content">
+        <div>
+          <h1>RTOS Perspective and FreeRTOS Project Structure</h1>
+          <p class="subtitle">This module builds the vocabulary and project-reading habits needed before writing FreeRTOS tasks. The starting point is not an API list, but the execution structure of embedded firmware.</p>
+          <div class="meta">Course: FreeRTOS Lecture<br>Embedded Systems Laboratory, Pusan National University<br>Instructor: Prof. Yunju Baek</div>
+        </div>
+        <div class="cover-card">
+          <h3>Learning path</h3>
+          <ul>
+            <li>Program flow, timing constraints, and super-loop limits</li>
+            <li>RTOS vocabulary: task, scheduler, kernel object, context switch</li>
+            <li>FreeRTOS project layers: application, kernel, port, config</li>
+            <li>Tutorial 01 as a source/config reading exercise</li>
+          </ul>
+        </div>
+      </div>
+      <div class="takeaway">First target: read FreeRTOS as an execution model embedded inside firmware.</div><div class="page">1 / 37</div>
+    </section>
+
+    <section class="slide" id="s2">
+      <div class="slide-header"><div class="context">Module 01 - Learning Route</div><div class="framing">Concepts introduced before they are used</div></div>
+      <div class="content">
+        <h2>Learning Route</h2>
+        <p class="subtitle">The module moves from familiar C program flow to RTOS execution structure. Icons mark the type of idea being introduced: timing, hardware event, kernel mechanism, memory, source, and configuration.</p>
+        <div class="icon-row">
+          <div class="icon-card"><img class="icon" src="../shared_assets/icons/timing_deadline.png" alt=""><strong>Timing</strong><p>Latency, jitter, deadline, and worst-case behavior.</p></div>
+          <div class="icon-card"><img class="icon" src="../shared_assets/icons/interrupt_service.png" alt=""><strong>Events</strong><p>External hardware events and interrupt pressure.</p></div>
+          <div class="icon-card"><img class="icon" src="../shared_assets/icons/rtos_kernel.png" alt=""><strong>Kernel</strong><p>Task, scheduler, kernel object, and context switch.</p></div>
+          <div class="icon-card"><img class="icon" src="../shared_assets/icons/configuration_switches.png" alt=""><strong>Config</strong><p>Compile-time choices that change runtime behavior.</p></div>
+        </div>
+        <div class="question" style="margin-top:22px;">By the end of this module, the project tree should read as a map: where application logic lives, where kernel code lives, and where hardware-specific code enters.</div>
+      </div>
+      <div class="takeaway">The flow is concept first, source reading second, API details later.</div><div class="page">2 / 37</div>
+    </section>
+
+    <section class="slide" id="s3">
+      <div class="slide-header"><div class="context">Module 01 - Background Model</div><div class="framing">From CS program flow to firmware execution</div></div>
+      <div class="content">
+        <h2>C Program Flow Under Hardware Constraints</h2>
+        <p class="subtitle">A third-year CS student already knows functions, loops, stacks, interrupts, and operating-system scheduling at a high level. Embedded firmware combines those ideas with direct hardware events and tight resource limits.</p>
+        <div class="grid-2">
+          <div class="panel tint-blue"><h3>Familiar CS ideas</h3><ul><li>A C program follows explicit control flow</li><li>Function calls consume stack space</li><li>Interrupts can break the current instruction stream</li><li>A scheduler chooses which execution stream runs</li></ul></div>
+          <div class="panel tint-amber"><h3>Embedded differences</h3><ul><li>The program may be the whole software stack on the device</li><li>Memory and CPU time shape design decisions</li><li>Peripherals generate events outside the normal call order</li><li>Missing a timing requirement can be a functional failure</li></ul></div>
+        </div>
+      </div>
+      <div class="takeaway">FreeRTOS connects OS scheduling ideas to firmware that directly touches hardware.</div><div class="page">3 / 37</div>
+    </section>
+
+    <section class="slide" id="s4">
+      <div class="slide-header"><div class="context">Module 01 - Firmware Model</div><div class="framing">One image, many responsibilities</div></div>
+      <div class="content">
+        <h2>Firmware as a Whole Program</h2>
+        <p class="subtitle">In many embedded systems, firmware is not one process among many. It is the software image that initializes hardware, reacts to events, runs application logic, and owns failure handling.</p>
+        <div class="infographic">
+          <div class="flow">
+            <div class="flowbox"><strong>Boot</strong>Reset vector, startup code, C runtime setup</div><div class="arrow">&rarr;</div>
+            <div class="flowbox"><strong>Initialize</strong>Clock, GPIO, UART, timers, memory</div><div class="arrow">&rarr;</div>
+            <div class="flowbox"><strong>Run</strong>Loop or scheduler-driven execution</div>
+          </div>
+        </div>
+        <div class="icon-row" style="margin-top:18px;">
+          <div class="icon-card"><img class="icon" src="../shared_assets/icons/running_cpu_core.png" alt=""><strong>CPU time</strong><p>The same processor must handle all active work.</p></div>
+          <div class="icon-card"><img class="icon" src="../shared_assets/icons/task_stack.png" alt=""><strong>Memory</strong><p>Stack, heap, and static data are limited.</p></div>
+          <div class="icon-card"><img class="icon" src="../shared_assets/icons/uart_peripheral.png" alt=""><strong>Peripherals</strong><p>Hardware events arrive asynchronously.</p></div>
+          <div class="icon-card"><img class="icon" src="../shared_assets/icons/config_assertion.png" alt=""><strong>Failure</strong><p>Late or missing work can break behavior.</p></div>
+        </div>
+      </div>
+      <div class="takeaway">Firmware correctness includes both code logic and timing behavior.</div><div class="page">4 / 37</div>
+    </section>
+
+    <section class="slide" id="s5">
+      <div class="slide-header"><div class="context">Module 01 - Timing Vocabulary</div><div class="framing">Words needed before discussing RTOS design</div></div>
+      <div class="content">
+        <h2>Latency, Jitter, Deadline</h2>
+        <p class="subtitle">These terms are used throughout RTOS design. They are not performance buzzwords; they describe what the firmware must guarantee or at least bound.</p>
+        <table class="mini-table">
+          <thead><tr><th>Term</th><th>Meaning</th><th>Firmware example</th></tr></thead>
+          <tbody>
+            <tr><td>Latency</td><td>Time from an event becoming ready to the code that handles it actually running</td><td>Delay from UART packet arrival to parser execution</td></tr>
+            <tr><td>Jitter</td><td>Variation in timing from one period or response to the next</td><td>Sensor sampling sometimes at 10 ms, sometimes at 18 ms</td></tr>
+            <tr><td>Deadline</td><td>Latest useful time by which work must complete</td><td>Control update required before the next actuator cycle</td></tr>
+            <tr><td>Worst case</td><td>The longest plausible execution or waiting time, not the average</td><td>Flash write or packet burst causing rare long delay</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="takeaway">RTOS design begins with timing vocabulary, not with API syntax.</div><div class="page">5 / 37</div>
+    </section>
+
+    <section class="slide" id="s6">
+      <div class="slide-header"><div class="context">Module 01 - Workload Types</div><div class="framing">Different jobs, different timing needs</div></div>
+      <div class="content">
+        <h2>Timing Requirements in Embedded Firmware</h2>
+        <p class="subtitle">Firmware rarely has only one kind of work. A simple loop often grows into periodic sensing, event handling, communication, logging, and safety checks with different timing expectations.</p>
+        <div class="icon-row">
+          <div class="icon-card"><img class="icon" src="../shared_assets/icons/software_timer.png" alt=""><strong>Periodic</strong><p>Sensor sampling, control loops, heartbeat signals.</p></div>
+          <div class="icon-card"><img class="icon" src="../shared_assets/icons/event_group_flags.png" alt=""><strong>Event-driven</strong><p>Packet arrival, button press, DMA completion.</p></div>
+          <div class="icon-card"><img class="icon" src="../shared_assets/icons/trace_diagnostics.png" alt=""><strong>Background</strong><p>Logging, statistics, cleanup, diagnostics.</p></div>
+          <div class="icon-card"><img class="icon" src="../shared_assets/icons/watchdog_timer.png" alt=""><strong>Critical</strong><p>Watchdog feed, actuator update, safety check.</p></div>
+        </div>
+        <div class="callout" style="margin-top:22px;">The design problem is not only how many functions exist, but whether their timing requirements can safely share one execution path.</div>
+      </div>
+      <div class="takeaway">Timing requirements turn ordinary C control flow into a scheduling problem.</div><div class="page">6 / 37</div>
+    </section>
+
+    <section class="slide" id="s7">
+      <div class="slide-header"><div class="context">Module 01 - Super Loop</div><div class="framing">Sequential control flow as a starting point</div></div>
+      <div class="content">
+        <h2>Super Loop Execution Semantics</h2>
+        <p class="subtitle">A super loop is a single repeating control structure. It is easy to understand because only one path is explicitly running, but every function waits for the previous function to finish.</p>
+        <div class="grid-13">
+          <pre><code>while (1) {
+    read_sensor();
+    update_control();
+    handle_uart();
+    refresh_display();
+    write_log_if_needed();
+}</code></pre>
+          <div class="panel tint-blue"><h3>Execution rule</h3><ul><li>One function runs at a time</li><li>Later functions inherit earlier delays</li><li>Event flags wait until checked</li><li>Priority is hidden in function order</li></ul></div>
+        </div>
+      </div>
+      <div class="takeaway">A super loop is readable because scheduling is hidden inside function order.</div><div class="page">7 / 37</div>
+    </section>
+
+    <section class="slide" id="s8">
+      <div class="slide-header"><div class="context">Module 01 - Latency Chain</div><div class="framing">How sequential delay propagates</div></div>
+      <div class="content">
+        <h2>Latency Accumulation in a Super Loop</h2>
+        <p class="subtitle">When one job runs long, every job behind it waits. This makes worst-case behavior more important than average behavior.</p>
+        <div class="infographic">
+          <div class="lane"><div class="lane-label">Sensor</div><div class="lane-body">Usually 1 ms, sometimes 6 ms</div></div>
+          <div class="lane"><div class="lane-label">UART burst</div><div class="lane-body">Parsing can take 12 ms under packet burst</div></div>
+          <div class="lane"><div class="lane-label">Display</div><div class="lane-body">DMA wait or refresh can add 8 ms</div></div>
+          <div class="lane"><div class="lane-label">Control</div><div class="lane-body">Expected every 5 ms, but inherits all previous delay</div></div>
+        </div>
+      </div>
+      <div class="takeaway">The loop can look simple while hiding an unbounded waiting chain.</div><div class="page">8 / 37</div>
+    </section>
+
+    <section class="slide" id="s9">
+      <div class="slide-header"><div class="context">Module 01 - Event Burst</div><div class="framing">Periodic work meets external events</div></div>
+      <div class="content">
+        <h2>Event Burst and Periodic Work</h2>
+        <p class="subtitle">Periodic work wants a stable interval. Event-driven work arrives without warning. A super loop makes both wait in the same line.</p>
+        <div class="grid-2">
+          <div class="panel tint-teal"><h3>Burst scenario</h3><ul><li>Sensor sampling expected every 10 ms</li><li>UART packet: usually one, sometimes twenty</li><li>Display refresh expected every 33 ms</li><li>Log flush can run long because of flash write</li></ul></div>
+          <div class="panel tint-amber"><h3>Visible symptoms</h3><ul><li>Increasing sampling jitter</li><li>Occasionally slow button response</li><li>UART overflow or packet drop</li><li>Different timing on each rerun</li></ul></div>
+        </div>
+        <div class="question" style="margin-top:22px;">If function order is the only priority rule, what happens when external events arrive faster than the loop can process them?</div>
+      </div>
+      <div class="takeaway">Moving code around is not the same as managing timing conflicts.</div><div class="page">9 / 37</div>
+    </section>
+
+    <section class="slide" id="s10">
+      <div class="slide-header"><div class="context">Module 01 - Interrupt Boundary</div><div class="framing">What an ISR is allowed to do</div></div>
+      <div class="content">
+        <h2>Interrupt Service Routine</h2>
+        <p class="subtitle">An interrupt service routine, or ISR, runs in response to a hardware interrupt. It can react quickly, but it should usually stay short because it interrupts normal program execution.</p>
+        <div class="icon-row">
+          <div class="icon-card"><img class="icon" src="../shared_assets/icons/isr_to_task_handoff.png" alt=""><strong>Entry</strong><p>Hardware event forces entry outside normal call order.</p></div>
+          <div class="icon-card"><img class="icon" src="../shared_assets/icons/tick_interrupt.png" alt=""><strong>Short work</strong><p>Record the event and leave heavy processing elsewhere.</p></div>
+          <div class="icon-card"><img class="icon" src="../shared_assets/icons/mutex_lock.png" alt=""><strong>Shared data</strong><p>Shared buffers need careful protection.</p></div>
+          <div class="icon-card"><img class="icon" src="../shared_assets/icons/trace_diagnostics.png" alt=""><strong>Debug cost</strong><p>Long ISR paths reduce reproducibility.</p></div>
+        </div>
+        <div class="warning" style="margin-top:22px;">An ISR is an entry point from hardware, not a replacement for a scheduler.</div>
+      </div>
+      <div class="takeaway">ISR design is the first place where hardware timing and software structure collide.</div><div class="page">10 / 37</div>
+    </section>
+
+    <section class="slide" id="s11">
+      <div class="slide-header"><div class="context">Module 01 - RTOS Definition</div><div class="framing">A small kernel for scheduling and coordination</div></div>
+      <div class="content">
+        <h2>What an RTOS Adds</h2>
+        <p class="subtitle">An RTOS is a small operating-system kernel designed for embedded timing and coordination. In FreeRTOS, the kernel is linked into the firmware and provides mechanisms for tasks to wait, wake, communicate, and share the CPU.</p>
+        <div class="image-layout">
+          <figure class="infographic-card"><img src="../shared_assets/infographics/super_loop_to_task_boundaries.png" alt="Super loop pressure transformed into FreeRTOS task boundaries"></figure>
+          <div class="panel tint-green"><h3>Read the visual</h3><ul><li>Left: one loop accumulates latency as work grows</li><li>Middle: event bursts expose deadline risk</li><li>Right: task boundaries make scheduling choices explicit</li><li>Kernel objects carry communication and waiting behavior</li></ul></div>
+        </div>
+        <div class="callout" style="margin-top:22px;">Real-time means timing behavior matters. It does not simply mean maximum CPU speed.</div>
+      </div>
+      <div class="takeaway">RTOS design is about making waiting and scheduling explicit.</div><div class="page">11 / 37</div>
+    </section>
+
+    <section class="slide" id="s12">
+      <div class="slide-header"><div class="context">Module 01 - Mechanism And Policy</div><div class="framing">The kernel does not design the product for you</div></div>
+      <div class="content">
+        <h2>Kernel Mechanism and Application Policy</h2>
+        <p class="subtitle">FreeRTOS provides mechanisms. The application still owns policy decisions: what counts as important, where waiting is acceptable, and how failures should be handled.</p>
+        <div class="infographic">
+          <div class="flow">
+            <div class="flowbox"><strong>Kernel mechanism</strong>schedule, block, wake, communicate</div><div class="arrow">&rarr;</div>
+            <div class="flowbox"><strong>Application policy</strong>task boundary, priority, timeout, retry</div><div class="arrow">&rarr;</div>
+            <div class="flowbox"><strong>Firmware behavior</strong>timing, throughput, failure response</div>
+          </div>
+        </div>
+        <div class="warning" style="margin-top:22px;">A poor task design can make an RTOS-based firmware harder to reason about than the original loop.</div>
+      </div>
+      <div class="takeaway">FreeRTOS gives mechanisms; the firmware design still supplies policy.</div><div class="page">12 / 37</div>
+    </section>
+
+    <section class="slide" id="s13">
+      <div class="slide-header"><div class="context">Module 01 - Task</div><div class="framing">First core RTOS term</div></div>
+      <div class="content">
+        <h2>Task</h2>
+        <p class="subtitle">A FreeRTOS task is a schedulable execution unit. It has an entry function, its own stack, runtime state, and kernel metadata that lets the scheduler manage it.</p>
+        <div class="grid-3">
+          <div class="panel tint-blue"><h3>Application view</h3><p>A task is where one stream of firmware work is written as a C function.</p></div>
+          <div class="panel tint-teal"><h3>Kernel view</h3><p>A task is an object with state, priority, stack pointer, and list links.</p></div>
+          <div class="panel tint-green"><h3>Design view</h3><p>A task boundary expresses how the firmware separates responsibilities.</p></div>
+        </div>
+      </div>
+      <div class="takeaway">A task is not just a function; it is a unit the kernel can schedule.</div><div class="page">13 / 37</div>
+    </section>
+
+    <section class="slide" id="s14">
+      <div class="slide-header"><div class="context">Module 01 - Scheduler</div><div class="framing">The CPU selection mechanism</div></div>
+      <div class="content">
+        <h2>Scheduler</h2>
+        <p class="subtitle">The scheduler is kernel logic that chooses which Ready task runs on the CPU. In a super loop, function order chooses execution. In an RTOS, scheduler rules choose execution.</p>
+        <div class="infographic">
+          <div class="flow">
+            <div class="flowbox"><strong>Ready list</strong>Tasks that can run now</div><div class="arrow">&rarr;</div>
+            <div class="flowbox"><strong>Scheduler</strong>Apply priority and state rules</div><div class="arrow">&rarr;</div>
+            <div class="flowbox"><strong>Running task</strong>Currently owns the CPU</div>
+          </div>
+        </div>
+        <div class="callout" style="margin-top:22px;">The scheduler does not decide product intent. It applies rules to task states and priorities.</div>
+      </div>
+      <div class="takeaway">The scheduler replaces function order as the execution-selection rule.</div><div class="page">14 / 37</div>
+    </section>
+
+    <section class="slide" id="s15">
+      <div class="slide-header"><div class="context">Module 01 - Kernel Object</div><div class="framing">A coordination point between tasks</div></div>
+      <div class="content">
+        <h2>Kernel Object</h2>
+        <p class="subtitle">A kernel object is a kernel-managed object used by tasks to communicate, wait, synchronize, or protect a shared resource. The details come later, but the category matters now.</p>
+        <div class="icon-row">
+          <div class="icon-card"><img class="icon" src="../shared_assets/icons/queue_message_passing.png" alt=""><strong>Queue</strong><p>Move data or messages from one task to another.</p></div>
+          <div class="icon-card"><img class="icon" src="../shared_assets/icons/semaphore_signal.png" alt=""><strong>Semaphore</strong><p>Signal event availability or count resources.</p></div>
+          <div class="icon-card"><img class="icon" src="../shared_assets/icons/mutex_lock.png" alt=""><strong>Mutex</strong><p>Protect a shared resource from concurrent access.</p></div>
+          <div class="icon-card"><img class="icon" src="../shared_assets/icons/software_timer.png" alt=""><strong>Timer</strong><p>Run time-based callbacks through the kernel.</p></div>
+        </div>
+      </div>
+      <div class="takeaway">Kernel objects make waiting and coordination visible to the scheduler.</div><div class="page">15 / 37</div>
+    </section>
+
+    <section class="slide" id="s16">
+      <div class="slide-header"><div class="context">Module 01 - Context Switch</div><div class="framing">How one CPU can run many tasks over time</div></div>
+      <div class="content">
+        <h2>Context Switch</h2>
+        <p class="subtitle">A context switch saves the CPU state of one task and restores the CPU state of another. It is the mechanism that lets multiple tasks share one processor without running at the same instant.</p>
+        <div class="infographic">
+          <div class="flow">
+            <div class="flowbox"><strong>Task A</strong>CPU registers and stack pointer saved</div><div class="arrow">&rarr;</div>
+            <div class="flowbox"><strong>Kernel/port</strong>Switch decision and CPU-specific save/restore</div><div class="arrow">&rarr;</div>
+            <div class="flowbox"><strong>Task B</strong>Registers and stack pointer restored</div>
+          </div>
+        </div>
+        <div class="warning" style="margin-top:22px;">Context switching has a cost. Good task design uses it when the structure and timing benefit are worth the overhead.</div>
+      </div>
+      <div class="takeaway">Context switching is the physical act behind task scheduling.</div><div class="page">16 / 37</div>
+    </section>
+
+    <section class="slide" id="s17">
+      <div class="slide-header"><div class="context">Module 01 - CS Analogy</div><div class="framing">Similar to threads, but not the same environment</div></div>
+      <div class="content">
+        <h2>Task, Thread, and Process Analogy</h2>
+        <p class="subtitle">A FreeRTOS task is easiest to approach as a lightweight thread-like execution unit. The analogy helps, but embedded firmware usually lacks the protection and services expected from a desktop OS process.</p>
+        <div class="grid-3">
+          <div class="panel tint-blue"><h3>Like a thread</h3><ul><li>Own call stack</li><li>Independent execution point</li><li>Scheduled by kernel logic</li><li>Can block and later resume</li></ul></div>
+          <div class="panel tint-amber"><h3>Unlike a process</h3><ul><li>No separate virtual address space by default</li><li>Shared memory is easy to misuse</li><li>Hardware access may be direct</li><li>Resource limits are much tighter</li></ul></div>
+          <div class="panel tint-green"><h3>Design implication</h3><ul><li>Task boundaries must be explicit</li><li>Shared data requires protection</li><li>Stack size becomes a design parameter</li><li>Debugging uses source and runtime state</li></ul></div>
+        </div>
+      </div>
+      <div class="takeaway">A FreeRTOS task is thread-like, but it lives inside a small firmware image.</div><div class="page">17 / 37</div>
+    </section>
+
+    <section class="slide" id="s18">
+      <div class="slide-header"><div class="context">Module 01 - Linked Kernel</div><div class="framing">FreeRTOS inside the firmware image</div></div>
+      <div class="content">
+        <h2>FreeRTOS Kernel Linked into Firmware</h2>
+        <p class="subtitle">FreeRTOS does not run as a separate operating-system process outside the firmware. Application source, common kernel source, the portable layer, and the configuration file are built together.</p>
+        <div class="image-layout">
+          <figure class="infographic-card"><img src="assets/module_01_linked_kernel.png" alt="FreeRTOS linked kernel architecture infographic"></figure>
+          <div class="panel tint-blue"><h3>How to read the diagram</h3><ul><li>Application tasks call FreeRTOS APIs</li><li>Common kernel code implements scheduling and kernel objects</li><li>The portable layer connects CPU-specific context switching</li><li><code>FreeRTOSConfig.h</code> selects build-time behavior</li></ul></div>
+        </div>
+      </div>
+      <div class="takeaway">FreeRTOS is a kernel linked into firmware, not a separate OS beside it.</div><div class="page">18 / 37</div>
+    </section>
+
+    <section class="slide" id="s19">
+      <div class="slide-header"><div class="context">Module 01 - Project Layers</div><div class="framing">Four file groups to separate first</div></div>
+      <div class="content">
+        <h2>Application, Kernel, Port, Config</h2>
+        <p class="subtitle">A FreeRTOS project becomes readable when the source tree is divided by responsibility. Tutorial 01 is the first place to practice that division.</p>
+        <div class="layer-stack">
+          <div class="layer"><strong>Application</strong><div><code>main.c</code>, tutorial code, board initialization, and task creation points. Product logic usually lives here.</div></div>
+          <div class="layer"><strong>Common kernel code</strong><div><code>tasks.c</code>, <code>queue.c</code>, <code>timers.c</code>, and related files. CPU-independent FreeRTOS logic.</div></div>
+          <div class="layer"><strong>Portable layer</strong><div>Architecture/compiler-specific code for context switches, tick interrupts, and critical sections.</div></div>
+          <div class="layer"><strong>Configuration</strong><div><code>FreeRTOSConfig.h</code> and build switches that decide which kernel features enter the firmware image.</div></div>
+        </div>
+      </div>
+      <div class="takeaway">Project structure should be read by responsibility before reading line by line.</div><div class="page">19 / 37</div>
+    </section>
+
+    <section class="slide" id="s20">
+      <div class="slide-header"><div class="context">Module 01 - Application Layer</div><div class="framing">The part that expresses product behavior</div></div>
+      <div class="content">
+        <h2>Application Code in a FreeRTOS Project</h2>
+        <p class="subtitle">Application code is where product-specific behavior is written. It uses FreeRTOS APIs, but it should not modify kernel internals to express product policy.</p>
+        <div class="grid-2">
+          <div class="panel tint-blue"><h3>Application code includes</h3><ul><li>Hardware setup calls and board initialization sequence</li><li>Task functions that implement firmware work</li><li>Creation of tasks and kernel objects</li><li>Product-specific state machines and policies</li></ul></div>
+          <div class="panel tint-amber"><h3>Boundary to keep</h3><ul><li>Application code can call kernel APIs</li><li>Application code chooses task boundaries and priorities</li><li>Application code should not patch common kernel source for product logic</li><li>Application bugs often appear as task design or shared-state mistakes</li></ul></div>
+        </div>
+      </div>
+      <div class="takeaway">Application code expresses product policy through kernel mechanisms.</div><div class="page">20 / 37</div>
+    </section>
+
+    <section class="slide" id="s21">
+      <div class="slide-header"><div class="context">Module 01 - Common Kernel</div><div class="framing">CPU-independent FreeRTOS logic</div></div>
+      <div class="content">
+        <h2>Reading Common Kernel Code</h2>
+        <p class="subtitle">Common kernel code is shared across ports. It manages task lists, queues, timers, and other kernel objects without knowing the exact board.</p>
+        <div class="grid-2">
+          <div class="panel tint-teal"><h3>Representative files</h3><ul><li><code>tasks.c</code>: task state, scheduler lists, delay handling</li><li><code>queue.c</code>: queues, semaphores, and mutex foundation</li><li><code>timers.c</code>: software timer service</li><li><code>list.c</code>: linked-list structures used by the kernel</li></ul></div>
+          <div class="panel tint-blue"><h3>How to read it</h3><ul><li>Usually not modified for a normal application</li><li>Controlled by many config macros</li><li>Calls port-layer hooks when CPU-specific action is needed</li><li>Appears in call stacks during failure analysis</li></ul></div>
+        </div>
+      </div>
+      <div class="takeaway">Common kernel code is the portable body of FreeRTOS behavior.</div><div class="page">21 / 37</div>
+    </section>
+
+    <section class="slide" id="s22">
+      <div class="slide-header"><div class="context">Module 01 - Port And BSP</div><div class="framing">CPU adaptation and board support are different</div></div>
+      <div class="content">
+        <h2>Port Layer and BSP Boundary</h2>
+        <p class="subtitle">The portable layer adapts FreeRTOS to a CPU architecture and compiler. BSP and driver code initialize the actual board and peripherals.</p>
+        <div class="icon-row">
+          <div class="icon-card"><img class="icon" src="../shared_assets/icons/portable_layer_bridge.png" alt=""><strong>Port layer</strong><p>CPU/compiler adaptation for context switching.</p></div>
+          <div class="icon-card"><img class="icon" src="../shared_assets/icons/tick_interrupt.png" alt=""><strong>Tick setup</strong><p>Timer interrupt path into the scheduler.</p></div>
+          <div class="icon-card"><img class="icon" src="../shared_assets/icons/board_support_package.png" alt=""><strong>Board support</strong><p>Clock, GPIO, UART, and peripheral setup.</p></div>
+          <div class="icon-card"><img class="icon" src="../shared_assets/icons/gpio_pin.png" alt=""><strong>Drivers</strong><p>Peripheral access and event handoff.</p></div>
+        </div>
+        <div class="callout" style="margin-top:22px;">Port is about CPU adaptation. BSP is about board support. Application code should not confuse the two.</div>
+      </div>
+      <div class="takeaway">Port layer is kernel-to-CPU glue; BSP is board-level setup.</div><div class="page">22 / 37</div>
+    </section>
+
+    <section class="slide" id="s23">
+      <div class="slide-header"><div class="context">Module 01 - Configuration</div><div class="framing">Build-time choices that shape runtime behavior</div></div>
+      <div class="content">
+        <h2><code>FreeRTOSConfig.h</code> as a Behavior Map</h2>
+        <p class="subtitle"><code>FreeRTOSConfig.h</code> is not a casual settings file. It controls which features compile into the firmware and how kernel mechanisms behave at runtime.</p>
+        <div class="image-layout">
+          <figure class="infographic-card"><img src="../shared_assets/infographics/config_to_runtime_behavior.png" alt="Configuration choices flowing into build selection and runtime behavior"></figure>
+          <div class="panel tint-blue"><h3>Read the visual</h3><ul><li>Configuration switches are build inputs</li><li>Build selection changes compiled kernel features</li><li>Scheduling, memory, and diagnostics behavior follow from that build</li><li>Runtime symptoms often trace back to configuration</li></ul></div>
+        </div>
+      </div>
+      <div class="takeaway">Configuration connects build-time choices to runtime behavior.</div><div class="page">23 / 37</div>
+    </section>
+
+    <section class="slide" id="s24">
+      <div class="slide-header"><div class="context">Module 01 - Build Path</div><div class="framing">Which source and config enter this firmware</div></div>
+      <div class="content">
+        <h2>What the Build Command Selects</h2>
+        <p class="subtitle">A build command is not just a way to compile. In the tutorial project, it selects the tutorial source, configuration file, common kernel source, and port layer that become one firmware image.</p>
+        <div class="infographic">
+          <div class="flow">
+            <div class="flowbox"><strong>Tutorial selector</strong><code>-DTUTORIAL=1</code></div><div class="arrow">&rarr;</div>
+            <div class="flowbox"><strong>Source/config pair</strong>tutorial source plus <code>FreeRTOSConfig.h</code></div><div class="arrow">&rarr;</div>
+            <div class="flowbox"><strong>Firmware image</strong>application plus kernel plus port</div>
+          </div>
+        </div>
+        <div class="question" style="margin-top:22px;">Can you point to the application, kernel, port, and config files used in this build?</div>
+      </div>
+      <div class="takeaway">The build path tells which system you are actually running.</div><div class="page">24 / 37</div>
+    </section>
+
+    <section class="slide" id="s25">
+      <div class="slide-header"><div class="context">Module 01 - Tutorial 01</div><div class="framing">A first source-reading exercise</div></div>
+      <div class="content">
+        <h2>Tutorial 01 Learning Objectives</h2>
+        <p class="subtitle">Tutorial 01 adds FreeRTOS to a bare-metal project and verifies build and execution. In this lecture, it is also the first exercise in reading project boundaries.</p>
+        <div class="grid-3">
+          <div class="panel tint-blue"><h3>Add FreeRTOS</h3><ul><li>Add common kernel source</li><li>Select the port layer</li><li>Configure include paths</li><li>Provide <code>FreeRTOSConfig.h</code></li></ul></div>
+          <div class="panel tint-teal"><h3>Build</h3><ul><li>Select tutorial source</li><li>Compile application and kernel source together</li><li>Confirm which config file is used</li><li>Read build errors as boundary clues</li></ul></div>
+          <div class="panel tint-green"><h3>Execute</h3><ul><li>Verify the project runs</li><li>Separate setup from task execution</li><li>Use logs as evidence, not as the whole explanation</li><li>Prepare questions for task creation</li></ul></div>
+        </div>
+      </div>
+      <div class="takeaway">Tutorial 01 is a map of how FreeRTOS enters a firmware project.</div><div class="page">25 / 37</div>
+    </section>
+
+    <section class="slide" id="s26">
+      <div class="slide-header"><div class="context">Module 01 - Source Annotation</div><div class="framing">A/K/P/C notation for reading the tree</div></div>
+      <div class="content">
+        <h2>Tutorial 01 Source Tree Annotation</h2>
+        <p class="subtitle">Before following every line of code, mark each file by role. This reduces the chance of treating application, kernel, port, and config files as one undifferentiated code base.</p>
+        <div class="grid-2">
+          <div class="panel tint-blue"><h3>Marking rule</h3><ul><li><strong>A</strong> - Application: tutorial logic, main, board init</li><li><strong>K</strong> - Kernel: tasks, queue, timer, list</li><li><strong>P</strong> - Port: architecture/compiler-specific code</li><li><strong>C</strong> - Config: <code>FreeRTOSConfig.h</code> and build switches</li></ul></div>
+          <div class="panel tint-amber"><h3>Common confusion</h3><ul><li>A header in the include path may still belong to the kernel</li><li>A port file is not a board driver</li><li>The config file is supplied by the application but controls kernel compilation</li><li>Example projects may organize files differently from real firmware</li></ul></div>
+        </div>
+      </div>
+      <div class="takeaway">A/K/P/C notation is the first debugging and reading tool.</div><div class="page">26 / 37</div>
+    </section>
+
+    <section class="slide" id="s27">
+      <div class="slide-header"><div class="context">Module 01 - Scheduler Boundary</div><div class="framing">Where the execution model changes</div></div>
+      <div class="content">
+        <h2>From <code>main()</code> to the Scheduler</h2>
+        <p class="subtitle">Before the scheduler starts, the program follows ordinary C control flow. After <code>vTaskStartScheduler()</code>, the scheduler chooses Ready tasks according to FreeRTOS rules.</p>
+        <div class="infographic">
+          <div class="flow">
+            <div class="flowbox"><strong>Hardware init</strong>Clock, GPIO, UART, timer setup</div><div class="arrow">&rarr;</div>
+            <div class="flowbox"><strong>Create tasks and objects</strong>Task handles, queues, semaphores, timers</div><div class="arrow">&rarr;</div>
+            <div class="flowbox"><strong>Start scheduler</strong>Execution proceeds through scheduled tasks</div>
+          </div>
+        </div>
+      </div>
+      <div class="takeaway">The scheduler start is a boundary between setup code and task-based execution.</div><div class="page">27 / 37</div>
+    </section>
+
+    <section class="slide" id="s28">
+      <div class="slide-header"><div class="context">Module 01 - Scheduling Config</div><div class="framing">Terms that will return in the scheduler module</div></div>
+      <div class="content">
+        <h2>Preemption, Time Slicing, and Tick</h2>
+        <p class="subtitle">These terms appear in <code>FreeRTOSConfig.h</code>. They will be analyzed in detail when task states and priorities are covered.</p>
+        <div class="image-layout">
+          <figure class="infographic-card"><img src="../shared_assets/book_figures/figure_4_4_tick_interrupt_execution_sequence.png" alt="Kernel Book figure showing tick interrupt in an execution sequence"></figure>
+          <div class="panel tint-teal"><h3>Reading rule</h3><ul><li>Preemption changes who can take CPU next</li><li>Time slicing affects equal-priority sharing</li><li>Tick is the periodic timing source</li><li>Priority determines scheduler preference among Ready tasks</li></ul></div>
+        </div>
+      </div>
+      <div class="takeaway">Scheduling configuration defines the rules of CPU selection.</div><div class="page">28 / 37</div>
+    </section>
+
+    <section class="slide" id="s29">
+      <div class="slide-header"><div class="context">Module 01 - Memory And Diagnostics</div><div class="framing">Why failures can become visible or invisible</div></div>
+      <div class="content">
+        <h2>Memory and Diagnostics Configuration</h2>
+        <p class="subtitle">Kernel objects need memory. Debugging needs visibility. FreeRTOS configuration controls both, so memory and diagnostics should be read before assuming an API is wrong.</p>
+        <div class="grid-2">
+          <div class="panel tint-green"><h3>Memory configuration</h3><ul><li><code>configSUPPORT_DYNAMIC_ALLOCATION</code>: heap-backed object creation</li><li><code>configSUPPORT_STATIC_ALLOCATION</code>: application-provided buffers</li><li><code>configTOTAL_HEAP_SIZE</code>: FreeRTOS heap size</li><li>Heap policy affects failure behavior</li></ul></div>
+          <div class="panel tint-violet"><h3>Diagnostics configuration</h3><ul><li><code>configASSERT()</code>: stop on invalid assumptions</li><li>Stack overflow checking: detect stack misuse</li><li>Trace facility: expose kernel state to tools</li><li><code>INCLUDE_*</code>: include or exclude API functions</li></ul></div>
+        </div>
+      </div>
+      <div class="takeaway">Memory config affects whether objects can exist; diagnostics config affects whether failures are visible.</div><div class="page">29 / 37</div>
+    </section>
+
+    <section class="slide" id="s30">
+      <div class="slide-header"><div class="context">Module 01 - Misconceptions</div><div class="framing">Incorrect mental models to remove early</div></div>
+      <div class="content">
+        <h2>Common FreeRTOS Misconceptions</h2>
+        <p class="subtitle">Several mistakes come from importing a desktop OS mental model directly into embedded FreeRTOS. Clear these up before creating tasks.</p>
+        <div class="grid-2">
+          <div class="panel tint-amber"><h3>Incorrect model</h3><ul><li>FreeRTOS runs outside the application as a separate OS process</li><li>Tasks are protected like desktop processes</li><li>The kernel handles all board drivers automatically</li><li>Changing config is like changing a runtime menu</li></ul></div>
+          <div class="panel tint-green"><h3>Better model</h3><ul><li>FreeRTOS is linked into the firmware image</li><li>Tasks share the same address space unless hardware protection is added</li><li>Drivers and BSP remain application or platform responsibility</li><li>Configuration changes the build artifact itself</li></ul></div>
+        </div>
+      </div>
+      <div class="takeaway">The correct mental model prevents many source-reading mistakes.</div><div class="page">30 / 37</div>
+    </section>
+
+    <section class="slide" id="s31">
+      <div class="slide-header"><div class="context">Module 01 - Debugging Boundary</div><div class="framing">Use symptoms to choose the first layer</div></div>
+      <div class="content">
+        <h2>Layer-Based Debugging</h2>
+        <p class="subtitle">Debugging becomes faster when the first question is about layer responsibility. The same symptom should not send you randomly through every file.</p>
+        <table class="mini-table">
+          <thead><tr><th>Symptom</th><th>First layer to check</th><th>Likely inspection points</th></tr></thead>
+          <tbody>
+            <tr><td>Build cannot find FreeRTOS headers</td><td>Build/config</td><td>Include path, tutorial selection, config location</td></tr>
+            <tr><td>Scheduler starts but nothing useful runs</td><td>Application/config</td><td>Task creation return, heap, assert, task priority</td></tr>
+            <tr><td>Tick does not run</td><td>Port/hardware</td><td>Timer interrupt, port setup, interrupt priority</td></tr>
+            <tr><td>API does not compile</td><td>Config/common kernel</td><td><code>INCLUDE_*</code>, feature enable, selected config file</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="takeaway">Layer-based debugging turns the project map into a practical tool.</div><div class="page">31 / 37</div>
+    </section>
+
+    <section class="slide" id="s32">
+      <div class="slide-header"><div class="context">Module 01 - Mini Case</div><div class="framing">A delayed UART log in a simple firmware</div></div>
+      <div class="content">
+        <h2>Mini Case: UART Log Latency</h2>
+        <p class="subtitle">A super-loop firmware sometimes prints UART logs 300 ms late. Average execution time looks acceptable, but field logs repeatedly show delay.</p>
+        <div class="grid-3">
+          <div class="panel tint-blue"><h3>Observation</h3><ul><li>Sensor read targets 10 ms</li><li>UART log delayed under event burst</li><li>Flash write sometimes runs long</li><li>Temporary processing grows inside ISR</li></ul></div>
+          <div class="panel tint-amber"><h3>Candidate causes</h3><ul><li>Loop worst-case time grows</li><li>Logging and control path priorities are not separated</li><li>Long ISR delays other interrupts</li><li>Buffer ownership is unclear</li></ul></div>
+          <div class="panel tint-green"><h3>RTOS design questions</h3><ul><li>Can logging become a separate task?</li><li>Can events move through a queue?</li><li>What priority does control deserve?</li><li>On overflow, drop or retry?</li></ul></div>
+        </div>
+      </div>
+      <div class="takeaway">The answer is not just use RTOS; the answer begins with task boundaries and policy.</div><div class="page">32 / 37</div>
+    </section>
+
+    <section class="slide" id="s33">
+      <div class="slide-header"><div class="context">Module 01 - Decision Checklist</div><div class="framing">Criteria before moving to an RTOS</div></div>
+      <div class="content">
+        <h2>RTOS Transition Checklist</h2>
+        <p class="subtitle">An RTOS does not remove complexity; it places complexity elsewhere. Before transition, write down the real problem and how responsibilities will be split.</p>
+        <div class="grid-2">
+          <div class="panel tint-teal"><h3>Signals for considering transition</h3><ul><li>Different latency requirements share one loop</li><li>Flags and state variables keep growing</li><li>ISR code gets longer over time</li><li>Event bursts create hard-to-reproduce delays</li><li>Blocking waits are difficult to express safely</li></ul></div>
+          <div class="panel tint-blue"><h3>Write before transition</h3><ul><li>Task candidates and each task's responsibility</li><li>Basis for assigning priority</li><li>Task-to-task data/event transfer method</li><li>Timeout and failure policy</li><li>Memory allocation style</li></ul></div>
+        </div>
+      </div>
+      <div class="takeaway">RTOS transition is responsibility separation, not only API adoption.</div><div class="page">33 / 37</div>
+    </section>
+
+    <section class="slide" id="s34">
+      <div class="slide-header"><div class="context">Module 01 - Project Boundary Check</div><div class="framing">A small verification task before Module 02</div></div>
+      <div class="content">
+        <h2>Project Boundary Check</h2>
+        <p class="subtitle">Use Tutorial 01 to verify that the FreeRTOS project can be read by responsibility boundary before moving into task creation.</p>
+        <div class="grid-2">
+          <div class="panel tint-green"><h3>Source tree checkpoint</h3><ol><li>Open Tutorial 01</li><li>Mark one file each as Application, Kernel, Port, and Config</li><li>Find <code>FreeRTOSConfig.h</code></li><li>Pick two macros and write their behavior impact</li></ol></div>
+          <div class="panel tint-amber"><h3>Follow-up practice</h3><ul><li>Produce an annotated project tree screenshot or Markdown outline</li><li>Group 6-8 config macros by scheduling, memory, diagnostics, and API inclusion</li><li>Bring one confusing file classification to Module 02</li><li>Use the same A/K/P/C notation for later tutorials</li></ul></div>
+        </div>
+      </div>
+      <div class="takeaway">The checkpoint turns the source tree into a map for the next module.</div><div class="page">34 / 37</div>
+    </section>
+
+    <section class="slide" id="s35">
+      <div class="slide-header"><div class="context">Module 01 - Review</div><div class="framing">Concepts to carry forward</div></div>
+      <div class="content">
+        <h2>Module 01 Review</h2>
+        <p class="subtitle">Module 01 is complete when the project structure and vocabulary can be used to explain where task creation will fit.</p>
+        <div class="grid-2">
+          <div class="panel tint-blue"><h3>Concept checks</h3><ul><li>Why does an RTOS not automatically make firmware faster?</li><li>What is the difference between latency, jitter, and deadline?</li><li>How is a FreeRTOS task similar to and different from a thread?</li><li>Why is FreeRTOS not a separate OS process?</li></ul></div>
+          <div class="panel tint-green"><h3>Source checks</h3><ul><li>Where is the boundary between common kernel code and portable layer?</li><li>Why is <code>FreeRTOSConfig.h</code> not a runtime option?</li><li>Which source/config combination does the build command select?</li><li>What is the first question when narrowing a debugging layer?</li></ul></div>
+        </div>
+      </div>
+      <div class="takeaway">The goal is not API memorization; the goal is a usable execution model.</div><div class="page">35 / 37</div>
+    </section>
+
+    <section class="slide" id="s36">
+      <div class="slide-header"><div class="context">Module 01 - Bridge</div><div class="framing">Preparing for task creation</div></div>
+      <div class="content">
+        <h2>Bridge to Module 02</h2>
+        <p class="subtitle">The next module enters task creation. The application/kernel/config boundaries from Module 01 become the reading rule for <code>xTaskCreate()</code>, stack, TCB, heap, and static buffers.</p>
+        <div class="infographic">
+          <div class="flow">
+            <div class="flowbox"><strong>Task function</strong>Application behavior as C code</div><div class="arrow">&rarr;</div>
+            <div class="flowbox"><strong>Task object</strong>TCB, stack, priority, state</div><div class="arrow">&rarr;</div>
+            <div class="flowbox"><strong>Scheduler</strong>Chooses which Ready task runs</div>
+          </div>
+        </div>
+        <div class="question" style="margin-top:22px;">Next question: when a task is created, what exactly is allocated and what state does the kernel remember?</div>
+      </div>
+      <div class="takeaway">Next module: task creation as construction of a schedulable execution unit.</div><div class="page">36 / 37</div>
+    </section>
+
+    <section class="slide" id="s37">
+      <div class="slide-header"><div class="context">Module 01 - References</div><div class="framing">Sources and further reading</div></div>
+      <div class="content">
+        <h2>References and Further Reading</h2>
+        <p class="subtitle">Use the references to trace the lecture content back to source material. Use further reading to deepen the RTOS mental model before task creation.</p>
+        <div class="grid-2">
+          <div class="panel tint-blue">
+            <h3>References Used</h3>
+            <ul>
+              <li>Richard Barry, <em>Mastering the FreeRTOS Real Time Kernel</em>, Chapter 1, "Introduction".</li>
+              <li>Richard Barry, <em>Mastering the FreeRTOS Real Time Kernel</em>, Chapter 2, "Heap Memory Management".</li>
+              <li>FreeRTOS Kernel Book, GitHub edition, Chapter 4, "Task Management", introductory task and scheduler concepts.</li>
+              <li>FreeRTOS official documentation, "FreeRTOS Documentation Overview": <code>freertos.org/Documentation/00-Overview</code>.</li>
+              <li>Lab Project FreeRTOS Tutorials, Tutorial 01, project structure and build selection: <code>github.com/FreeRTOS/Lab-Project-FreeRTOS-Tutorials</code>.</li>
+            </ul>
+          </div>
+          <div class="panel tint-green">
+            <h3>Further Reading</h3>
+            <ul>
+              <li>FreeRTOS official website: kernel developer documentation and API reference, <code>freertos.org/Documentation</code>.</li>
+              <li>FreeRTOS Kernel Book, Chapter 4, "Task Management", Sections 4.2-4.4 for task functions and task creation.</li>
+              <li>FreeRTOS Kernel Book, Chapter 8, "Resource Management", for later shared-resource issues.</li>
+              <li>FreeRTOS Kernel source: <code>github.com/FreeRTOS/FreeRTOS-Kernel</code>, especially <code>tasks.c</code>, <code>queue.c</code>, <code>timers.c</code>, and <code>portable/</code>.</li>
+              <li>Project file to keep open while reading examples: <code>FreeRTOSConfig.h</code>.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="takeaway">Every module ends by separating cited lecture sources from optional reading paths.</div><div class="page">37 / 37</div>
+    </section>
+  </main>
+  <script src="../shared_assets/slideshow.js"></script>
+</body>
+</html>

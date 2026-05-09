@@ -1,0 +1,798 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FreeRTOS Module 13 - Task Notifications and Direct-to-Task Communication</title>
+  <style>
+:root {
+  --indigo:#2e315b; --blue:#2563a6; --teal:#147d83; --green:#2f7d4e;
+  --amber:#9a6a16; --violet:#6d4aa2; --graphite:#2b2f36; --muted:#637083;
+  --line:#d8dee9; --paper:#fff; --bg:#f4f6f9; --code:#eef2f7;
+  --soft-blue:#eef5fc; --soft-teal:#edf8f8; --soft-amber:#fff7e8;
+}
+* { box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { margin:0; background:var(--bg); color:var(--graphite); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans",Arial,sans-serif; line-height:1.44; }
+.nav { position:sticky; top:0; z-index:10; width:1280px; margin:0 auto; padding:10px 16px; background:rgba(244,246,249,.96); border-bottom:1px solid var(--line); color:#4f5969; font-size:15px; }
+.nav a { margin-right:8px; color:var(--blue); text-decoration:none; font-weight:800; }
+.deck { width:1280px; margin:0 auto; padding:28px 0 64px; }
+.slide { position:relative; width:1280px; min-height:720px; margin:0 0 32px; overflow:hidden; background:var(--paper); border:1px solid var(--line); box-shadow:0 18px 40px rgba(38,49,91,.12); page-break-after:always; }
+.slide-header { display:flex; justify-content:space-between; align-items:center; height:54px; padding:0 34px; background:var(--indigo); color:#fff; font-size:18px; }
+.context { font-weight:800; }
+.framing { color:#e1e6ff; font-size:16px; }
+.content { padding:30px 42px 58px; }
+h1,h2,h3,p { margin-top:0; }
+h1 { margin-bottom:14px; color:#fff; font-size:45px; line-height:1.08; letter-spacing:0; }
+h2 { margin-bottom:10px; color:#20243d; font-size:34px; line-height:1.12; letter-spacing:0; }
+h3 { margin-bottom:10px; color:var(--indigo); font-size:22px; letter-spacing:0; }
+.subtitle { max-width:1060px; margin-bottom:22px; color:#4a5260; font-size:22px; line-height:1.36; }
+.small { color:var(--muted); font-size:17px; }
+ul,ol { margin:0; padding-left:22px; }
+li { font-size:18.2px; }
+li + li { margin-top:6px; }
+code { padding:1px 5px; border-radius:4px; background:var(--code); color:#1d3152; font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace; font-size:.93em; }
+pre { margin:0; padding:15px 17px; border-radius:8px; background:#1f2633; color:#edf2ff; font-size:14.2px; line-height:1.42; overflow:hidden; white-space:pre-wrap; }
+pre code { padding:0; background:transparent; color:inherit; font-size:inherit; }
+.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+.grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
+.grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+.grid-13 { display:grid; grid-template-columns:1.12fr .88fr; gap:22px; align-items:stretch; }
+.grid-31 { display:grid; grid-template-columns:.82fr 1.18fr; gap:22px; align-items:stretch; }
+.panel { border:1px solid var(--line); border-radius:8px; padding:17px 19px; background:#fff; }
+.tint-blue { border-top:5px solid var(--blue); } .tint-teal { border-top:5px solid var(--teal); } .tint-green { border-top:5px solid var(--green); } .tint-amber { border-top:5px solid var(--amber); } .tint-violet { border-top:5px solid var(--violet); }
+.question { padding:16px 18px; border-left:6px solid var(--blue); background:var(--soft-blue); font-size:20px; }
+.callout { padding:16px 18px; border-left:6px solid var(--teal); background:var(--soft-teal); font-size:19px; }
+.warning { padding:16px 18px; border-left:6px solid var(--amber); background:var(--soft-amber); font-size:19px; }
+.takeaway { position:absolute; left:42px; right:120px; bottom:22px; color:#515a6b; font-size:17px; font-weight:700; }
+.page { position:absolute; right:36px; bottom:22px; color:#7a8290; font-size:16px; font-weight:800; }
+.cover { color:#fff; background:linear-gradient(120deg,rgba(46,49,91,.98),rgba(20,125,131,.9)),#2e315b; }
+.cover .slide-header { background:transparent; border-bottom:1px solid rgba(255,255,255,.24); }
+.cover .content { display:grid; grid-template-columns:1.08fr .92fr; gap:46px; align-items:center; padding-top:54px; }
+.cover .subtitle { color:#eef5ff; }
+.cover-card { min-height:390px; padding:28px; border:1px solid rgba(255,255,255,.35); border-radius:10px; background:rgba(255,255,255,.08); }
+.cover-card h3 { color:#fff; font-size:25px; }
+.cover-card li { color:#edf2ff; font-size:20px; }
+.icon-card { min-height:150px; display:grid; grid-template-columns:86px 1fr; gap:14px; align-items:center; border:1px solid var(--line); border-radius:8px; padding:15px; background:#fff; }
+.icon-card img { width:76px; height:76px; object-fit:contain; }
+.icon-card strong { display:block; color:var(--indigo); font-size:19px; margin-bottom:5px; }
+.icon-card span { display:block; color:#4e5969; font-size:16.5px; }
+.figure-frame { display:flex; align-items:center; justify-content:center; min-height:410px; border:1px solid var(--line); border-radius:10px; background:#fbfcfe; padding:18px; }
+.figure-frame img { max-width:100%; max-height:420px; object-fit:contain; }
+.figure-frame.tall img { max-height:505px; }
+.asset-note { margin-top:8px; color:var(--muted); font-size:15px; }
+.mini-table { width:100%; border-collapse:collapse; font-size:17px; }
+.mini-table th,.mini-table td { padding:9px 10px; border:1px solid var(--line); vertical-align:top; }
+.mini-table th { background:#eef2f7; color:var(--indigo); text-align:left; }
+.flow { display:grid; grid-template-columns:1fr 48px 1fr 48px 1fr; gap:10px; align-items:center; }
+.flowbox { min-height:112px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fff; text-align:center; font-size:17px; }
+.flowbox strong { display:block; margin-bottom:8px; color:var(--indigo); font-size:19px; }
+.arrow { text-align:center; color:var(--blue); font-size:32px; font-weight:900; }
+.timeline { display:grid; gap:12px; margin-top:10px; }
+.lane { display:grid; grid-template-columns:150px 1fr; gap:12px; align-items:center; }
+.lane-label { padding:10px 12px; border-radius:8px; background:#edf2ff; color:var(--indigo); font-weight:900; text-align:center; }
+.lane-body { display:flex; gap:6px; align-items:center; min-height:46px; padding:8px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+.bar { height:30px; border-radius:6px; color:#fff; font-size:14px; font-weight:800; display:flex; align-items:center; justify-content:center; }
+.run { background:var(--blue); } .block { background:var(--amber); } .idle { background:var(--green); } .tick { width:6px; height:36px; background:var(--teal); border-radius:4px; }
+.w80 { width:80px; } .w120 { width:120px; } .w180 { width:180px; } .w240 { width:240px; }
+.refs li { margin-top:9px; font-size:18px; }
+@media print { body{background:#fff;} .nav{display:none;} .deck{padding:0;} .slide{margin:0; box-shadow:none; border:0;} }
+
+.api-list { display:flex; flex-wrap:wrap; gap:10px; margin-top:10px; }
+.api-list code { display:inline-block; padding:8px 10px; font-size:17px; }
+.decision-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+.decision { min-height:132px; padding:13px; border:1px solid var(--line); border-top:5px solid var(--blue); border-radius:8px; background:#fff; font-size:16px; }
+.decision:nth-child(2) { border-top-color:var(--teal); }
+.decision:nth-child(3) { border-top-color:var(--amber); }
+.decision:nth-child(4) { border-top-color:var(--green); }
+.decision strong { display:block; color:var(--indigo); font-size:18px; margin-bottom:6px; }
+.lane-stack { display:grid; gap:12px; margin-top:12px; }
+.lane { display:grid; grid-template-columns:160px 1fr; gap:12px; align-items:center; }
+.lane-label { padding:10px 12px; border-radius:8px; background:#edf2ff; color:var(--indigo); font-weight:900; text-align:center; }
+.lane-body { min-height:48px; display:flex; gap:7px; align-items:center; padding:8px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+.seg { min-width:80px; height:30px; padding:0 10px; display:flex; align-items:center; justify-content:center; border-radius:6px; color:#fff; font-weight:900; font-size:14px; }
+.blue { background:var(--blue); } .teal { background:var(--teal); } .amber { background:var(--amber); } .green { background:var(--green); } .violet { background:var(--violet); }
+.w120 { width:120px; } .w180 { width:180px; } .w240 { width:240px; }
+.mini-arch { display:grid; grid-template-columns:1fr 48px 1fr 48px 1fr; gap:10px; align-items:center; }
+.arch-node { min-height:96px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fff; text-align:center; font-size:17px; }
+.arch-node strong { display:block; color:var(--indigo); font-size:19px; margin-bottom:7px; }
+.arrow { text-align:center; color:var(--blue); font-size:32px; font-weight:900; }
+.source-card { min-height:120px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fbfcfe; font-size:16.5px; }
+.source-card strong { display:block; color:var(--indigo); font-size:18px; margin-bottom:6px; }
+
+.flow4 { display:grid; grid-template-columns:1fr 40px 1fr 40px 1fr 40px 1fr; gap:8px; align-items:stretch; margin-top:16px; }
+.flow-node { min-height:116px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fff; font-size:16px; }
+.flow-node strong { display:block; color:var(--indigo); font-size:18px; margin-bottom:8px; }
+.flow-arrow { display:flex; align-items:center; justify-content:center; color:var(--blue); font-size:28px; font-weight:900; }
+.notify-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:14px; }
+.notify-card { min-height:164px; padding:14px; border:1px solid var(--line); border-top:5px solid var(--blue); border-radius:8px; background:#fff; font-size:16px; }
+.notify-card:nth-child(2){border-top-color:var(--teal);} .notify-card:nth-child(3){border-top-color:var(--amber);} .notify-card:nth-child(4){border-top-color:var(--green);}
+.notify-card strong { display:block; color:var(--indigo); font-size:18px; margin-bottom:8px; }
+.compare-rows { display:grid; gap:10px; margin-top:14px; }
+.compare-row { display:grid; grid-template-columns:170px 1fr 1fr; gap:10px; align-items:stretch; }
+.compare-head { padding:10px; border-radius:8px; background:var(--indigo); color:#fff; font-weight:900; text-align:center; }
+.compare-cell { min-height:52px; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:#fff; font-size:16px; }
+.icon-strip { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:16px; }
+.icon-mini { min-height:112px; padding:12px; border:1px solid var(--line); border-radius:8px; background:#fff; text-align:center; font-size:15px; }
+.icon-mini img { width:58px; height:58px; object-fit:contain; display:block; margin:0 auto 8px; }
+.value-box { min-height:118px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fff; font-size:16px; }
+.value-box strong { display:block; color:var(--indigo); font-size:18px; margin-bottom:8px; }
+</style>
+  <link rel="stylesheet" href="../shared_assets/slideshow.css">
+</head>
+<body>
+  <nav class="nav"><a href="#s1">01</a><a href="#s2">02</a><a href="#s3">03</a><a href="#s4">04</a><a href="#s5">05</a><a href="#s6">06</a><a href="#s7">07</a><a href="#s8">08</a><a href="#s9">09</a><a href="#s10">10</a><a href="#s11">11</a><a href="#s12">12</a><a href="#s13">13</a><a href="#s14">14</a><a href="#s15">15</a><a href="#s16">16</a><a href="#s17">17</a><a href="#s18">18</a><a href="#s19">19</a><a href="#s20">20</a><a href="#s21">21</a><a href="#s22">22</a><a href="#s23">23</a><a href="#s24">24</a><a href="#s25">25</a><a href="#s26">26</a><a href="#s27">27</a><a href="#s28">28</a><a href="#s29">29</a><a href="#s30">30</a><a href="#s31">31</a><a href="#s32">32</a><a href="#s33">33</a><a href="#s34">34</a><a href="#s35">35</a><a href="#s36">36</a><a href="#s37">37</a><a href="#s38">38</a><a href="#s39">39</a><a href="#s40">40</a><a href="#s41">41</a><button class="slideshow-toggle" type="button" data-slideshow-start>Slideshow</button></nav>
+  
+  <div class="slideshow-controls" aria-label="Slideshow controls">
+    <button class="slide-control" type="button" data-slide-prev>Prev</button>
+    <span class="slide-counter" data-slide-counter>01 / 41</span>
+    <button class="slide-control" type="button" data-slide-next>Next</button>
+    <button class="slide-control" type="button" data-slide-fullscreen>Full</button>
+    <button class="slide-control" type="button" data-slide-fill aria-pressed="false">Fill</button>
+    <button class="slide-control" type="button" data-slide-exit>Exit</button>
+  </div>
+  <div class="slideshow-hint">Keys: Left/Right or PageUp/PageDown to move, Home/End to jump, S to toggle slideshow, F for fullscreen, Z for fit/fill, Esc to exit.</div>
+
+  <main class="deck">
+    
+    <section class="slide cover" id="s1">
+      <div class="slide-header"><div class="context">FreeRTOS Module 13</div><div class="framing">Task Notifications and Direct-to-Task Communication</div></div>
+      <div class="content">
+        <div class="cover-grid">
+          <div>
+            <h1>Task Notifications and Direct-to-Task Communication</h1>
+            <p>Task notifications are lightweight per-task communication slots. They are powerful when exactly one task is the receiver and the notification value semantics are chosen deliberately.</p>
+            <p class="cover-meta">Course: FreeRTOS Lecture<br>Embedded Systems Laboratory, Pusan National University<br>Instructor: Prof. Yunju Baek</p>
+          </div>
+          <div class="cover-card">
+            <h2>Learning path</h2>
+            <ul>
+              <li>Direct notification path versus separate kernel objects</li>
+              <li>Binary, counting, bitfield, and value-overwrite patterns</li>
+              <li>eNotifyAction and notification value semantics</li>
+              <li>FromISR handoff and receiver task identity</li>
+              <li>Object-choice review against queues, semaphores, and event groups</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="takeaway">First target: notifications are fast because the state belongs to the receiving task.</div>
+      <div class="page">01</div>
+    </section>
+    <section class="slide" id="s2">
+      <div class="slide-header"><div class="context">FreeRTOS Module 13</div><div class="framing">Course Position</div></div>
+      <div class="content">
+        <h2>Course Position</h2>
+        
+      <p class="subtitle">Module 12 combined multiple condition bits in an event group. Module 13 narrows the receiver model to one task and removes the separate communication object.</p>
+      <div class="grid-3">
+        <div class="icon-card"><img src="../shared_assets/icons/direct_task_notification.png" alt=""><div><strong>Direct receiver</strong><span>The sender targets one known task handle.</span></div></div>
+        <div class="icon-card"><img src="../shared_assets/icons/task_notification_generated.png" alt=""><div><strong>Notification value</strong><span>The value can behave as a signal, count, bitfield, or overwritten value.</span></div></div>
+        <div class="icon-card"><img src="../shared_assets/icons/queue_transfer_generated.png" alt=""><div><strong>Object comparison</strong><span>Notifications are not buffered payload queues.</span></div></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The module is about direct-to-task communication and its limits.</div>
+      <div class="page">02</div>
+    </section>
+    <section class="slide" id="s3">
+      <div class="slide-header"><div class="context">FreeRTOS Module 13</div><div class="framing">Problem Frame</div></div>
+      <div class="content">
+        <h2>Problem Frame</h2>
+        
+      <div class="notify-grid">
+        <div class="notify-card"><strong>Single receiver</strong>A driver, ISR, or worker needs to wake one known task and no other task needs the event.</div>
+        <div class="notify-card"><strong>Small state</strong>The event can be represented as a count, bitfield, or latest value inside the task notification value.</div>
+        <div class="notify-card"><strong>Low overhead</strong>A separate queue, semaphore, or event group object may be unnecessary.</div>
+        <div class="notify-card"><strong>Coupling risk</strong>The sender must know the receiver task handle and the agreed notification semantics.</div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Notifications are elegant when the receiver model is truly one-to-one.</div>
+      <div class="page">03</div>
+    </section>
+    <section class="slide" id="s4">
+      <div class="slide-header"><div class="context">FreeRTOS Module 13</div><div class="framing">Terminology Before APIs</div></div>
+      <div class="content">
+        <h2>Terminology Before APIs</h2>
+        
+      <table class="mini-table"><thead><tr><th>Term</th><th>Meaning in this module</th></tr></thead><tbody><tr><td><strong>Task notification</strong></td><td>Per-task notification state used for direct event delivery.</td></tr><tr><td><strong>Notification value</strong></td><td>A task-owned integer value updated by notification APIs.</td></tr><tr><td><strong>Notification state</strong></td><td>Internal state that records whether a task has a pending notification.</td></tr><tr><td><strong>ulTaskNotifyTake()</strong></td><td>API commonly used for binary or counting notification take patterns.</td></tr><tr><td><strong>xTaskNotifyWait()</strong></td><td>API used to wait for notification bits or values.</td></tr><tr><td><strong>eNotifyAction</strong></td><td>Mode that controls how a notify operation updates the notification value.</td></tr><tr><td><strong>Indexed notification</strong></td><td>A notification array entry used when configTASK_NOTIFICATION_ARRAY_ENTRIES is greater than one.</td></tr><tr><td><strong>Single receiver</strong></td><td>The design condition that exactly one task owns the notification destination.</td></tr></tbody></table>
+    
+      </div>
+      <div class="takeaway">The notification value must have one documented meaning.</div>
+      <div class="page">04</div>
+    </section>
+    <section class="slide" id="s5">
+      <div class="slide-header"><div class="context">FreeRTOS Module 13</div><div class="framing">Primary Visual Anchor</div></div>
+      <div class="content">
+        <h2>Primary Visual Anchor</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_10_2_a_task_notification_used_to_send_an_event_directly_from_one_task_to_anot.png" alt="Kernel Book Figure 10.2 direct notification"></div>
+        <div class="panel tint-blue"><h3>Reading Order</h3><ul><li>Sender uses a task handle, not a separate queue object.</li><li>Notification state is stored with the receiving task.</li><li>The receiving task waits or takes from its own notification state.</li><li>This is a direct path only when one receiver is correct.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Figure 10.2.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The direct path is the reason notifications are lightweight.</div>
+      <div class="page">05</div>
+    </section>
+    <section class="slide" id="s6">
+      <div class="slide-header"><div class="context">FreeRTOS Module 13</div><div class="framing">Communication Object Path for Comparison</div></div>
+      <div class="content">
+        <h2>Communication Object Path for Comparison</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_10_1_a_communication_object_being_used_to_send_an_event_from_one_task_to_anot.png" alt="Kernel Book Figure 10.1 communication object path"></div>
+        <div class="panel tint-teal"><h3>Reading Focus</h3><ul><li>Queues, semaphores, and event groups are separate kernel objects.</li><li>The object can mediate between senders and receivers.</li><li>The object can carry buffering or shared condition semantics.</li><li>Notifications remove this object only when the design allows it.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Figure 10.1.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A notification is not a universal replacement for communication objects.</div>
+      <div class="page">06</div>
+    </section>
+    <section class="slide" id="s7">
+      <div class="slide-header"><div class="context">FreeRTOS Module 13</div><div class="framing">Direct Path Mental Model</div></div>
+      <div class="content">
+        <h2>Direct Path Mental Model</h2>
+        
+      <div class="flow4">
+        <div class="flow-node"><strong>Sender</strong>Task or ISR has a handle for the receiving task.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Notify action</strong>The API updates pending state and notification value.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Receiver task</strong>The task unblocks and reads or consumes its notification state.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Application work</strong>The task maps the value to event, count, bits, or latest value.</div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A task notification is a small state machine embedded in the receiving task.</div>
+      <div class="page">07</div>
+    </section>
+    <section class="slide" id="s8">
+      <div class="slide-header"><div class="context">FreeRTOS Module 13</div><div class="framing">API Surface Map</div></div>
+      <div class="content">
+        <h2>API Surface Map</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Send</h3><div class="api-list"><code>xTaskNotify()</code><code>xTaskNotifyGive()</code><code>xTaskNotifyFromISR()</code><code>vTaskNotifyGiveFromISR()</code></div></div>
+        <div class="panel tint-teal"><h3>Wait or take</h3><div class="api-list"><code>ulTaskNotifyTake()</code><code>xTaskNotifyWait()</code><code>xTaskNotifyStateClear()</code><code>ulTaskNotifyValueClear()</code></div></div>
+        <div class="panel tint-amber"><h3>Indexed variants</h3><div class="api-list"><code>xTaskNotifyIndexed()</code><code>ulTaskNotifyTakeIndexed()</code><code>xTaskNotifyWaitIndexed()</code><code>configTASK_NOTIFICATION_ARRAY_ENTRIES</code></div></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The API family is broad because the notification value has several possible meanings.</div>
+      <div class="page">08</div>
+    </section>
+    <section class="slide" id="s9">
+      <div class="slide-header"><div class="context">FreeRTOS Module 13</div><div class="framing">eNotifyAction Semantics</div></div>
+      <div class="content">
+        <h2>eNotifyAction Semantics</h2>
+        
+      <div class="notify-grid">
+        <div class="notify-card"><strong>eNoAction</strong>Set pending state without changing the value; useful when value is irrelevant.</div>
+        <div class="notify-card"><strong>eSetBits</strong>OR bits into the value; useful for bitfield-style conditions for one receiver.</div>
+        <div class="notify-card"><strong>eIncrement</strong>Increment the value; useful for counting events without a separate counting semaphore.</div>
+        <div class="notify-card"><strong>eSetValue</strong>Overwrite or set value with or without overwrite protection; useful only when loss policy is explicit.</div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The notify action is the semantics contract.</div>
+      <div class="page">09</div>
+    </section>
+    <section class="slide" id="s10">
+      <div class="slide-header"><div class="context">FreeRTOS Module 13</div><div class="framing">Binary Notification Pattern</div></div>
+      <div class="content">
+        <h2>Binary Notification Pattern</h2>
+        
+      <div class="grid-2">
+        <div class="panel tint-blue"><h3>Pattern</h3><ul><li>Sender calls xTaskNotifyGive or vTaskNotifyGiveFromISR.</li><li>Receiver waits with ulTaskNotifyTake.</li><li>The notification wakes one task.</li><li>No payload is carried.</li></ul></div>
+        <div class="panel tint-green"><h3>Good fit</h3><ul><li>One ISR wakes one worker task.</li><li>A driver completion signal has one owner.</li><li>A separate binary semaphore would add an object without adding meaning.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Binary notification is the one-receiver version of a simple event signal.</div>
+      <div class="page">10</div>
+    </section>
+    <section class="slide" id="s11">
+      <div class="slide-header"><div class="context">FreeRTOS Module 13</div><div class="framing">Counting Notification Pattern</div></div>
+      <div class="content">
+        <h2>Counting Notification Pattern</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_7_8_using_a_counting_semaphore_to_count_events.png" alt="Kernel Book Figure 7.8 counting semaphore"></div>
+        <div class="panel tint-amber"><h3>Notification Comparison</h3><ul><li>eIncrement can count repeated events for one receiver.</li><li>ulTaskNotifyTake can decrement or clear the count depending on API use.</li><li>Counting semaphore remains clearer when the count is a shared resource object.</li><li>Queue remains necessary when each event carries payload.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book Figure 7.8, used for comparison.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Counting notification is efficient only when the receiver is singular.</div>
+      <div class="page">11</div>
+    </section>
+    <section class="slide" id="s12">
+      <div class="slide-header"><div class="context">FreeRTOS Module 13</div><div class="framing">Bitfield Notification Pattern</div></div>
+      <div class="content">
+        <h2>Bitfield Notification Pattern</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_9_2_an_event_group_in_which_only_bits_1_4_and_7_are_set_and_all_the_other_ev.png" alt="Kernel Book Figure 9.2 event group bitset"></div>
+        <div class="panel tint-blue"><h3>Notification Comparison</h3><ul><li>eSetBits can create a one-task bitfield.</li><li>xTaskNotifyWait can clear selected bits on entry or exit.</li><li>Event groups remain clearer when multiple tasks observe shared conditions.</li><li>Document each bit and clear policy exactly as in Module 12.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book Figure 9.2, used for comparison.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A notification bitfield is a private event group for one task.</div>
+      <div class="page">12</div>
+    </section>
+    <section class="slide" id="s13">
+      <div class="slide-header"><div class="context">FreeRTOS Module 13</div><div class="framing">Value Overwrite Pattern</div></div>
+      <div class="content">
+        <h2>Value Overwrite Pattern</h2>
+        
+      <div class="compare-rows">
+        <div class="compare-row"><div class="compare-head">Action</div><div class="compare-head">Meaning</div><div class="compare-head">Risk</div></div>
+        <div class="compare-row"><div class="compare-cell">eSetValueWithOverwrite</div><div class="compare-cell">Store latest value even if an older notification is pending.</div><div class="compare-cell">Intermediate values can disappear.</div></div>
+        <div class="compare-row"><div class="compare-cell">eSetValueWithoutOverwrite</div><div class="compare-cell">Store value only if no notification is pending.</div><div class="compare-cell">Sender must handle pdFAIL.</div></div>
+        <div class="compare-row"><div class="compare-cell">Queue alternative</div><div class="compare-cell">Preserve a sequence of values or payload records.</div><div class="compare-cell">Uses a separate object and queue storage.</div></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Overwrite is a policy, not an accident.</div>
+      <div class="page">13</div>
+    </section>
+    <section class="slide" id="s14">
+      <div class="slide-header"><div class="context">FreeRTOS Module 13</div><div class="framing">Kernel Book Figure 10.4: Execution Sequence</div></div>
+      <div class="content">
+        <h2>Kernel Book Figure 10.4: Execution Sequence</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_10_4_the_sequence_of_execution_when_example_10_1_is_executed.png" alt="Kernel Book Figure 10.4 notification execution sequence"></div>
+        <div class="panel tint-teal"><h3>Reading Focus</h3><ul><li>Trace the sender and receiving task.</li><li>Mark when the receiver blocks.</li><li>Mark when notification state changes.</li><li>Explain why the receiver becomes Ready.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Figure 10.4.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Notifications still create task-state transitions.</div>
+      <div class="page">14</div>
+    </section>
+    <section class="slide" id="s15">
+      <div class="slide-header"><div class="context">FreeRTOS Module 13</div><div class="framing">Kernel Book Figure 10.3: Example Output</div></div>
+      <div class="content">
+        <h2>Kernel Book Figure 10.3: Example Output</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_10_3_the_output_produced_when_example_7_1_is_executed.png" alt="Kernel Book Figure 10.3 notification output"></div>
+        <div class="panel tint-blue"><h3>Reading Focus</h3><ul><li>Use output to confirm wake order.</li><li>Map each line to the notification sequence.</li><li>Ask whether a semaphore version would behave differently.</li><li>Separate behavior evidence from API preference.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Figure 10.3.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Output should confirm the direct notification mental model.</div>
+      <div class="page">15</div>
+    </section>
+    <section class="slide" id="s16">
+      <div class="slide-header"><div class="context">FreeRTOS Module 13</div><div class="framing">Kernel Book Figure 10.5: Counting Output</div></div>
+      <div class="content">
+        <h2>Kernel Book Figure 10.5: Counting Output</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_10_5_the_output_produced_when_example_10_2_is_executed.jpg" alt="Kernel Book Figure 10.5 notification output"></div>
+        <div class="panel tint-green"><h3>Reading Focus</h3><ul><li>Read the notification value as accumulated event evidence.</li><li>Compare with counting semaphore behavior.</li><li>Look for whether events are consumed one by one or cleared.</li><li>Connect output to ulTaskNotifyTake parameters.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Figure 10.5.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The receive API controls how count-like values are consumed.</div>
+      <div class="page">16</div>
+    </section>
+    <section class="slide" id="s17">
+      <div class="slide-header"><div class="context">FreeRTOS Module 13</div><div class="framing">Kernel Book Figure 10.6: Cloud Communication Paths</div></div>
+      <div class="content">
+        <h2>Kernel Book Figure 10.6: Cloud Communication Paths</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_10_6_the_communication_paths_from_the_application_tasks_to_the_cloud_server_a.png" alt="Kernel Book Figure 10.6 communication paths"></div>
+        <div class="panel tint-amber"><h3>Reading Focus</h3><ul><li>Use notifications for direct events, not arbitrary architecture compression.</li><li>Cloud or network paths often need queues, buffers, and explicit ownership.</li><li>Notifications can wake a network task after data arrives elsewhere.</li><li>Separate wake-up signal from payload path.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Figure 10.6.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A notification can wake a task while payload travels through a different object.</div>
+      <div class="page">17</div>
+    </section>
+    <section class="slide" id="s18">
+      <div class="slide-header"><div class="context">FreeRTOS Module 13</div><div class="framing">Caller Context Rules</div></div>
+      <div class="content">
+        <h2>Caller Context Rules</h2>
+        
+      <table class="mini-table">
+        <thead><tr><th>Operation</th><th>Task context</th><th>ISR context</th><th>Review question</th></tr></thead>
+        <tbody>
+          <tr><td>Notify receiver</td><td>xTaskNotify or xTaskNotifyGive</td><td>xTaskNotifyFromISR or vTaskNotifyGiveFromISR</td><td>Is xHigherPriorityTaskWoken handled?</td></tr>
+          <tr><td>Wait or take</td><td>Receiver task can block with timeout</td><td>ISR cannot wait</td><td>What state can the task enter?</td></tr>
+          <tr><td>Overwrite value</td><td>Allowed when loss policy is deliberate</td><td>Allowed through FromISR variant when documented</td><td>What happens to old value?</td></tr>
+          <tr><td>Indexed notification</td><td>Use selected notification slot</td><td>Use indexed FromISR variants when needed</td><td>Is slot ownership documented?</td></tr>
+        </tbody>
+      </table>
+    
+      </div>
+      <div class="takeaway">Direct notification still has caller-context rules.</div>
+      <div class="page">18</div>
+    </section>
+    <section class="slide" id="s19">
+      <div class="slide-header"><div class="context">FreeRTOS Module 13</div><div class="framing">Indexed Notifications</div></div>
+      <div class="content">
+        <h2>Indexed Notifications</h2>
+        
+      <div class="grid-3">
+        <div class="value-box"><strong>Why index?</strong>A task can have multiple notification slots when configTASK_NOTIFICATION_ARRAY_ENTRIES is greater than one.</div>
+        <div class="value-box"><strong>Use carefully</strong>Separate slots can represent independent event channels for the same receiving task.</div>
+        <div class="value-box"><strong>Review risk</strong>Slot meanings can become invisible unless documented like event group bit masks.</div>
+      </div>
+      <div class="callout" style="margin-top:20px;">Indexed notifications are useful, but they can quietly create hidden protocols inside one task.</div>
+    
+      </div>
+      <div class="takeaway">Each notification slot needs a written meaning.</div>
+      <div class="page">19</div>
+    </section>
+    <section class="slide" id="s20">
+      <div class="slide-header"><div class="context">FreeRTOS Module 13</div><div class="framing">Notification Versus Semaphore</div></div>
+      <div class="content">
+        <h2>Notification Versus Semaphore</h2>
+        
+      <div class="compare-rows">
+        <div class="compare-row"><div class="compare-head">Aspect</div><div class="compare-head">Task notification</div><div class="compare-head">Semaphore</div></div>
+        <div class="compare-row"><div class="compare-cell">Receiver model</div><div class="compare-cell">Exactly one receiving task.</div><div class="compare-cell">Separate object can be shared by design.</div></div>
+        <div class="compare-row"><div class="compare-cell">Storage</div><div class="compare-cell">State stored in TCB notification fields.</div><div class="compare-cell">Separate kernel object.</div></div>
+        <div class="compare-row"><div class="compare-cell">Best fit</div><div class="compare-cell">One worker signal or count.</div><div class="compare-cell">Object-level signal or count with clearer decoupling.</div></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A notification can replace a semaphore only when one receiver is truly correct.</div>
+      <div class="page">20</div>
+    </section>
+    <section class="slide" id="s21">
+      <div class="slide-header"><div class="context">FreeRTOS Module 13</div><div class="framing">Notification Versus Queue</div></div>
+      <div class="content">
+        <h2>Notification Versus Queue</h2>
+        
+      <div class="compare-rows">
+        <div class="compare-row"><div class="compare-head">Aspect</div><div class="compare-head">Task notification</div><div class="compare-head">Queue</div></div>
+        <div class="compare-row"><div class="compare-cell">Payload</div><div class="compare-cell">One integer value with selected update semantics.</div><div class="compare-cell">Sequence of copied items or pointers.</div></div>
+        <div class="compare-row"><div class="compare-cell">Ordering</div><div class="compare-cell">No general message history.</div><div class="compare-cell">FIFO behavior by queue design.</div></div>
+        <div class="compare-row"><div class="compare-cell">Failure risk</div><div class="compare-cell">Overwrite loss or hidden coupling.</div><div class="compare-cell">Full queue, depth, and payload ownership issues.</div></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Use a queue when each event record matters.</div>
+      <div class="page">21</div>
+    </section>
+    <section class="slide" id="s22">
+      <div class="slide-header"><div class="context">FreeRTOS Module 13</div><div class="framing">Notification Versus Event Group</div></div>
+      <div class="content">
+        <h2>Notification Versus Event Group</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/infographics/object_selection_map.png" alt="Object selection map"></div>
+        <div class="panel tint-blue"><h3>Decision Filter</h3><ul><li>Use notification bits when one task owns the condition set.</li><li>Use event groups when multiple tasks observe shared condition bits.</li><li>Use queues when payload or event order matters.</li><li>Use semaphores when a separate signal/count object is clearer.</li></ul><p class="asset-note">Shared generated infographic asset.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Notification is a receiver-specific optimization, not a shared condition object.</div>
+      <div class="page">22</div>
+    </section>
+    <section class="slide" id="s23">
+      <div class="slide-header"><div class="context">FreeRTOS Module 13</div><div class="framing">ISR Completion Mini Case</div></div>
+      <div class="content">
+        <h2>ISR Completion Mini Case</h2>
+        
+      <div class="flow4">
+        <div class="flow-node"><strong>DMA ISR</strong>Clears flags and identifies completion.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Notify worker</strong>vTaskNotifyGiveFromISR updates worker notification state.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Yield decision</strong>xHigherPriorityTaskWoken drives portYIELD_FROM_ISR.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Worker task</strong>Processes buffer whose ownership is defined elsewhere.</div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Notification wakes the worker; it does not magically define payload ownership.</div>
+      <div class="page">23</div>
+    </section>
+    <section class="slide" id="s24">
+      <div class="slide-header"><div class="context">FreeRTOS Module 13</div><div class="framing">Driver Event Bitfield Mini Case</div></div>
+      <div class="content">
+        <h2>Driver Event Bitfield Mini Case</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Bits</h3><ul><li>RX_READY.</li><li>TX_DONE.</li><li>ERROR.</li><li>TIMEOUT.</li></ul></div>
+        <div class="panel tint-teal"><h3>Notify action</h3><ul><li>Use eSetBits.</li><li>Receiver uses xTaskNotifyWait.</li><li>Clear selected bits on exit.</li></ul></div>
+        <div class="panel tint-amber"><h3>Review</h3><ul><li>Exactly one driver task receives.</li><li>Bit meanings documented.</li><li>Queue used separately if payload exists.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A bitfield notification is a private event group for one task.</div>
+      <div class="page">24</div>
+    </section>
+    <section class="slide" id="s25">
+      <div class="slide-header"><div class="context">FreeRTOS Module 13</div><div class="framing">Latest Measurement Mini Case</div></div>
+      <div class="content">
+        <h2>Latest Measurement Mini Case</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Good fit</h3><ul><li>Only latest value matters.</li><li>Intermediate samples can be dropped.</li><li>One processing task owns the value.</li></ul></div>
+        <div class="panel tint-teal"><h3>Notify action</h3><ul><li>Use eSetValueWithOverwrite.</li><li>Receiver reads current value.</li><li>Document loss policy.</li></ul></div>
+        <div class="panel tint-amber"><h3>Bad fit</h3><ul><li>Every sample matters.</li><li>Order matters.</li><li>Multiple consumers need the data.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Latest-value notification is safe only when lost intermediate values are acceptable.</div>
+      <div class="page">25</div>
+    </section>
+    <section class="slide" id="s26">
+      <div class="slide-header"><div class="context">FreeRTOS Module 13</div><div class="framing">Failure Modes Worth Naming Early</div></div>
+      <div class="content">
+        <h2>Failure Modes Worth Naming Early</h2>
+        
+      <div class="grid-3"><div class="panel tint-blue"><h3>Wrong receiver model</h3><ul><li>More than one task needs the event.</li><li>Notification has one direct receiver.</li><li>Use queue, event group, or another shared object.</li></ul></div><div class="panel tint-teal"><h3>Overwrite loss</h3><ul><li>New value replaces old pending value.</li><li>Intermediate events disappear.</li><li>Use counter or queue when every event matters.</li></ul></div><div class="panel tint-amber"><h3>Hidden coupling</h3><ul><li>Sender depends on receiver task handle.</li><li>Notification slot meaning is undocumented.</li><li>Fix with explicit architecture notes and handle ownership.</li></ul></div></div>
+    
+      </div>
+      <div class="takeaway">Notification bugs often come from using an optimization as architecture.</div>
+      <div class="page">26</div>
+    </section>
+    <section class="slide" id="s27">
+      <div class="slide-header"><div class="context">FreeRTOS Module 13</div><div class="framing">Diagnostic Evidence</div></div>
+      <div class="content">
+        <h2>Diagnostic Evidence</h2>
+        
+      <div class="icon-strip">
+        <div class="icon-mini"><img src="../shared_assets/icons/direct_task_notification.png" alt="">Receiver</div>
+        <div class="icon-mini"><img src="../shared_assets/icons/task_notification_generated.png" alt="">Value</div>
+        <div class="icon-mini"><img src="../shared_assets/icons/timing_deadline.png" alt="">Wake latency</div>
+        <div class="icon-mini"><img src="../shared_assets/icons/trace_diagnostics.png" alt="">Trace</div>
+      </div>
+      <div class="grid-3" style="margin-top:18px;">
+        <div class="panel tint-blue"><h3>State evidence</h3><ul><li>Notification value before wait.</li><li>Value returned from wait or take.</li><li>Pending state and clear behavior.</li></ul></div>
+        <div class="panel tint-teal"><h3>Timing evidence</h3><ul><li>Notify timestamp.</li><li>Receiver unblock timestamp.</li><li>ISR exit to worker start latency.</li></ul></div>
+        <div class="panel tint-amber"><h3>Design evidence</h3><ul><li>Receiver task handle ownership.</li><li>Notification slot meaning.</li><li>Overwrite or count policy.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Debug notification semantics, not only whether the task woke.</div>
+      <div class="page">27</div>
+    </section>
+    <section class="slide" id="s28">
+      <div class="slide-header"><div class="context">FreeRTOS Module 13</div><div class="framing">Trace View for Notifications</div></div>
+      <div class="content">
+        <h2>Trace View for Notifications</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_12_6_figure_12_6_freertos_trace_kernel_object_history_view_one_of_more_than_2.png" alt="Kernel object history trace view"></div>
+        <div class="panel tint-blue"><h3>Reading Focus</h3><ul><li>Trace direct task wake-up and receiver execution.</li><li>Compare notification latency with queue or semaphore path.</li><li>Look for lost overwrite or unexpected repeated wakeups.</li><li>Use trace before changing priorities.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Chapter 12 trace figure.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Trace should confirm the notification value contract.</div>
+      <div class="page">28</div>
+    </section>
+    <section class="slide" id="s29">
+      <div class="slide-header"><div class="context">FreeRTOS Module 13</div><div class="framing">Tutorial 17 Reading Path</div></div>
+      <div class="content">
+        <h2>Tutorial 17 Reading Path</h2>
+        
+      <div class="flow4">
+        <div class="flow-node"><strong>Receiver</strong>Find the task handle and wait/take API.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Sender</strong>Find xTaskNotify or xTaskNotifyGive call.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Value</strong>Identify binary, counting, bitfield, or overwrite semantics.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Output</strong>Explain observed lines through notification state transitions.</div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Tutorial 17 should be read as a direct-receiver experiment.</div>
+      <div class="page">29</div>
+    </section>
+    <section class="slide" id="s30">
+      <div class="slide-header"><div class="context">FreeRTOS Module 13</div><div class="framing">Tutorial 18 Reading Path</div></div>
+      <div class="content">
+        <h2>Tutorial 18 Reading Path</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>ISR path</h3><ul><li>Find FromISR notification call.</li><li>Find xHigherPriorityTaskWoken.</li><li>Find yield-from-ISR macro.</li></ul></div>
+        <div class="panel tint-teal"><h3>Receiver path</h3><ul><li>Find receiver wait/take.</li><li>Check timeout policy.</li><li>Check how value is consumed or cleared.</li></ul></div>
+        <div class="panel tint-green"><h3>Variation</h3><ul><li>Create repeated events.</li><li>Switch notify action.</li><li>Replace notification with queue when payload is required.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Tutorial 18 connects notification semantics to interrupt handoff discipline.</div>
+      <div class="page">30</div>
+    </section>
+    <section class="slide" id="s31">
+      <div class="slide-header"><div class="context">FreeRTOS Module 13</div><div class="framing">Source Reading: tasks.c Notification Paths</div></div>
+      <div class="content">
+        <h2>Source Reading: tasks.c Notification Paths</h2>
+        
+      <div class="grid-3">
+        <div class="source-card"><strong>TCB fields</strong>Find notification state and value storage in task control data structures.</div>
+        <div class="source-card"><strong>Notify send path</strong>Trace how action mode updates value and unblocks a task.</div>
+        <div class="source-card"><strong>Wait/take path</strong>Read how value is returned, decremented, cleared, or left pending.</div>
+      </div>
+      <div class="warning" style="margin-top:22px;">Task notifications are implemented in tasks.c because the state belongs to the task.</div>
+    
+      </div>
+      <div class="takeaway">Source location reinforces the direct-to-task mental model.</div>
+      <div class="page">31</div>
+    </section>
+    <section class="slide" id="s32">
+      <div class="slide-header"><div class="context">FreeRTOS Module 13</div><div class="framing">Source Reading: Port and ISR Link</div></div>
+      <div class="content">
+        <h2>Source Reading: Port and ISR Link</h2>
+        
+      <div class="grid-2">
+        <div class="panel tint-blue"><h3>FromISR path</h3><ul><li>Check xTaskNotifyFromISR and vTaskNotifyGiveFromISR.</li><li>Track xHigherPriorityTaskWoken.</li><li>Use the same ISR handoff discipline from Module 08.</li></ul></div>
+        <div class="panel tint-teal"><h3>Port yield</h3><ul><li>The unblocked task may need immediate scheduling.</li><li>The yield macro is port-specific.</li><li>Do not hide this path in examples.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Notifications do not remove the interrupt boundary rules.</div>
+      <div class="page">32</div>
+    </section>
+    <section class="slide" id="s33">
+      <div class="slide-header"><div class="context">FreeRTOS Module 13</div><div class="framing">Design Decision Table</div></div>
+      <div class="content">
+        <h2>Design Decision Table</h2>
+        
+      <table class="mini-table">
+        <thead><tr><th>Decision</th><th>Question</th><th>Evidence</th></tr></thead>
+        <tbody>
+          <tr><td>Receiver</td><td>Is exactly one task the destination?</td><td>Named receiver task and handle ownership</td></tr>
+          <tr><td>Value meaning</td><td>Is the value a signal, count, bitfield, or latest value?</td><td>Selected eNotifyAction and receiver API</td></tr>
+          <tr><td>Loss policy</td><td>Can old values or intermediate events be overwritten?</td><td>Overwrite mode and failure handling</td></tr>
+          <tr><td>Payload path</td><td>Where does data live if notification only wakes the task?</td><td>Queue, buffer, descriptor, or shared ownership rule</td></tr>
+          <tr><td>ISR behavior</td><td>Can notification wake a higher-priority task from ISR?</td><td>xHigherPriorityTaskWoken and yield macro path</td></tr>
+        </tbody>
+      </table>
+    
+      </div>
+      <div class="takeaway">The notification decision table should be completed before replacing another object.</div>
+      <div class="page">33</div>
+    </section>
+    <section class="slide" id="s34">
+      <div class="slide-header"><div class="context">FreeRTOS Module 13</div><div class="framing">Testing Checklist</div></div>
+      <div class="content">
+        <h2>Testing Checklist</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Nominal path</h3><ul><li>Notify one known receiver.</li><li>Receiver wakes and consumes value.</li><li>Value meaning matches design.</li></ul></div>
+        <div class="panel tint-teal"><h3>Pressure path</h3><ul><li>Repeated notification burst.</li><li>Overwrite while receiver is delayed.</li><li>ISR notify with higher-priority receiver.</li></ul></div>
+        <div class="panel tint-green"><h3>Failure path</h3><ul><li>Without-overwrite failure handled.</li><li>Timeout path logged.</li><li>Payload requirement redirects to queue or buffer.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A notification lab should intentionally test lost-value behavior.</div>
+      <div class="page">34</div>
+    </section>
+    <section class="slide" id="s35">
+      <div class="slide-header"><div class="context">FreeRTOS Module 13</div><div class="framing">Code Review Checklist</div></div>
+      <div class="content">
+        <h2>Code Review Checklist</h2>
+        
+      <div class="grid-2">
+        <div class="panel tint-blue"><h3>Mechanism review</h3><ul><li>Is the receiver task handle valid and owned?</li><li>Is the notify action documented?</li><li>Are return values checked?</li><li>Is timeout policy explicit?</li></ul></div>
+        <div class="panel tint-green"><h3>Design review</h3><ul><li>Is there exactly one receiver?</li><li>Is payload absent or stored elsewhere?</li><li>Can overwrite lose important information?</li><li>Should a queue, semaphore, or event group remain instead?</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Review the receiver model before praising the lower overhead.</div>
+      <div class="page">35</div>
+    </section>
+    <section class="slide" id="s36">
+      <div class="slide-header"><div class="context">FreeRTOS Module 13</div><div class="framing">Classroom Board Questions</div></div>
+      <div class="content">
+        <h2>Classroom Board Questions</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Who receives?</h3><ul><li>One task handle.</li><li>One notification slot.</li><li>One owner of value meaning.</li></ul></div>
+        <div class="panel tint-teal"><h3>What changes?</h3><ul><li>Pending state.</li><li>Count.</li><li>Bits.</li><li>Latest value.</li></ul></div>
+        <div class="panel tint-amber"><h3>What is missing?</h3><ul><li>Payload sequence.</li><li>Multiple receivers.</li><li>Shared condition object.</li><li>History under overwrite.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">These questions reveal when notification is the wrong tool.</div>
+      <div class="page">36</div>
+    </section>
+    <section class="slide" id="s37">
+      <div class="slide-header"><div class="context">FreeRTOS Module 13</div><div class="framing">Project Boundary Check</div></div>
+      <div class="content">
+        <h2>Project Boundary Check</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Build</h3><ul><li>Create binary notification from task to worker.</li><li>Create counting notification under repeated events.</li><li>Log returned notification values.</li></ul></div>
+        <div class="panel tint-teal"><h3>Modify</h3><ul><li>Switch eNotifyAction.</li><li>Introduce overwrite pressure.</li><li>Convert to queue when payload is needed.</li></ul></div>
+        <div class="panel tint-green"><h3>Explain</h3><ul><li>Draw direct path.</li><li>Name receiver and value meaning.</li><li>Record evidence for loss or count behavior.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The lab output should show value semantics, not just task wake-up.</div>
+      <div class="page">37</div>
+    </section>
+    <section class="slide" id="s38">
+      <div class="slide-header"><div class="context">FreeRTOS Module 13</div><div class="framing">Review Questions</div></div>
+      <div class="content">
+        <h2>Review Questions</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Question 1</h3><p>Why can a task notification replace a binary semaphore only in some designs?</p></div>
+        <div class="panel tint-teal"><h3>Question 2</h3><p>What information can be lost with eSetValueWithOverwrite, and when is that acceptable?</p></div>
+        <div class="panel tint-amber"><h3>Question 3</h3><p>Why does a notification often need a separate payload path in driver designs?</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A strong answer names receiver, value semantics, payload, and loss policy.</div>
+      <div class="page">38</div>
+    </section>
+    <section class="slide" id="s39">
+      <div class="slide-header"><div class="context">FreeRTOS Module 13</div><div class="framing">One-Slide Summary</div></div>
+      <div class="content">
+        <h2>One-Slide Summary</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Mechanism</h3><ul><li>Notification state belongs to the task.</li><li>Sender targets one receiver handle.</li><li>Notify action updates the value.</li></ul></div>
+        <div class="panel tint-teal"><h3>Design rule</h3><ul><li>Use for single receiver.</li><li>Define signal, count, bitfield, or value semantics.</li><li>Keep payload path explicit.</li></ul></div>
+        <div class="panel tint-green"><h3>Evidence</h3><ul><li>Returned notification value.</li><li>Wake latency.</li><li>Overwrite or count behavior under burst.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Task notifications are small but semantically sharp.</div>
+      <div class="page">39</div>
+    </section>
+    <section class="slide" id="s40">
+      <div class="slide-header"><div class="context">FreeRTOS Module 13</div><div class="framing">Bridge to Module 14</div></div>
+      <div class="content">
+        <h2>Bridge to Module 14</h2>
+        
+      <p class="subtitle">Module 14 moves from lightweight event/value signaling to byte streams and message buffers, where payload shape and boundaries become central.</p>
+      <div class="grid-3">
+        <div class="icon-card"><img src="../shared_assets/icons/direct_task_notification.png" alt=""><div><strong>Notification</strong><span>Direct event or value for one task.</span></div></div>
+        <div class="icon-card"><img src="../shared_assets/icons/stream_buffer_flow.png" alt=""><div><strong>Stream buffer</strong><span>Continuous byte flow between writer and reader.</span></div></div>
+        <div class="icon-card"><img src="../shared_assets/icons/message_buffer_flow.png" alt=""><div><strong>Message buffer</strong><span>Variable-length messages with boundaries.</span></div></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The next module puts payload back at the center.</div>
+      <div class="page">40</div>
+    </section>
+    <section class="slide" id="s41">
+      <div class="slide-header"><div class="context">FreeRTOS Module 13</div><div class="framing">References and Further Reading</div></div>
+      <div class="content">
+        <h2>References and Further Reading</h2>
+        
+      <p class="subtitle">References used in this module are separated from optional deeper reading.</p>
+      <div class="grid-2">
+        <div class="panel tint-blue">
+          <h3>References Used</h3>
+          <ul class="refs">
+            <li>FreeRTOS Kernel Book, Chapter 10, Task Notifications.</li>
+            <li>FreeRTOS Kernel Book, Figures 10.1, 10.2, 10.3, 10.4, 10.5, and 10.6.</li>
+            <li>FreeRTOS Kernel Book, Chapter 7 counting semaphore figure and Chapter 9 event group figure for object-choice comparisons.</li>
+            <li>FreeRTOS Kernel Book, Chapter 12 trace figure for kernel object history and timing evidence.</li>
+            <li>Lab Project FreeRTOS Tutorials, Tutorial 17 and Tutorial 18.</li>
+            <li>FreeRTOS Kernel source: tasks.c notification paths and Cortex-M port yield-from-ISR path.</li>
+          </ul>
+        </div>
+        <div class="panel tint-green">
+          <h3>Further Reading</h3>
+          <ul class="refs">
+            <li>FreeRTOS API reference: task notification APIs, indexed notification APIs, and eNotifyAction modes.</li>
+            <li>FreeRTOS API reference: semaphore, queue, and event group alternatives.</li>
+            <li>FreeRTOSConfig.h reference: configTASK_NOTIFICATION_ARRAY_ENTRIES and trace support.</li>
+            <li>Tracealyzer or FreeRTOS trace documentation for task wake-up latency and notification behavior.</li>
+          </ul>
+        </div>
+      </div>
+    
+      </div>
+      <div class="takeaway">References should support traceability and direct further study.</div>
+      <div class="page">41</div>
+    </section>
+  </main>
+  <script src="../shared_assets/slideshow.js"></script>
+</body>
+</html>

@@ -1,0 +1,947 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FreeRTOS Module 00 - RTOS Fundamentals and FreeRTOS Orientation</title>
+  <style>
+    :root {
+      --indigo: #2e315b;
+      --blue: #2563a6;
+      --teal: #147d83;
+      --green: #2f7d4e;
+      --amber: #9a6a16;
+      --violet: #6d4aa2;
+      --graphite: #2b2f36;
+      --muted: #637083;
+      --line: #d8dee9;
+      --paper: #ffffff;
+      --bg: #f4f6f9;
+      --code: #eef2f7;
+      --soft-blue: #eef5fc;
+      --soft-teal: #edf8f8;
+      --soft-amber: #fff7e8;
+      --soft-green: #eef8f1;
+      --soft-violet: #f4effb;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--graphite);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Arial, sans-serif;
+      line-height: 1.46;
+    }
+
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      width: 1280px;
+      margin: 0 auto;
+      padding: 10px 16px;
+      background: rgba(244, 246, 249, 0.96);
+      border-bottom: 1px solid var(--line);
+      color: #4f5969;
+      font-size: 15px;
+    }
+
+    .nav a {
+      margin-right: 8px;
+      color: var(--blue);
+      text-decoration: none;
+      font-weight: 800;
+    }
+
+    .deck { width: 1280px; margin: 0 auto; padding: 28px 0 64px; }
+    .slide {
+      position: relative;
+      width: 1280px;
+      min-height: 720px;
+      margin: 0 0 32px;
+      overflow: hidden;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 40px rgba(38, 49, 91, 0.12);
+      page-break-after: always;
+    }
+
+    .slide-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      height: 54px;
+      padding: 0 34px;
+      background: var(--indigo);
+      color: #fff;
+      font-size: 18px;
+    }
+
+    .context { font-weight: 800; }
+    .framing { color: #e1e6ff; font-size: 16px; }
+    .content { padding: 30px 42px 58px; }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { margin-bottom: 14px; color: #fff; font-size: 45px; line-height: 1.08; letter-spacing: 0; }
+    h2 { margin-bottom: 10px; color: #20243d; font-size: 35px; line-height: 1.12; letter-spacing: 0; }
+    h3 { margin-bottom: 10px; color: var(--indigo); font-size: 22px; letter-spacing: 0; }
+    .subtitle { max-width: 1060px; margin-bottom: 20px; color: #4a5260; font-size: 21px; line-height: 1.35; }
+    .small { color: var(--muted); font-size: 16px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .grid-13 { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 22px; }
+    .grid-31 { display: grid; grid-template-columns: 0.86fr 1.14fr; gap: 22px; }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px 18px;
+      background: #fff;
+    }
+    .panel p, .panel li { font-size: 18px; }
+    ul, ol { margin: 0; padding-left: 22px; }
+    li + li { margin-top: 6px; }
+    .tint-blue { border-top: 5px solid var(--blue); }
+    .tint-teal { border-top: 5px solid var(--teal); }
+    .tint-green { border-top: 5px solid var(--green); }
+    .tint-amber { border-top: 5px solid var(--amber); }
+    .tint-violet { border-top: 5px solid var(--violet); }
+
+    code {
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: var(--code);
+      color: #1d3152;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 0.93em;
+    }
+
+    pre {
+      margin: 0;
+      padding: 15px 17px;
+      border-radius: 8px;
+      background: #1f2633;
+      color: #edf2ff;
+      font-size: 14px;
+      line-height: 1.42;
+      overflow: hidden;
+      white-space: pre-wrap;
+    }
+    pre code { padding: 0; background: transparent; color: inherit; font-size: inherit; }
+
+    .takeaway {
+      position: absolute;
+      left: 42px;
+      right: 120px;
+      bottom: 22px;
+      color: #515a6b;
+      font-size: 17px;
+      font-weight: 700;
+    }
+    .page { position: absolute; right: 36px; bottom: 22px; color: #7a8290; font-size: 16px; font-weight: 800; }
+
+    .cover {
+      color: #fff;
+      background: linear-gradient(120deg, rgba(46, 49, 91, 0.98), rgba(20, 125, 131, 0.92)), #2e315b;
+    }
+    .cover .slide-header { background: transparent; border-bottom: 1px solid rgba(255, 255, 255, 0.24); }
+    .cover .content { display: grid; grid-template-columns: 1.08fr 0.92fr; gap: 42px; align-items: center; padding-top: 52px; }
+    .cover .subtitle { color: #eef5ff; }
+    .cover .meta { margin-top: 34px; color: #dbe5ff; font-size: 20px; }
+    .cover-card { min-height: 390px; padding: 26px; border: 1px solid rgba(255, 255, 255, 0.35); border-radius: 10px; background: rgba(255, 255, 255, 0.08); }
+    .cover-card h3 { color: #fff; font-size: 25px; }
+    .cover-card li { color: #edf2ff; font-size: 19px; }
+    .brand-logo {
+      display: block;
+      width: 285px;
+      max-height: 86px;
+      object-fit: contain;
+      margin-bottom: 22px;
+      padding: 13px 16px;
+      border-radius: 8px;
+      background: #fff;
+    }
+    .brand-strip {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 16px;
+      padding: 13px 15px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+    .brand-strip img {
+      width: 182px;
+      max-height: 58px;
+      object-fit: contain;
+      flex: 0 0 auto;
+    }
+    .brand-strip p { margin: 0; color: #4b5566; font-size: 17px; }
+    .history-grid { display: grid; grid-template-columns: 0.36fr 1fr; gap: 20px; align-items: start; }
+    .person-card {
+      min-height: 410px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-top: 5px solid var(--blue);
+      border-radius: 8px;
+      background: #fff;
+    }
+    .portrait {
+      display: block;
+      width: 164px;
+      height: 164px;
+      object-fit: cover;
+      margin-bottom: 14px;
+      border-radius: 8px;
+    }
+    .person-card strong { display: block; margin-bottom: 6px; color: var(--indigo); font-size: 22px; }
+    .person-card p { margin-bottom: 8px; font-size: 17px; }
+    .asset-credit { color: var(--muted); font-size: 13px; font-weight: 800; }
+
+    .question { padding: 15px 17px; border-left: 6px solid var(--blue); background: var(--soft-blue); font-size: 19px; }
+    .callout { padding: 15px 17px; border-left: 6px solid var(--teal); background: var(--soft-teal); font-size: 19px; }
+    .warning { padding: 15px 17px; border-left: 6px solid var(--amber); background: var(--soft-amber); font-size: 19px; }
+
+    .mini-table { width: 100%; border-collapse: collapse; font-size: 16.5px; }
+    .mini-table th, .mini-table td { padding: 9px 10px; border: 1px solid var(--line); vertical-align: top; }
+    .mini-table th { background: #eef2f7; color: var(--indigo); text-align: left; }
+
+    .infographic {
+      border: 1px solid #d8dee9;
+      border-radius: 10px;
+      background: #fbfcfe;
+      padding: 16px;
+      box-shadow: 0 10px 24px rgba(30, 40, 70, 0.08);
+    }
+    .flow { display: grid; grid-template-columns: 1fr 48px 1fr 48px 1fr; gap: 10px; align-items: center; }
+    .flow.two { grid-template-columns: 1fr 48px 1fr; }
+    .flowbox {
+      min-height: 94px;
+      padding: 13px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      text-align: center;
+      font-size: 16.5px;
+    }
+    .flowbox strong { display: block; margin-bottom: 7px; color: var(--indigo); font-size: 18px; }
+    .arrow { text-align: center; color: var(--blue); font-size: 30px; font-weight: 900; }
+
+    .lane { display: grid; grid-template-columns: 170px 1fr; gap: 12px; align-items: center; margin-bottom: 10px; }
+    .lane-label { padding: 10px 12px; border-radius: 8px; background: #edf2ff; color: var(--indigo); font-weight: 900; text-align: center; }
+    .lane-body { padding: 11px 14px; border-left: 5px solid var(--blue); border-radius: 8px; background: #fff; border: 1px solid var(--line); font-size: 17px; }
+
+    .icon-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .icon-card {
+      min-height: 148px;
+      display: grid;
+      grid-template-columns: 78px 1fr;
+      column-gap: 12px;
+      align-items: start;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 15px;
+      background: #fff;
+    }
+    .icon {
+      display: block;
+      width: 72px;
+      height: auto;
+      max-height: 72px;
+      object-fit: contain;
+      aspect-ratio: 1 / 1;
+      border-radius: 8px;
+      grid-row: 1 / span 2;
+    }
+    .icon-card strong { display: block; color: var(--indigo); font-size: 19px; margin-bottom: 4px; }
+    .icon-card p { margin: 0; font-size: 16.5px; color: #4b5566; grid-column: 2; }
+
+    .layer-stack { display: grid; gap: 10px; }
+    .layer { display: grid; grid-template-columns: 210px 1fr; gap: 14px; align-items: start; padding: 12px 15px; border: 1px solid var(--line); border-left: 6px solid var(--blue); border-radius: 8px; background: #fbfcfe; font-size: 17px; }
+    .layer:nth-child(2) { border-left-color: var(--teal); }
+    .layer:nth-child(3) { border-left-color: var(--green); }
+    .layer:nth-child(4) { border-left-color: var(--violet); }
+    .layer strong { display: block; color: var(--indigo); font-size: 20px; }
+
+    .timeline { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; align-items: stretch; }
+    .timebox { padding: 13px; border: 1px solid var(--line); border-top: 5px solid var(--blue); border-radius: 8px; background: #fff; font-size: 16.5px; }
+    .timebox strong { display: block; color: var(--indigo); font-size: 18px; margin-bottom: 6px; }
+
+    .figure-wrap { display: grid; place-items: center; min-height: 330px; border: 1px solid var(--line); border-radius: 10px; background: #fbfcfe; padding: 14px; }
+    .figure-wrap img { max-width: 100%; max-height: 420px; object-fit: contain; }
+    .asset-img { max-width: 100%; max-height: 430px; object-fit: contain; border-radius: 10px; }
+
+    @media print {
+      body { background: #fff; }
+      .nav { display: none; }
+      .deck { padding: 0; }
+      .slide { margin: 0; border: none; box-shadow: none; }
+    }
+  </style>
+  <link rel="stylesheet" href="../shared_assets/slideshow.css">
+</head>
+<body>
+  <nav class="nav">
+    <a href="../index.html">All modules</a>
+    <a href="#s1">Start</a>
+    <a href="#s20">Self Lab</a>
+    <a href="#s22">References</a>
+      <button class="slideshow-toggle" type="button" data-slideshow-start>Slideshow</button>
+  </nav>
+
+  <div class="slideshow-controls" aria-label="Slideshow controls">
+    <button class="slide-control" type="button" data-slide-prev>Prev</button>
+    <span class="slide-counter" data-slide-counter>01 / 22</span>
+    <button class="slide-control" type="button" data-slide-next>Next</button>
+    <button class="slide-control" type="button" data-slide-fullscreen>Full</button>
+    <button class="slide-control" type="button" data-slide-fill aria-pressed="false">Fill</button>
+    <button class="slide-control" type="button" data-slide-exit>Exit</button>
+  </div>
+  <div class="slideshow-hint">Keys: Left/Right or PageUp/PageDown to move, Home/End to jump, S to toggle slideshow, F for fullscreen, Z for fit/fill, Esc to exit.</div>
+
+
+  <main class="deck">
+    <section class="slide cover" id="s1">
+      <div class="slide-header">
+        <div class="context">FreeRTOS Lecture</div>
+        <div class="framing">Module 00</div>
+      </div>
+      <div class="content">
+        <div>
+          <h1>RTOS Fundamentals and FreeRTOS Orientation</h1>
+          <p class="subtitle">A concept-first entry point before project structure, source files, and STM32 self labs.</p>
+          <p class="meta">Course baseline: NUCLEO-F439ZI, STM32CubeIDE, FreeRTOS kernel, CMSIS-RTOS V2 reading path</p>
+        </div>
+        <div class="cover-card">
+          <img class="brand-logo" src="assets/external/freertos_logo_2005.svg" alt="FreeRTOS logo">
+          <h3>Module role</h3>
+          <ul>
+            <li>Real-time vocabulary before API details</li>
+            <li>FreeRTOS identity, history, and ecosystem</li>
+            <li>Why an RTOS changes firmware structure</li>
+            <li>Bridge into Module 01 project boundaries</li>
+          </ul>
+        </div>
+      </div>
+      <div class="page">1 / 22</div>
+    </section>
+
+    <section class="slide" id="s2">
+      <div class="slide-header"><div class="context">Orientation</div><div class="framing">Before Module 01</div></div>
+      <div class="content">
+        <h2>Position of Module 00</h2>
+        <p class="subtitle">The existing course already has a strong project and API path. This module supplies the conceptual base that makes the rest easier to read.</p>
+        <div class="grid-3">
+          <div class="panel tint-blue">
+            <h3>Concept layer</h3>
+            <ul>
+              <li>RTOS meaning</li>
+              <li>Real-time timing language</li>
+              <li>Multitasking on a single core</li>
+              <li>Kernel feature map</li>
+            </ul>
+          </div>
+          <div class="panel tint-teal">
+            <h3>FreeRTOS layer</h3>
+            <ul>
+              <li>Kernel and modular libraries</li>
+              <li>Task terminology</li>
+              <li>MIT license and ecosystem</li>
+              <li>OpenRTOS and SafeRTOS family context</li>
+            </ul>
+          </div>
+          <div class="panel tint-green">
+            <h3>Course layer</h3>
+            <ul>
+              <li>NUCLEO-F439ZI baseline</li>
+              <li>STM32CubeIDE environment</li>
+              <li>Self Lab entry point</li>
+              <li>Module 01 project tree bridge</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="takeaway">This module prevents project structure from becoming the first explanation of an RTOS.</div>
+      <div class="page">2 / 22</div>
+    </section>
+
+    <section class="slide" id="s3">
+      <div class="slide-header"><div class="context">Firmware Baseline</div><div class="framing">Super loop and interrupts</div></div>
+      <div class="content">
+        <h2>Embedded Firmware Before an RTOS</h2>
+        <p class="subtitle">A small embedded program often begins as one control loop plus a few interrupt handlers.</p>
+        <div class="grid-13">
+          <div class="panel tint-blue">
+<pre><code>int main(void)
+{
+    board_init();
+
+    while (1) {
+        read_sensors();
+        update_control();
+        service_uart();
+        refresh_outputs();
+        check_buttons();
+    }
+}</code></pre>
+          </div>
+          <div class="panel tint-amber">
+            <h3>What works at first</h3>
+            <ul>
+              <li>Low overhead</li>
+              <li>Direct execution order</li>
+              <li>Simple debug path</li>
+              <li>No scheduler configuration</li>
+            </ul>
+            <h3>What starts to bend</h3>
+            <ul>
+              <li>Slow calls delay unrelated work</li>
+              <li>Timing dependencies become hidden</li>
+              <li>Polling wastes CPU time</li>
+              <li>ISR code can grow too much</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="takeaway">The issue is not that the loop is wrong. The issue is that timing responsibilities accumulate inside one control path.</div>
+      <div class="page">3 / 22</div>
+    </section>
+
+    <section class="slide" id="s4">
+      <div class="slide-header"><div class="context">Scaling Pressure</div><div class="framing">Mixed timing requirements</div></div>
+      <div class="content">
+        <h2>When a Loop Stops Scaling</h2>
+        <p class="subtitle">RTOS pressure appears when different parts of the firmware need different timing behavior.</p>
+        <div class="grid-2">
+          <div class="infographic">
+            <div class="lane">
+              <div class="lane-label">Fast event</div>
+              <div class="lane-body">A button, sensor threshold, or packet arrival needs a short response path.</div>
+            </div>
+            <div class="lane">
+              <div class="lane-label">Periodic work</div>
+              <div class="lane-body">A control loop or sampling routine needs a stable release interval.</div>
+            </div>
+            <div class="lane">
+              <div class="lane-label">Slow work</div>
+              <div class="lane-body">Logging, formatting, flash access, or network work may run for longer than expected.</div>
+            </div>
+            <div class="lane">
+              <div class="lane-label">Background</div>
+              <div class="lane-body">Health checks and diagnostics should run when the CPU has slack.</div>
+            </div>
+          </div>
+          <div class="panel tint-violet">
+            <h3>Loop-level symptom</h3>
+            <ul>
+              <li>The slowest path controls the response time of unrelated work.</li>
+              <li>Interrupt handlers start carrying too much application logic.</li>
+              <li>Adding one feature changes timing behavior elsewhere.</li>
+              <li>Debug output changes timing enough to hide the original bug.</li>
+            </ul>
+            <div class="callout">An RTOS gives the firmware a vocabulary for separating work by priority, state, and waiting condition.</div>
+          </div>
+        </div>
+      </div>
+      <div class="page">4 / 22</div>
+    </section>
+
+    <section class="slide" id="s5">
+      <div class="slide-header"><div class="context">Real-Time Vocabulary</div><div class="framing">Predictability over raw speed</div></div>
+      <div class="content">
+        <h2>Real-Time Means Predictable, Not Fast</h2>
+        <p class="subtitle">A real-time system is evaluated by whether important work completes within meaningful timing constraints.</p>
+        <div class="grid-4">
+          <div class="panel tint-blue"><h3>Latency</h3><p>Delay between an event and the start or completion of the response that matters.</p></div>
+          <div class="panel tint-teal"><h3>Jitter</h3><p>Variation in timing from one execution to the next, even when the same code path runs.</p></div>
+          <div class="panel tint-amber"><h3>Deadline</h3><p>A time boundary after which the result becomes degraded, late, or useless.</p></div>
+          <div class="panel tint-violet"><h3>Determinism</h3><p>The ability to reason about timing behavior under a defined set of conditions.</p></div>
+        </div>
+        <div class="question" style="margin-top:22px;">A faster MCU can reduce average execution time. It does not automatically make response time predictable when control flow and priority rules are unclear.</div>
+      </div>
+      <div class="takeaway">FreeRTOS is mostly a way to describe and enforce execution order, waiting, and wakeup conditions.</div>
+      <div class="page">5 / 22</div>
+    </section>
+
+    <section class="slide" id="s6">
+      <div class="slide-header"><div class="context">Timing Classes</div><div class="framing">Hard and soft real-time</div></div>
+      <div class="content">
+        <h2>Hard and Soft Real-Time Requirements</h2>
+        <p class="subtitle">The Kernel Book introduces this distinction before any API because it shapes priority and scheduling decisions.</p>
+        <div class="grid-2">
+          <div class="panel tint-amber">
+            <h3>Hard real-time</h3>
+            <ul>
+              <li>A missed deadline can mean system failure.</li>
+              <li>Correctness includes timing, not only the computed value.</li>
+              <li>Design tends to reserve priority and bounded paths for the critical work.</li>
+              <li>Example category: protection, emergency response, safety action.</li>
+            </ul>
+          </div>
+          <div class="panel tint-blue">
+            <h3>Soft real-time</h3>
+            <ul>
+              <li>A missed deadline reduces quality or responsiveness.</li>
+              <li>The system may remain usable after late completion.</li>
+              <li>Design can tolerate occasional delay, buffering, or retry.</li>
+              <li>Example category: user input, display update, status reporting.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="warning" style="margin-top:22px;">Priority assignment is not a moral ranking of code. It is a timing decision made for a specific system behavior.</div>
+      </div>
+      <div class="page">6 / 22</div>
+    </section>
+
+    <section class="slide" id="s7">
+      <div class="slide-header"><div class="context">Multitasking</div><div class="framing">Single-core MCU model</div></div>
+      <div class="content">
+        <h2>Multitasking on a Single Core</h2>
+        <p class="subtitle">A Cortex-M4F core executes one instruction stream at a time. The RTOS makes multiple execution contexts manageable.</p>
+        <div class="flow">
+          <div class="flowbox"><strong>Task A</strong>Own stack, local control flow, waiting points</div>
+          <div class="arrow">-&gt;</div>
+          <div class="flowbox"><strong>Scheduler</strong>Ready list, priority rule, blocking state</div>
+          <div class="arrow">-&gt;</div>
+          <div class="flowbox"><strong>Task B</strong>Own stack, state, and execution history</div>
+        </div>
+        <div class="grid-3" style="margin-top:24px;">
+          <div class="panel tint-blue"><h3>Not true parallelism</h3><p>The core still runs one task at a time unless the MCU has multiple cores.</p></div>
+          <div class="panel tint-teal"><h3>Independent context</h3><p>Each task has its own stack and scheduler-visible state.</p></div>
+          <div class="panel tint-green"><h3>Structured waiting</h3><p>Tasks can block for time, data, synchronization, or notification.</p></div>
+        </div>
+      </div>
+      <div class="takeaway">Multitasking is useful even before parallel hardware appears because it separates timing responsibilities.</div>
+      <div class="page">7 / 22</div>
+    </section>
+
+    <section class="slide" id="s8">
+      <div class="slide-header"><div class="context">Scheduler Preview</div><div class="framing">Selection and state</div></div>
+      <div class="content">
+        <h2>What the Scheduler Decides</h2>
+        <p class="subtitle">The scheduler does not run every task. It selects among tasks that are eligible to run.</p>
+        <div class="grid-13">
+          <div class="figure-wrap">
+            <img src="../shared_assets/book_figures/figure_4_1_top_level_task_states.png" alt="FreeRTOS top-level task states">
+          </div>
+          <div class="panel tint-violet">
+            <h3>Preview vocabulary</h3>
+            <ul>
+              <li><code>Ready</code>: eligible for CPU selection</li>
+              <li><code>Running</code>: currently executing on the core</li>
+              <li><code>Blocked</code>: waiting for time, data, or an event</li>
+              <li><code>Suspended</code>: outside normal scheduling until resumed</li>
+            </ul>
+            <div class="callout">Module 03 turns this preview into a full state transition model.</div>
+          </div>
+        </div>
+      </div>
+      <div class="page">8 / 22</div>
+    </section>
+
+    <section class="slide" id="s9">
+      <div class="slide-header"><div class="context">FreeRTOS Identity</div><div class="framing">Kernel and libraries</div></div>
+      <div class="content">
+        <h2>What FreeRTOS Is</h2>
+        <p class="subtitle">FreeRTOS is not a desktop-style operating system. It is a small real-time kernel and a set of modular C libraries for microcontrollers and small microprocessors.</p>
+        <div class="grid-2">
+          <div class="layer-stack">
+            <div class="layer"><strong>Application code</strong><span>Tasks, drivers, business logic, protocol decisions, product behavior.</span></div>
+            <div class="layer"><strong>FreeRTOS kernel</strong><span>Scheduler, task state, queues, semaphores, mutexes, timers, event groups, notifications.</span></div>
+            <div class="layer"><strong>Port and HAL/BSP</strong><span>Cortex-M port code, STM32 HAL, board support, interrupt vector, clock and peripheral setup.</span></div>
+            <div class="layer"><strong>Toolchain</strong><span>Compiler, startup file, linker script, generated firmware image, debug probe.</span></div>
+          </div>
+          <div class="panel tint-blue">
+            <div class="brand-strip">
+              <img src="assets/external/freertos_logo_2005.svg" alt="FreeRTOS logo">
+              <p>A compact kernel and library ecosystem for deeply embedded software.</p>
+            </div>
+            <h3>Course framing</h3>
+            <ul>
+              <li>FreeRTOS code is linked into the firmware image.</li>
+              <li>The kernel runs because application code creates tasks and starts the scheduler.</li>
+              <li>Board-specific details remain visible through the port, HAL, BSP, startup, and linker layers.</li>
+              <li>STM32CubeIDE can generate a CMSIS-RTOS V2 wrapper path, but the native FreeRTOS concepts remain the foundation.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="page">9 / 22</div>
+    </section>
+
+    <section class="slide" id="s10">
+      <div class="slide-header"><div class="context">Firmware Boundary</div><div class="framing">Library-like kernel integration</div></div>
+      <div class="content">
+        <h2>FreeRTOS in the Firmware Image</h2>
+        <p class="subtitle">The first source-level idea: FreeRTOS becomes part of the firmware build, not a separate installed OS.</p>
+        <div class="grid-31">
+          <div class="panel tint-teal">
+            <h3>What appears in the project</h3>
+            <ul>
+              <li><code>main.c</code> and application task files</li>
+              <li><code>FreeRTOSConfig.h</code></li>
+              <li>Kernel sources such as <code>tasks.c</code> and <code>queue.c</code></li>
+              <li>Portable layer for ARM Cortex-M</li>
+              <li>HAL/BSP and startup/linker files</li>
+            </ul>
+          </div>
+          <div class="infographic">
+            <div class="flow">
+              <div class="flowbox"><strong>Create objects</strong><code>xTaskCreate()</code><br><code>xQueueCreate()</code></div>
+              <div class="arrow">-&gt;</div>
+              <div class="flowbox"><strong>Start scheduler</strong><code>vTaskStartScheduler()</code><br>or CMSIS wrapper path</div>
+              <div class="arrow">-&gt;</div>
+              <div class="flowbox"><strong>Run by state</strong>Ready, Running, Blocked, interrupt wakeup</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="takeaway">Module 01 will turn this map into concrete folders, generated files, and build boundaries.</div>
+      <div class="page">10 / 22</div>
+    </section>
+
+    <section class="slide" id="s11">
+      <div class="slide-header"><div class="context">Terminology</div><div class="framing">Task, thread, process</div></div>
+      <div class="content">
+        <h2>Terminology: Task, Thread, Process</h2>
+        <p class="subtitle">FreeRTOS calls each schedulable execution context a task. That choice avoids desktop OS assumptions.</p>
+        <table class="mini-table">
+          <thead>
+            <tr><th>Term</th><th>Typical meaning</th><th>Course usage</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>task</code></td><td>FreeRTOS execution unit with its own stack and scheduler-visible state.</td><td>The main term for Module 02 onward.</td></tr>
+            <tr><td><code>thread</code></td><td>General OS term for a schedulable execution path inside a process.</td><td>Used only for analogy when needed.</td></tr>
+            <tr><td><code>process</code></td><td>Usually implies an address space and OS-managed resource boundary.</td><td>Usually avoided for MCU FreeRTOS explanations.</td></tr>
+            <tr><td><code>kernel object</code></td><td>Queue, semaphore, mutex, timer, event group, notification, buffer.</td><td>Used to group FreeRTOS APIs by design purpose.</td></tr>
+          </tbody>
+        </table>
+        <div class="warning" style="margin-top:22px;">A task is not a separate program. On a typical Cortex-M FreeRTOS system, tasks share the same address space.</div>
+      </div>
+      <div class="page">11 / 22</div>
+    </section>
+
+    <section class="slide" id="s12">
+      <div class="slide-header"><div class="context">Motivation</div><div class="framing">Why use an RTOS</div></div>
+      <div class="content">
+        <h2>Why Use an RTOS?</h2>
+        <p class="subtitle">The Kernel Book frames RTOS use as a set of software design benefits, not only a way to chase deadlines.</p>
+        <div class="grid-4">
+          <div class="panel tint-blue"><h3>Timing abstraction</h3><p>Delay, timeout, periodic release, and event wait become explicit API-level concepts.</p></div>
+          <div class="panel tint-teal"><h3>Maintainability</h3><p>Timing details move out of tangled module-to-module control flow.</p></div>
+          <div class="panel tint-green"><h3>Modularity</h3><p>Tasks become independent modules with defined responsibility and interface.</p></div>
+          <div class="panel tint-amber"><h3>Testing and reuse</h3><p>Smaller independent execution paths are easier to test and move to another project.</p></div>
+        </div>
+        <div class="grid-3" style="margin-top:18px;">
+          <div class="panel"><h3>Efficiency</h3><p>Blocked tasks do not poll. They wake when time, data, or events arrive.</p></div>
+          <div class="panel"><h3>Idle time</h3><p>The idle task exposes spare CPU capacity and low-power opportunities.</p></div>
+          <div class="panel"><h3>Interrupt discipline</h3><p>ISRs can stay short by deferring processing to task context.</p></div>
+        </div>
+      </div>
+      <div class="page">12 / 22</div>
+    </section>
+
+    <section class="slide" id="s13">
+      <div class="slide-header"><div class="context">Design Shift</div><div class="framing">Event-driven firmware</div></div>
+      <div class="content">
+        <h2>Event-Driven Firmware</h2>
+        <p class="subtitle">A major RTOS shift is moving from repeated checking to blocked waiting and explicit wakeup.</p>
+        <div class="grid-2">
+          <div class="panel tint-amber">
+            <h3>Polling-heavy loop</h3>
+            <ul>
+              <li>Repeated checks even when nothing changed</li>
+              <li>CPU time spent asking the same question</li>
+              <li>Long loop path increases response variation</li>
+              <li>State scattered across flags and timing counters</li>
+            </ul>
+          </div>
+          <div class="panel tint-green">
+            <h3>RTOS event-driven path</h3>
+            <ul>
+              <li>Task blocks until data, time, or event is ready</li>
+              <li>Scheduler runs another Ready task while waiting</li>
+              <li>Queue, semaphore, notification, or event group encodes the wakeup reason</li>
+              <li>Timeout policy becomes part of the design</li>
+            </ul>
+          </div>
+        </div>
+        <div class="callout" style="margin-top:22px;">Module 06 through Module 14 are mostly a study of different wakeup and communication objects.</div>
+      </div>
+      <div class="page">13 / 22</div>
+    </section>
+
+    <section class="slide" id="s14">
+      <div class="slide-header"><div class="context">Interrupt Discipline</div><div class="framing">Deferred processing preview</div></div>
+      <div class="content">
+        <h2>Interrupts Stay Short</h2>
+        <p class="subtitle">An RTOS does not remove interrupts. It gives the firmware a disciplined way to leave heavy work outside ISR context.</p>
+        <div class="grid-13">
+          <div class="figure-wrap">
+            <img src="../shared_assets/book_figures/figure_7_1_completing_interrupt_processing_in_a_high_priority_task.png" alt="Deferred interrupt processing in a high priority task">
+          </div>
+          <div class="panel tint-teal">
+            <h3>Preview rule</h3>
+            <ul>
+              <li>ISR handles the immediate hardware event.</li>
+              <li>ISR uses a <code>FromISR</code> API when FreeRTOS interaction is needed.</li>
+              <li>A task completes longer processing in normal task context.</li>
+              <li>The ISR may request a context switch if a higher priority task becomes Ready.</li>
+            </ul>
+            <div class="question">Module 08 will make this a concrete API and priority design problem.</div>
+          </div>
+        </div>
+      </div>
+      <div class="page">14 / 22</div>
+    </section>
+
+    <section class="slide" id="s15">
+      <div class="slide-header"><div class="context">Feature Map</div><div class="framing">Problem to object</div></div>
+      <div class="content">
+        <h2>FreeRTOS Kernel Feature Map</h2>
+        <p class="subtitle">Module 00 only names the tools. Later modules explain mechanisms, API details, failure modes, and STM32 checkpoints.</p>
+        <div class="icon-row">
+          <div class="icon-card"><img class="icon" src="../shared_assets/icons/task_execution.png" alt=""><strong>Task</strong><p>Independent execution context and responsibility boundary.</p></div>
+          <div class="icon-card"><img class="icon" src="../shared_assets/icons/scheduler_selection.png" alt=""><strong>Scheduler</strong><p>Priority and state based CPU ownership decision.</p></div>
+          <div class="icon-card"><img class="icon" src="../shared_assets/icons/queue_transfer_generated.png" alt=""><strong>Queue</strong><p>Data transfer plus blocking behavior between tasks.</p></div>
+          <div class="icon-card"><img class="icon" src="../shared_assets/icons/mutex_ownership_generated.png" alt=""><strong>Mutex</strong><p>Shared resource ownership with priority inheritance.</p></div>
+          <div class="icon-card"><img class="icon" src="../shared_assets/icons/timer_service_generated.png" alt=""><strong>Timer</strong><p>Time event callback without application polling loops.</p></div>
+          <div class="icon-card"><img class="icon" src="../shared_assets/icons/event_bits_generated.png" alt=""><strong>Event group</strong><p>Multiple conditions encoded as waitable bits.</p></div>
+          <div class="icon-card"><img class="icon" src="../shared_assets/icons/task_notification_generated.png" alt=""><strong>Notification</strong><p>Lightweight direct signal to one task.</p></div>
+          <div class="icon-card"><img class="icon" src="../shared_assets/icons/stream_bytes_generated.png" alt=""><strong>Buffers</strong><p>Byte stream and message boundary data paths.</p></div>
+        </div>
+      </div>
+      <div class="takeaway">Object choice is a design decision about ownership, waiting, data shape, and timing.</div>
+      <div class="page">15 / 22</div>
+    </section>
+
+    <section class="slide" id="s16">
+      <div class="slide-header"><div class="context">Feature Map</div><div class="framing">Course path</div></div>
+      <div class="content">
+        <h2>From Feature Names to Course Modules</h2>
+        <p class="subtitle">The full course is organized around the problems each kernel object solves.</p>
+        <table class="mini-table">
+          <thead>
+            <tr><th>Problem</th><th>FreeRTOS concept</th><th>Detailed module</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Separate execution responsibilities</td><td>Task, TCB, stack</td><td>Module 02</td></tr>
+            <tr><td>Choose execution order under timing pressure</td><td>Priority, tick, scheduler policy</td><td>Module 03-04</td></tr>
+            <tr><td>Move data between tasks</td><td>Queue, mailbox, pointer queue</td><td>Module 06-07</td></tr>
+            <tr><td>Signal events and protect resources</td><td>Semaphore, mutex, critical section</td><td>Module 10-11</td></tr>
+            <tr><td>Represent time-driven work</td><td>Software timer, daemon task</td><td>Module 09</td></tr>
+            <tr><td>Handle many conditions or lightweight signals</td><td>Event group, task notification</td><td>Module 12-13</td></tr>
+            <tr><td>Handle serial data and packets</td><td>Stream buffer, message buffer</td><td>Module 14</td></tr>
+            <tr><td>Know why the firmware fails</td><td>Stack, heap, runtime stats, trace</td><td>Module 05 and Module 15</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="page">16 / 22</div>
+    </section>
+
+    <section class="slide" id="s17">
+      <div class="slide-header"><div class="context">History and Stewardship</div><div class="framing">Why FreeRTOS is a production choice</div></div>
+      <div class="content">
+        <h2>FreeRTOS Value Proposition</h2>
+        <p class="subtitle">FreeRTOS is widely used because the technical model is small, portable, commercially usable, and supported by a broad ecosystem.</p>
+        <div class="history-grid">
+          <div class="person-card">
+            <img class="portrait" src="assets/external/richard_barry_arm_newsroom_320.jpeg" alt="Richard Barry">
+            <strong>Richard Barry</strong>
+            <p>Creator of FreeRTOS. The course treats FreeRTOS as both a small kernel and a long-lived embedded ecosystem.</p>
+            <div class="asset-credit">Photo source: Arm Newsroom</div>
+          </div>
+          <div>
+            <div class="timeline">
+              <div class="timebox"><strong>Around 2003</strong>Richard Barry originally develops FreeRTOS.</div>
+              <div class="timebox"><strong>Real Time Engineers</strong>Development continues with close chip-company partnership.</div>
+              <div class="timebox"><strong>AWS stewardship</strong>AWS takes stewardship and maintains the project as open source.</div>
+              <div class="timebox"><strong>MIT license</strong>Use in personal and commercial projects without exposing proprietary source.</div>
+              <div class="timebox"><strong>Current ecosystem</strong>40+ processor architectures, libraries, LTS releases, community, partners.</div>
+            </div>
+            <div class="grid-3" style="margin-top:18px;">
+              <div class="panel tint-blue"><h3>Small</h3><p>Designed for memory, compute, and power constrained embedded targets.</p></div>
+              <div class="panel tint-green"><h3>Portable</h3><p>C source, architecture ports, and many toolchain integrations.</p></div>
+              <div class="panel tint-violet"><h3>Neutral</h3><p>Hardware, tool, and cloud-service neutral open-source project.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="page">17 / 22</div>
+    </section>
+
+    <section class="slide" id="s18">
+      <div class="slide-header"><div class="context">License and Family</div><div class="framing">FreeRTOS, OpenRTOS, SafeRTOS</div></div>
+      <div class="content">
+        <h2>FreeRTOS, OpenRTOS, and SafeRTOS</h2>
+        <p class="subtitle">The course uses open-source FreeRTOS, but the family context matters for industry discussions.</p>
+        <div class="grid-3">
+          <div class="panel tint-green">
+            <h3>FreeRTOS</h3>
+            <ul>
+              <li>MIT open-source license</li>
+              <li>Commercial application use allowed</li>
+              <li>Users retain their own intellectual property</li>
+              <li>Main target for this course</li>
+            </ul>
+          </div>
+          <div class="panel tint-blue">
+            <h3>OpenRTOS</h3>
+            <ul>
+              <li>Commercially licensed version</li>
+              <li>Provided through a third party under license</li>
+              <li>Useful context for legal and procurement paths</li>
+              <li>Not the lab target here</li>
+            </ul>
+          </div>
+          <div class="panel tint-amber">
+            <h3>SafeRTOS</h3>
+            <ul>
+              <li>Related usage model</li>
+              <li>Developed for safety standard compliance claims</li>
+              <li>Relevant to safety-critical product domains</li>
+              <li>Not a shortcut to safety certification</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="takeaway">The practical lesson: FreeRTOS learning maps into a larger commercial and safety-aware ecosystem.</div>
+      <div class="page">18 / 22</div>
+    </section>
+
+    <section class="slide" id="s19">
+      <div class="slide-header"><div class="context">Course Platform</div><div class="framing">NUCLEO-F439ZI baseline</div></div>
+      <div class="content">
+        <h2>Why NUCLEO-F439ZI for This Course</h2>
+        <p class="subtitle">The board is not the subject of the course, but it gives the RTOS concepts a repeatable execution target.</p>
+        <div class="grid-2">
+          <div class="panel tint-blue">
+            <h3>Core lab value</h3>
+            <ul>
+              <li>Cortex-M4F at the right complexity level for FreeRTOS kernel concepts</li>
+              <li>On-board ST-LINK for flash and debug</li>
+              <li>User LEDs and user button for scheduling and ISR labs</li>
+              <li>Virtual COM Port for UART logs and timing observations</li>
+              <li>STM32CubeIDE and STM32CubeMX project generation path</li>
+            </ul>
+          </div>
+          <div class="panel tint-violet">
+            <h3>Boundaries for this course</h3>
+            <ul>
+              <li>Use LED, button, UART, ST-LINK, SysTick, and FreeRTOS first.</li>
+              <li>Keep Ethernet, USB, LCD-TFT, DMA2D, and crypto as later extension topics.</li>
+              <li>Treat NUCLEO-F429ZI as a close board-family reference, not the main template.</li>
+              <li>Keep NUCLEO-H755ZI-Q for later TinyML or Edge AI work.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="page">19 / 22</div>
+    </section>
+
+    <section class="slide" id="s20">
+      <div class="slide-header"><div class="context">Project Boundary Check</div><div class="framing">Module 00 Self Lab</div></div>
+      <div class="content">
+        <h2>Project Boundary Check</h2>
+        <p class="subtitle">This checkpoint is deliberately light. The goal is conceptual readiness before writing FreeRTOS code.</p>
+        <div class="grid-2">
+          <div class="panel tint-green">
+            <h3>Board and environment</h3>
+            <ol>
+              <li>Open STM32CubeIDE and confirm the NUCLEO-F439ZI board or STM32F439ZI MCU path.</li>
+              <li>List five board features visible in the ST board description.</li>
+              <li>Mark which features are needed for core FreeRTOS labs.</li>
+              <li>Mark which features should stay as future extension topics.</li>
+            </ol>
+          </div>
+          <div class="panel tint-blue">
+            <h3>RTOS decision sketch</h3>
+            <ol>
+              <li>Invent a small firmware scenario with at least four activities.</li>
+              <li>Classify each activity as periodic, event-driven, continuous, or background.</li>
+              <li>Identify one timing risk in a super loop version.</li>
+              <li>Choose which activity would deserve the highest task priority and explain why.</li>
+            </ol>
+          </div>
+        </div>
+        <div class="question" style="margin-top:22px;">Checkpoint output: a one-page note with workload categories, one timing risk, and a first task-priority hypothesis.</div>
+      </div>
+      <div class="page">20 / 22</div>
+    </section>
+
+    <section class="slide" id="s21">
+      <div class="slide-header"><div class="context">Bridge</div><div class="framing">Next module</div></div>
+      <div class="content">
+        <h2>Bridge to Module 01</h2>
+        <p class="subtitle">Module 00 defines the language. Module 01 opens the firmware and shows where the language appears in files.</p>
+        <div class="grid-3">
+          <div class="panel tint-blue">
+            <h3>From concept</h3>
+            <ul>
+              <li>Task</li>
+              <li>Scheduler</li>
+              <li>Kernel object</li>
+              <li>Configuration</li>
+            </ul>
+          </div>
+          <div class="panel tint-teal">
+            <h3>To source boundary</h3>
+            <ul>
+              <li><code>main.c</code></li>
+              <li><code>FreeRTOSConfig.h</code></li>
+              <li>Kernel source files</li>
+              <li>Portable layer</li>
+            </ul>
+          </div>
+          <div class="panel tint-green">
+            <h3>To STM32 lab</h3>
+            <ul>
+              <li>CubeMX-generated project</li>
+              <li>HAL and BSP boundary</li>
+              <li>ST-LINK debug</li>
+              <li>UART observation path</li>
+            </ul>
+          </div>
+        </div>
+        <div class="callout" style="margin-top:22px;">After Module 00, Module 01 should spend less time justifying RTOS use and more time reading the concrete project structure.</div>
+      </div>
+      <div class="page">21 / 22</div>
+    </section>
+
+    <section class="slide" id="s22">
+      <div class="slide-header"><div class="context">References</div><div class="framing">Sources and further reading</div></div>
+      <div class="content">
+        <h2>References and Further Reading</h2>
+        <div class="grid-2">
+          <div class="panel tint-blue">
+            <h3>References Used</h3>
+            <ul>
+              <li>FreeRTOS, RTOS Fundamentals, Beginner's Guide.</li>
+              <li>FreeRTOS, About FreeRTOS and Why FreeRTOS.</li>
+              <li>FreeRTOS homepage, current project positioning and ecosystem notes.</li>
+              <li>AWS FreeRTOS User Guide, What is FreeRTOS?</li>
+              <li>AWS FreeRTOS User Guide, FreeRTOS kernel fundamentals.</li>
+              <li>FreeRTOS Kernel Book, Chapter 1, Preface 1.1.1-1.1.6.</li>
+            </ul>
+          </div>
+          <div class="panel tint-teal">
+            <h3>Further Reading</h3>
+            <ul>
+              <li>FreeRTOS Kernel Book, Chapter 2, Source Organization.</li>
+              <li>FreeRTOS Kernel Book, Chapter 4, Task Management.</li>
+              <li>FreeRTOS API Reference, Task Control APIs.</li>
+              <li>NUCLEO-F439ZI board documentation and STM32CubeIDE documentation.</li>
+              <li>Course notes: STM32F439ZI lab environment and previous uC/OS-III material conversion memo.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="page">22 / 22</div>
+    </section>
+  </main>
+  <script src="../shared_assets/slideshow.js"></script>
+</body>
+</html>

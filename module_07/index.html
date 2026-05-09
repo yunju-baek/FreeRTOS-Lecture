@@ -1,0 +1,684 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FreeRTOS Module 07 - Queue Extension Patterns and ISR Queues</title>
+  <style>
+:root {
+  --indigo:#2e315b; --blue:#2563a6; --teal:#147d83; --green:#2f7d4e;
+  --amber:#9a6a16; --violet:#6d4aa2; --graphite:#2b2f36; --muted:#637083;
+  --line:#d8dee9; --paper:#fff; --bg:#f4f6f9; --code:#eef2f7;
+  --soft-blue:#eef5fc; --soft-teal:#edf8f8; --soft-amber:#fff7e8;
+}
+* { box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { margin:0; background:var(--bg); color:var(--graphite); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans",Arial,sans-serif; line-height:1.44; }
+.nav { position:sticky; top:0; z-index:10; width:1280px; margin:0 auto; padding:10px 16px; background:rgba(244,246,249,.96); border-bottom:1px solid var(--line); color:#4f5969; font-size:15px; }
+.nav a { margin-right:8px; color:var(--blue); text-decoration:none; font-weight:800; }
+.deck { width:1280px; margin:0 auto; padding:28px 0 64px; }
+.slide { position:relative; width:1280px; min-height:720px; margin:0 0 32px; overflow:hidden; background:var(--paper); border:1px solid var(--line); box-shadow:0 18px 40px rgba(38,49,91,.12); page-break-after:always; }
+.slide-header { display:flex; justify-content:space-between; align-items:center; height:54px; padding:0 34px; background:var(--indigo); color:#fff; font-size:18px; }
+.context { font-weight:800; }
+.framing { color:#e1e6ff; font-size:16px; }
+.content { padding:30px 42px 58px; }
+h1,h2,h3,p { margin-top:0; }
+h1 { margin-bottom:14px; color:#fff; font-size:45px; line-height:1.08; letter-spacing:0; }
+h2 { margin-bottom:10px; color:#20243d; font-size:34px; line-height:1.12; letter-spacing:0; }
+h3 { margin-bottom:10px; color:var(--indigo); font-size:22px; letter-spacing:0; }
+.subtitle { max-width:1060px; margin-bottom:22px; color:#4a5260; font-size:22px; line-height:1.36; }
+.small { color:var(--muted); font-size:17px; }
+ul,ol { margin:0; padding-left:22px; }
+li { font-size:18.2px; }
+li + li { margin-top:6px; }
+code { padding:1px 5px; border-radius:4px; background:var(--code); color:#1d3152; font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace; font-size:.93em; }
+pre { margin:0; padding:15px 17px; border-radius:8px; background:#1f2633; color:#edf2ff; font-size:14.2px; line-height:1.42; overflow:hidden; white-space:pre-wrap; }
+pre code { padding:0; background:transparent; color:inherit; font-size:inherit; }
+.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+.grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
+.grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+.grid-13 { display:grid; grid-template-columns:1.12fr .88fr; gap:22px; align-items:stretch; }
+.grid-31 { display:grid; grid-template-columns:.82fr 1.18fr; gap:22px; align-items:stretch; }
+.panel { border:1px solid var(--line); border-radius:8px; padding:17px 19px; background:#fff; }
+.tint-blue { border-top:5px solid var(--blue); } .tint-teal { border-top:5px solid var(--teal); } .tint-green { border-top:5px solid var(--green); } .tint-amber { border-top:5px solid var(--amber); } .tint-violet { border-top:5px solid var(--violet); }
+.question { padding:16px 18px; border-left:6px solid var(--blue); background:var(--soft-blue); font-size:20px; }
+.callout { padding:16px 18px; border-left:6px solid var(--teal); background:var(--soft-teal); font-size:19px; }
+.warning { padding:16px 18px; border-left:6px solid var(--amber); background:var(--soft-amber); font-size:19px; }
+.takeaway { position:absolute; left:42px; right:120px; bottom:22px; color:#515a6b; font-size:17px; font-weight:700; }
+.page { position:absolute; right:36px; bottom:22px; color:#7a8290; font-size:16px; font-weight:800; }
+.cover { color:#fff; background:linear-gradient(120deg,rgba(46,49,91,.98),rgba(20,125,131,.9)),#2e315b; }
+.cover .slide-header { background:transparent; border-bottom:1px solid rgba(255,255,255,.24); }
+.cover .content { display:grid; grid-template-columns:1.08fr .92fr; gap:46px; align-items:center; padding-top:54px; }
+.cover .subtitle { color:#eef5ff; }
+.cover-card { min-height:390px; padding:28px; border:1px solid rgba(255,255,255,.35); border-radius:10px; background:rgba(255,255,255,.08); }
+.cover-card h3 { color:#fff; font-size:25px; }
+.cover-card li { color:#edf2ff; font-size:20px; }
+.icon-card { min-height:150px; display:grid; grid-template-columns:86px 1fr; gap:14px; align-items:center; border:1px solid var(--line); border-radius:8px; padding:15px; background:#fff; }
+.icon-card img { width:76px; height:76px; object-fit:contain; }
+.icon-card strong { display:block; color:var(--indigo); font-size:19px; margin-bottom:5px; }
+.icon-card span { display:block; color:#4e5969; font-size:16.5px; }
+.figure-frame { display:flex; align-items:center; justify-content:center; min-height:410px; border:1px solid var(--line); border-radius:10px; background:#fbfcfe; padding:18px; }
+.figure-frame img { max-width:100%; max-height:420px; object-fit:contain; }
+.figure-frame.tall img { max-height:505px; }
+.asset-note { margin-top:8px; color:var(--muted); font-size:15px; }
+.mini-table { width:100%; border-collapse:collapse; font-size:17px; }
+.mini-table th,.mini-table td { padding:9px 10px; border:1px solid var(--line); vertical-align:top; }
+.mini-table th { background:#eef2f7; color:var(--indigo); text-align:left; }
+.flow { display:grid; grid-template-columns:1fr 48px 1fr 48px 1fr; gap:10px; align-items:center; }
+.flowbox { min-height:112px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fff; text-align:center; font-size:17px; }
+.flowbox strong { display:block; margin-bottom:8px; color:var(--indigo); font-size:19px; }
+.arrow { text-align:center; color:var(--blue); font-size:32px; font-weight:900; }
+.timeline { display:grid; gap:12px; margin-top:10px; }
+.lane { display:grid; grid-template-columns:150px 1fr; gap:12px; align-items:center; }
+.lane-label { padding:10px 12px; border-radius:8px; background:#edf2ff; color:var(--indigo); font-weight:900; text-align:center; }
+.lane-body { display:flex; gap:6px; align-items:center; min-height:46px; padding:8px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+.bar { height:30px; border-radius:6px; color:#fff; font-size:14px; font-weight:800; display:flex; align-items:center; justify-content:center; }
+.run { background:var(--blue); } .block { background:var(--amber); } .idle { background:var(--green); } .tick { width:6px; height:36px; background:var(--teal); border-radius:4px; }
+.w80 { width:80px; } .w120 { width:120px; } .w180 { width:180px; } .w240 { width:240px; }
+.refs li { margin-top:9px; font-size:18px; }
+@media print { body{background:#fff;} .nav{display:none;} .deck{padding:0;} .slide{margin:0; box-shadow:none; border:0;} }
+
+.api-list { display:flex; flex-wrap:wrap; gap:10px; margin-top:10px; }
+.api-list code { display:inline-block; padding:8px 10px; font-size:17px; }
+.decision-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+.decision { min-height:132px; padding:13px; border:1px solid var(--line); border-top:5px solid var(--blue); border-radius:8px; background:#fff; font-size:16px; }
+.decision:nth-child(2) { border-top-color:var(--teal); }
+.decision:nth-child(3) { border-top-color:var(--amber); }
+.decision:nth-child(4) { border-top-color:var(--green); }
+.decision strong { display:block; color:var(--indigo); font-size:18px; margin-bottom:6px; }
+.lane-stack { display:grid; gap:12px; margin-top:12px; }
+.lane { display:grid; grid-template-columns:160px 1fr; gap:12px; align-items:center; }
+.lane-label { padding:10px 12px; border-radius:8px; background:#edf2ff; color:var(--indigo); font-weight:900; text-align:center; }
+.lane-body { min-height:48px; display:flex; gap:7px; align-items:center; padding:8px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+.seg { min-width:80px; height:30px; padding:0 10px; display:flex; align-items:center; justify-content:center; border-radius:6px; color:#fff; font-weight:900; font-size:14px; }
+.blue { background:var(--blue); } .teal { background:var(--teal); } .amber { background:var(--amber); } .green { background:var(--green); } .violet { background:var(--violet); }
+.w120 { width:120px; } .w180 { width:180px; } .w240 { width:240px; }
+.mini-arch { display:grid; grid-template-columns:1fr 48px 1fr 48px 1fr; gap:10px; align-items:center; }
+.arch-node { min-height:96px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fff; text-align:center; font-size:17px; }
+.arch-node strong { display:block; color:var(--indigo); font-size:19px; margin-bottom:7px; }
+.arrow { text-align:center; color:var(--blue); font-size:32px; font-weight:900; }
+.source-card { min-height:120px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fbfcfe; font-size:16.5px; }
+.source-card strong { display:block; color:var(--indigo); font-size:18px; margin-bottom:6px; }
+</style>
+  <link rel="stylesheet" href="../shared_assets/slideshow.css">
+</head>
+<body>
+  <nav class="nav"><a href="#s1">01</a><a href="#s2">02</a><a href="#s3">03</a><a href="#s4">04</a><a href="#s5">05</a><a href="#s6">06</a><a href="#s7">07</a><a href="#s8">08</a><a href="#s9">09</a><a href="#s10">10</a><a href="#s11">11</a><a href="#s12">12</a><a href="#s13">13</a><a href="#s14">14</a><a href="#s15">15</a><a href="#s16">16</a><a href="#s17">17</a><a href="#s18">18</a><a href="#s19">19</a><a href="#s20">20</a><a href="#s21">21</a><a href="#s22">22</a><a href="#s23">23</a><a href="#s24">24</a><a href="#s25">25</a><a href="#s26">26</a><a href="#s27">27</a><a href="#s28">28</a><a href="#s29">29</a><a href="#s30">30</a><a href="#s31">31</a><a href="#s32">32</a><a href="#s33">33</a><a href="#s34">34</a><a href="#s35">35</a><a href="#s36">36</a><button class="slideshow-toggle" type="button" data-slideshow-start>Slideshow</button></nav>
+  
+  <div class="slideshow-controls" aria-label="Slideshow controls">
+    <button class="slide-control" type="button" data-slide-prev>Prev</button>
+    <span class="slide-counter" data-slide-counter>01 / 36</span>
+    <button class="slide-control" type="button" data-slide-next>Next</button>
+    <button class="slide-control" type="button" data-slide-fullscreen>Full</button>
+    <button class="slide-control" type="button" data-slide-fill aria-pressed="false">Fill</button>
+    <button class="slide-control" type="button" data-slide-exit>Exit</button>
+  </div>
+  <div class="slideshow-hint">Keys: Left/Right or PageUp/PageDown to move, Home/End to jump, S to toggle slideshow, F for fullscreen, Z for fit/fill, Esc to exit.</div>
+
+  <main class="deck">
+    
+    <section class="slide cover" id="s1">
+      <div class="slide-header"><div class="context">FreeRTOS Module 07</div><div class="framing">Queue Extension Patterns and ISR Queues</div></div>
+      <div class="content">
+        <div>
+          <h1>Queue Extension Patterns and ISR Queues</h1>
+          <p class="subtitle">A queue can carry pointers, represent a mailbox, join a queue set, or cross an interrupt boundary. Each extension changes the design contract.</p>
+          <p class="subtitle">The module is written for third-year computer science students: new terms are defined before use, source files are named, and visuals are used as reasoning anchors.</p>
+        </div>
+        <div class="cover-card">
+          <h3>Module Contract</h3>
+          <ul><li>Explain pointer queue ownership and lifetime rules.</li><li>Use mailbox and queue set patterns only when their semantics fit the problem.</li><li>Distinguish task-context queue APIs from FromISR queue APIs.</li><li>Trace Tutorial 09 and Tutorial 10 as task-to-task and ISR-to-task queue cases.</li></ul>
+        </div>
+      </div>
+      <div class="page">01</div>
+    </section>
+    <section class="slide" id="s2">
+      <div class="slide-header"><div class="context">FreeRTOS Module 07</div><div class="framing">Course Position</div></div>
+      <div class="content">
+        <h2>Course Position</h2>
+        
+      <p class="subtitle">Module 06 established the base queue model. Module 07 keeps that model but changes what the item represents and where the caller executes.</p>
+      <div class="grid-3"><div class="icon-card"><img src="../shared_assets/icons/queue_message_passing.png" alt=""><div><strong>Queue patterns</strong><span>The same queue object can support several architectural patterns.</span></div></div><div class="icon-card"><img src="../shared_assets/icons/isr_handoff_generated.png" alt=""><div><strong>ISR boundary</strong><span>Interrupt context needs FromISR APIs and cannot block.</span></div></div><div class="icon-card"><img src="../shared_assets/icons/task_notification_generated.png" alt=""><div><strong>Alternatives</strong><span>Mailbox, queue set, and notification patterns should be compared explicitly.</span></div></div></div>
+    
+      </div>
+      <div class="takeaway">The module is part of one system model, not a detached API list.</div>
+      <div class="page">02</div>
+    </section>
+    <section class="slide" id="s3">
+      <div class="slide-header"><div class="context">FreeRTOS Module 07</div><div class="framing">Problem Frame</div></div>
+      <div class="content">
+        <h2>Problem Frame</h2>
+        
+      <p class="subtitle">The practical pressure behind this module can be separated into three design questions.</p>
+      <div class="grid-3"><div class="panel tint-blue"><h3>Large data</h3><ul><li>Copying large structs is expensive.</li><li>Pointer queues reduce copy cost.</li><li>Pointer lifetime becomes the real risk.</li></ul></div><div class="panel tint-teal"><h3>Many sources</h3><ul><li>A worker may need input from several queues or semaphores.</li><li>Queue sets can multiplex readiness.</li><li>Complexity can rise quickly.</li></ul></div><div class="panel tint-amber"><h3>Interrupt events</h3><ul><li>ISR cannot block.</li><li>The correct API suffix matters.</li><li>The awakened task may need an immediate context switch.</li></ul></div></div>
+    
+      </div>
+      <div class="takeaway">Start with the system problem, then introduce the kernel mechanism.</div>
+      <div class="page">03</div>
+    </section>
+    <section class="slide" id="s4">
+      <div class="slide-header"><div class="context">FreeRTOS Module 07</div><div class="framing">Terminology Before APIs</div></div>
+      <div class="content">
+        <h2>Terminology Before APIs</h2>
+        
+      <p class="subtitle">These words appear repeatedly in the source, API names, and design discussions.</p>
+      <table class="mini-table"><thead><tr><th>Term</th><th>Meaning in this module</th></tr></thead><tbody><tr><td><strong>Pointer queue</strong></td><td>A queue whose item is a pointer value. The pointed buffer is not copied.</td></tr><tr><td><strong>Ownership</strong></td><td>The rule that says which task may read, modify, or free a buffer at each point.</td></tr><tr><td><strong>Mailbox</strong></td><td>A latest-value pattern, often implemented with a length-one queue and overwrite semantics.</td></tr><tr><td><strong>Queue set</strong></td><td>A FreeRTOS object that lets a task wait on multiple queues or semaphores.</td></tr><tr><td><strong>FromISR API</strong></td><td>An API variant designed for interrupt context; it does not block.</td></tr><tr><td><strong>xHigherPriorityTaskWoken</strong></td><td>A flag that records whether an ISR unblocked a higher-priority task.</td></tr></tbody></table>
+    
+      </div>
+      <div class="takeaway">Terminology should describe behavior, ownership, or caller context.</div>
+      <div class="page">04</div>
+    </section>
+    <section class="slide" id="s5">
+      <div class="slide-header"><div class="context">FreeRTOS Module 07</div><div class="framing">Core Mental Model</div></div>
+      <div class="content">
+        <h2>Core Mental Model</h2>
+        
+      <p class="subtitle">Keep this model visible while reading examples and source files.</p>
+      <div class="mini-arch">
+        <div class="arch-node"><strong>Caller</strong>task, ISR, daemon task, or subsystem</div><div class="arrow">&rarr;</div>
+        <div class="arch-node"><strong>Kernel object</strong>Queue Extension Patterns and ISR Queues</div><div class="arrow">&rarr;</div>
+        <div class="arch-node"><strong>Effect</strong>data movement, waiting, ownership, or diagnostics</div>
+      </div>
+      <div class="callout" style="margin-top:22px;">Before selecting an API, identify the caller context, the object semantics, and the failure evidence.</div>
+    
+      </div>
+      <div class="takeaway">A FreeRTOS API call is a system design statement.</div>
+      <div class="page">05</div>
+    </section>
+    <section class="slide" id="s6">
+      <div class="slide-header"><div class="context">FreeRTOS Module 07</div><div class="framing">Primary Visual Anchor</div></div>
+      <div class="content">
+        <h2>Primary Visual Anchor</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/infographics/isr_deferred_processing_choices.png" alt="Module 07 primary visual"></div>
+        <div class="panel tint-blue"><h3>Reading Order</h3><ul><li>Separate value queues, pointer queues, and ISR handoff paths.</li><li>Use the visual to ask what crosses the boundary.</li><li>Name the receiver and its ownership rule.</li><li>Check whether payload, count, or latest value matters.</li></ul><p class="asset-note">Shared visual asset used for classroom explanation.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Use the visual to make the concept concrete before reading code.</div>
+      <div class="page">06</div>
+    </section>
+    <section class="slide" id="s7">
+      <div class="slide-header"><div class="context">FreeRTOS Module 07</div><div class="framing">API Surface Map</div></div>
+      <div class="content">
+        <h2>API Surface Map</h2>
+        
+      <p class="subtitle">The API names should be grouped by the behavior they express.</p>
+      <div class="api-list"><code>xQueueOverwrite()</code><code>xQueuePeek()</code><code>xQueueCreateSet()</code><code>xQueueSelectFromSet()</code><code>xQueueSendFromISR()</code><code>xQueueReceiveFromISR()</code></div>
+      <div class="grid-3" style="margin-top:22px;">
+        <div class="panel tint-blue"><h3>Create or configure</h3><ul><li>Name the object lifetime.</li><li>Check returned handles or status.</li><li>Connect to allocation policy.</li></ul></div>
+        <div class="panel tint-teal"><h3>Operate</h3><ul><li>State the caller context.</li><li>Name block or timeout behavior.</li><li>Check return values.</li></ul></div>
+        <div class="panel tint-amber"><h3>Observe</h3><ul><li>Collect counters or traces.</li><li>Log failure paths.</li><li>Validate the design assumption.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Group APIs by intent, not alphabetically.</div>
+      <div class="page">07</div>
+    </section>
+    <section class="slide" id="s8">
+      <div class="slide-header"><div class="context">FreeRTOS Module 07</div><div class="framing">Configuration and Build Switches</div></div>
+      <div class="content">
+        <h2>Configuration and Build Switches</h2>
+        
+      <p class="subtitle">Configuration decides whether features exist and how safely they can be used.</p>
+      <div class="api-list"><code>configUSE_QUEUE_SETS</code><code>configQUEUE_REGISTRY_SIZE</code><code>configMAX_SYSCALL_INTERRUPT_PRIORITY</code><code>configUSE_PREEMPTION</code></div>
+      <div class="warning" style="margin-top:22px;">A missing or incorrect configuration macro can turn a correct-looking API call into a build failure, assertion, or runtime trap.</div>
+    
+      </div>
+      <div class="takeaway">Read FreeRTOSConfig.h as part of the module content.</div>
+      <div class="page">08</div>
+    </section>
+    <section class="slide" id="s9">
+      <div class="slide-header"><div class="context">FreeRTOS Module 07</div><div class="framing">Source Files to Keep Open</div></div>
+      <div class="content">
+        <h2>Source Files to Keep Open</h2>
+        
+      <p class="subtitle">The deck is not a replacement for source reading. Use it to know where to look.</p>
+      <div class="grid-3"><div class="source-card"><strong>queue.c</strong>Read for behavior evidence and implementation boundaries.</div><div class="source-card"><strong>tasks.c</strong>Read for behavior evidence and implementation boundaries.</div><div class="source-card"><strong>portable layer yield macro</strong>Read for behavior evidence and implementation boundaries.</div><div class="source-card"><strong>Tutorial 09</strong>Read for behavior evidence and implementation boundaries.</div><div class="source-card"><strong>Tutorial 10</strong>Read for behavior evidence and implementation boundaries.</div></div>
+    
+      </div>
+      <div class="takeaway">Source reading should follow a behavior path.</div>
+      <div class="page">09</div>
+    </section>
+    <section class="slide" id="s10">
+      <div class="slide-header"><div class="context">FreeRTOS Module 07</div><div class="framing">Caller Context Rules</div></div>
+      <div class="content">
+        <h2>Caller Context Rules</h2>
+        
+      <p class="subtitle">The same object can behave differently depending on who calls it and whether waiting is legal.</p>
+      <table class="mini-table">
+        <thead><tr><th>Caller context</th><th>Allowed behavior</th><th>Review question</th></tr></thead>
+        <tbody>
+          <tr><td>Task context</td><td>May block if the selected API and timeout allow it</td><td>What state can the task enter?</td></tr>
+          <tr><td>ISR context</td><td>Must use interrupt-safe API variants and cannot block</td><td>Is a FromISR API or yield macro required?</td></tr>
+          <tr><td>Daemon or service task</td><td>Runs in task context but may affect other kernel services</td><td>Will long work delay other service callbacks?</td></tr>
+        </tbody>
+      </table>
+    
+      </div>
+      <div class="takeaway">Always identify the caller before approving the API.</div>
+      <div class="page">10</div>
+    </section>
+    <section class="slide" id="s11">
+      <div class="slide-header"><div class="context">FreeRTOS Module 07</div><div class="framing">Kernel Book Figure 5.4: Struct Messages</div></div>
+      <div class="content">
+        <h2>Kernel Book Figure 5.4: Struct Messages</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_5_4_an_example_scenario_where_structures_are_sent_on_a_queue.png" alt="Kernel Book Figure 5.4: Struct Messages"></div>
+        <div class="panel tint-blue">
+          <h3>Reading Focus</h3>
+          <ul><li>Use structured messages before pointer queues.</li><li>Identify which fields describe the message.</li><li>Ask whether the struct is small enough to copy.</li><li>Prepare the transition to pointer ownership.</li></ul>
+          <p class="asset-note">Source: Kernel Book Figure 5.4.</p>
+        </div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Use the figure as evidence before naming the API rule.</div>
+      <div class="page">11</div>
+    </section>
+    <section class="slide" id="s12">
+      <div class="slide-header"><div class="context">FreeRTOS Module 07</div><div class="framing">Kernel Book Figure 7.1: Deferred Interrupt Processing</div></div>
+      <div class="content">
+        <h2>Kernel Book Figure 7.1: Deferred Interrupt Processing</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_7_1_completing_interrupt_processing_in_a_high_priority_task.png" alt="Kernel Book Figure 7.1: Deferred Interrupt Processing"></div>
+        <div class="panel tint-blue">
+          <h3>Reading Focus</h3>
+          <ul><li>Interrupt captures the event.</li><li>A high-priority task performs deferred work.</li><li>The ISR is short.</li><li>The task context owns the heavy processing.</li></ul>
+          <p class="asset-note">Source: Kernel Book Figure 7.1.</p>
+        </div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Use the figure as evidence before naming the API rule.</div>
+      <div class="page">12</div>
+    </section>
+    <section class="slide" id="s13">
+      <div class="slide-header"><div class="context">FreeRTOS Module 07</div><div class="framing">Kernel Book Figure 7.6: Backlog Risk</div></div>
+      <div class="content">
+        <h2>Kernel Book Figure 7.6: Backlog Risk</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_7_6_the_scenario_when_one_interrupt_occurs_before_the_task_has_finished_proc.png" alt="Kernel Book Figure 7.6: Backlog Risk"></div>
+        <div class="panel tint-blue">
+          <h3>Reading Focus</h3>
+          <ul><li>Ask what happens if events arrive faster than processing.</li><li>Separate event count from data payload.</li><li>Discuss queue depth and counting alternatives.</li><li>Connect backlog to later diagnostics.</li></ul>
+          <p class="asset-note">Source: Kernel Book Figure 7.6.</p>
+        </div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Use the figure as evidence before naming the API rule.</div>
+      <div class="page">13</div>
+    </section>
+    <section class="slide" id="s14">
+      <div class="slide-header"><div class="context">FreeRTOS Module 07</div><div class="framing">Operation Path A</div></div>
+      <div class="content">
+        <h2>Operation Path A</h2>
+        
+      <p class="subtitle">A simplified reading path for the first major operation in this module.</p>
+      <pre><code>Caller decides intent
+  -> check context and configuration
+  -> call the selected FreeRTOS API
+  -> kernel object updates internal state
+  -> waiting task may unblock or caller may block
+  -> return value becomes design evidence</code></pre>
+    
+      </div>
+      <div class="takeaway">The path matters more than memorizing one function name.</div>
+      <div class="page">14</div>
+    </section>
+    <section class="slide" id="s15">
+      <div class="slide-header"><div class="context">FreeRTOS Module 07</div><div class="framing">Operation Path B</div></div>
+      <div class="content">
+        <h2>Operation Path B</h2>
+        
+      <p class="subtitle">The second operation path usually exposes the failure mode.</p>
+      <pre><code>Operation cannot complete immediately
+  -> timeout or nonblocking policy is inspected
+  -> task blocks, API fails, or event is dropped
+  -> scheduler selects another Ready task if needed
+  -> diagnostics should record the pressure point</code></pre>
+    
+      </div>
+      <div class="takeaway">Failure behavior must be designed, not left implicit.</div>
+      <div class="page">15</div>
+    </section>
+    <section class="slide" id="s16">
+      <div class="slide-header"><div class="context">FreeRTOS Module 07</div><div class="framing">Pattern Board</div></div>
+      <div class="content">
+        <h2>Pattern Board</h2>
+        
+      <p class="subtitle">Use the patterns as named choices in design review.</p>
+      <div class="decision-grid"><div class="decision"><strong>Pointer queue</strong>Queue a buffer pointer, transfer ownership, and return the buffer to a pool after processing.</div><div class="decision"><strong>Mailbox</strong>Keep only the latest value when old samples are no longer useful.</div><div class="decision"><strong>Queue set</strong>Wait for whichever member queue or semaphore becomes ready first.</div><div class="decision"><strong>ISR queue</strong>Send a small event record from the ISR and wake a worker task.</div></div>
+    
+      </div>
+      <div class="takeaway">A named pattern is easier to review than an isolated API call.</div>
+      <div class="page">16</div>
+    </section>
+    <section class="slide" id="s17">
+      <div class="slide-header"><div class="context">FreeRTOS Module 07</div><div class="framing">Failure Modes</div></div>
+      <div class="content">
+        <h2>Failure Modes</h2>
+        
+      <p class="subtitle">The most useful slide in a lecture is often the one that names the bug early.</p>
+      <div class="grid-3"><div class="panel tint-blue"><h3>Dangling pointer</h3><ul><li>Queueing an address of a local variable.</li><li>Receiver uses data after sender stack changed.</li><li>Fix with static buffer, heap buffer, or buffer pool ownership.</li></ul></div><div class="panel tint-teal"><h3>Wrong API context</h3><ul><li>Calling task-context API in ISR.</li><li>Passing a block time from interrupt context.</li><li>Fix with FromISR API family.</li></ul></div><div class="panel tint-amber"><h3>Overdesigned multiplexing</h3><ul><li>Queue set used when one input queue would be clearer.</li><li>Harder debugging and ownership tracing.</li><li>Fix by simplifying object choice.</li></ul></div></div>
+    
+      </div>
+      <div class="takeaway">Predictable failure modes should become checklist items.</div>
+      <div class="page">17</div>
+    </section>
+    <section class="slide" id="s18">
+      <div class="slide-header"><div class="context">FreeRTOS Module 07</div><div class="framing">Diagnostic Evidence</div></div>
+      <div class="content">
+        <h2>Diagnostic Evidence</h2>
+        
+      <p class="subtitle">Collect evidence before changing priorities, stack sizes, timeouts, or object choice.</p>
+      <div class="api-list"><code>Queue depth trend</code><code>Dropped pointer count</code><code>Buffer pool free count</code><code>xHigherPriorityTaskWoken path</code><code>Trace timeline around ISR exit</code></div>
+      <div class="callout" style="margin-top:22px;">Each diagnostic item should answer a specific question about state, timing, memory, ownership, or data flow.</div>
+    
+      </div>
+      <div class="takeaway">Evidence turns debugging from guessing into engineering.</div>
+      <div class="page">18</div>
+    </section>
+    <section class="slide" id="s19">
+      <div class="slide-header"><div class="context">FreeRTOS Module 07</div><div class="framing">Tutorial Reading Setup</div></div>
+      <div class="content">
+        <h2>Tutorial Reading Setup</h2>
+        
+      <p class="subtitle">Representative source material: <strong>Tutorial 09 and Tutorial 10</strong>.</p>
+      <div class="grid-2">
+        <div class="panel tint-blue"><h3>Before running</h3><ul><li>Compare task-to-task queue calls with ISR-to-task queue calls.</li><li>Mark every API suffix.</li></ul></div>
+        <div class="panel tint-green"><h3>After running</h3><ul><li>Record the receiver task and the ownership rule.</li><li>Check whether an immediate yield from ISR is requested.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Students should predict behavior before they observe it.</div>
+      <div class="page">19</div>
+    </section>
+    <section class="slide" id="s20">
+      <div class="slide-header"><div class="context">FreeRTOS Module 07</div><div class="framing">Tutorial Variation</div></div>
+      <div class="content">
+        <h2>Tutorial Variation</h2>
+        
+      <p class="subtitle">A small change should reveal one design rule.</p>
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Change one parameter</h3><ul><li>Timeout</li><li>Priority</li><li>Object length or count</li><li>Configuration macro</li></ul></div>
+        <div class="panel tint-teal"><h3>Predict</h3><ul><li>Which task blocks?</li><li>Which API returns failure?</li><li>Which diagnostic changes?</li></ul></div>
+        <div class="panel tint-green"><h3>Explain</h3><ul><li>Use module vocabulary.</li><li>Name the source file path.</li><li>Record the design implication.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A good lab variation changes one variable and explains one mechanism.</div>
+      <div class="page">20</div>
+    </section>
+    <section class="slide" id="s21">
+      <div class="slide-header"><div class="context">FreeRTOS Module 07</div><div class="framing">Mini Case</div></div>
+      <div class="content">
+        <h2>Mini Case</h2>
+        
+      <p class="subtitle">Sensor DMA completion</p>
+      <div class="mini-arch">
+        <div class="arch-node"><strong>Input</strong>ISR receives a completion event.</div><div class="arrow">&rarr;</div>
+        <div class="arch-node"><strong>Kernel object</strong>ISR queues a buffer descriptor pointer.</div><div class="arrow">&rarr;</div>
+        <div class="arch-node"><strong>Task behavior</strong>Worker task parses the buffer.</div>
+      </div>
+      <div class="callout" style="margin-top:22px;">Worker returns the buffer to a pool.</div>
+    
+      </div>
+      <div class="takeaway">A case makes the API choice feel necessary rather than decorative.</div>
+      <div class="page">21</div>
+    </section>
+    <section class="slide" id="s22">
+      <div class="slide-header"><div class="context">FreeRTOS Module 07</div><div class="framing">Design Decision Table</div></div>
+      <div class="content">
+        <h2>Design Decision Table</h2>
+        
+      <p class="subtitle">Use this table form during design review.</p>
+      <table class="mini-table">
+        <thead><tr><th>Decision</th><th>Question</th><th>Evidence</th></tr></thead>
+        <tbody>
+          <tr><td>Object choice</td><td>What semantic problem does the object solve?</td><td>Payload, signal, count, ownership, bitset, or byte stream</td></tr>
+          <tr><td>Blocking policy</td><td>Can the caller wait, and for how long?</td><td>Timeout value, task priority, and caller context</td></tr>
+          <tr><td>Failure path</td><td>What happens when the operation cannot complete?</td><td>Return value check, counter, assert, or recovery path</td></tr>
+          <tr><td>Observability</td><td>How will the behavior be verified?</td><td>Trace, log, high-water mark, depth, count, or timing measurement</td></tr>
+        </tbody>
+      </table>
+    
+      </div>
+      <div class="takeaway">A decision table forces intent and evidence into the same place.</div>
+      <div class="page">22</div>
+    </section>
+    <section class="slide" id="s23">
+      <div class="slide-header"><div class="context">FreeRTOS Module 07</div><div class="framing">Memory Connection</div></div>
+      <div class="content">
+        <h2>Memory Connection</h2>
+        
+      <p class="subtitle">Every FreeRTOS object still has storage implications from Module 05.</p>
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Control storage</h3><ul><li>Object metadata exists somewhere.</li><li>Dynamic creation may use heap.</li><li>Static creation needs application buffers.</li></ul></div>
+        <div class="panel tint-teal"><h3>Payload or state</h3><ul><li>Some objects carry bytes or items.</li><li>Some carry counts or bits.</li><li>Some carry only ownership.</li></ul></div>
+        <div class="panel tint-amber"><h3>Failure</h3><ul><li>Creation can fail.</li><li>Buffers can fill.</li><li>Counters can saturate or lose meaning.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The memory question never disappears after Module 05.</div>
+      <div class="page">23</div>
+    </section>
+    <section class="slide" id="s24">
+      <div class="slide-header"><div class="context">FreeRTOS Module 07</div><div class="framing">Scheduling Connection</div></div>
+      <div class="content">
+        <h2>Scheduling Connection</h2>
+        
+      <p class="subtitle">Most objects in this part of the course can move tasks between Ready, Running, and Blocked.</p>
+      <div class="lane-stack">
+        <div class="lane"><div class="lane-label">Before API</div><div class="lane-body"><div class="seg blue w120">Running</div><div class="seg teal w180">object state checked</div></div></div>
+        <div class="lane"><div class="lane-label">Cannot proceed</div><div class="lane-body"><div class="seg amber w240">Blocked or immediate failure</div></div></div>
+        <div class="lane"><div class="lane-label">Event happens</div><div class="lane-body"><div class="seg green w180">task becomes Ready</div><div class="seg violet w120">scheduler runs</div></div></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">If an API can block or unblock a task, it is part of scheduling behavior.</div>
+      <div class="page">24</div>
+    </section>
+    <section class="slide" id="s25">
+      <div class="slide-header"><div class="context">FreeRTOS Module 07</div><div class="framing">API Pitfalls</div></div>
+      <div class="content">
+        <h2>API Pitfalls</h2>
+        
+      <p class="subtitle">The names differ by module, but the mistakes repeat.</p>
+      <div class="grid-3">
+        <div class="panel tint-amber"><h3>Wrong context</h3><ul><li>Blocking call in ISR.</li><li>Long work inside service context.</li><li>Ignoring priority boundary.</li></ul></div>
+        <div class="panel tint-blue"><h3>Wrong semantics</h3><ul><li>Using a data object as a signal.</li><li>Using a signal object as a lock.</li><li>Expecting payload where none exists.</li></ul></div>
+        <div class="panel tint-violet"><h3>Wrong evidence</h3><ul><li>Changing code before measuring.</li><li>Trusting one log line.</li><li>Ignoring return values.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Pitfalls become less mysterious when they are grouped by context, semantics, and evidence.</div>
+      <div class="page">25</div>
+    </section>
+    <section class="slide" id="s26">
+      <div class="slide-header"><div class="context">FreeRTOS Module 07</div><div class="framing">Testing Checklist</div></div>
+      <div class="content">
+        <h2>Testing Checklist</h2>
+        
+      <p class="subtitle">Each module should end with a way to test the concept under pressure.</p>
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Nominal path</h3><ul><li>API succeeds.</li><li>Expected task wakes or waits.</li><li>Diagnostic remains within margin.</li></ul></div>
+        <div class="panel tint-teal"><h3>Pressure path</h3><ul><li>Queue or buffer fills.</li><li>Timeout expires.</li><li>Priority or interrupt load changes.</li></ul></div>
+        <div class="panel tint-green"><h3>Failure path</h3><ul><li>Return value is checked.</li><li>Counter or assert records it.</li><li>System response is explainable.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A classroom demo should include at least one pressure path.</div>
+      <div class="page">26</div>
+    </section>
+    <section class="slide" id="s27">
+      <div class="slide-header"><div class="context">FreeRTOS Module 07</div><div class="framing">Code Review Checklist</div></div>
+      <div class="content">
+        <h2>Code Review Checklist</h2>
+        
+      <p class="subtitle">Students should be able to review code for this module with concrete questions.</p>
+      <div class="grid-2">
+        <div class="panel tint-blue"><h3>Mechanism review</h3><ul><li>Are object handles checked?</li><li>Are API return values checked?</li><li>Is timeout policy explicit?</li><li>Is caller context correct?</li></ul></div>
+        <div class="panel tint-green"><h3>Design review</h3><ul><li>Does the object semantics match the problem?</li><li>Is ownership documented?</li><li>Is overload visible?</li><li>Is there a diagnostic path?</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Review questions should be specific enough to find bugs.</div>
+      <div class="page">27</div>
+    </section>
+    <section class="slide" id="s28">
+      <div class="slide-header"><div class="context">FreeRTOS Module 07</div><div class="framing">Classroom Board Questions</div></div>
+      <div class="content">
+        <h2>Classroom Board Questions</h2>
+        
+      <p class="subtitle">Use these for live reasoning while the slide is visible.</p>
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>What crosses?</h3><ul><li>Payload</li><li>Signal</li><li>Count</li><li>Ownership</li><li>Bit mask</li></ul></div>
+        <div class="panel tint-teal"><h3>Who waits?</h3><ul><li>Sender</li><li>Receiver</li><li>Owner</li><li>Worker task</li><li>No one</li></ul></div>
+        <div class="panel tint-amber"><h3>What fails?</h3><ul><li>Timeout</li><li>Full object</li><li>Wrong context</li><li>Lost event</li><li>Priority delay</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The same three questions work across the remaining modules.</div>
+      <div class="page">28</div>
+    </section>
+    <section class="slide" id="s29">
+      <div class="slide-header"><div class="context">FreeRTOS Module 07</div><div class="framing">Source-to-Slide Traceability</div></div>
+      <div class="content">
+        <h2>Source-to-Slide Traceability</h2>
+        
+      <p class="subtitle">The module claims should be traceable to official material or source code.</p>
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Book</h3><ul><li>Use figures as behavior evidence.</li><li>Preserve chapter context.</li><li>Avoid overclaiming beyond the figure.</li></ul></div>
+        <div class="panel tint-teal"><h3>Source</h3><ul><li>Name the file.</li><li>Read one behavior path.</li><li>Check version-specific details.</li></ul></div>
+        <div class="panel tint-green"><h3>Tutorial</h3><ul><li>Predict before running.</li><li>Modify one variable.</li><li>Explain observed change.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Traceability keeps a rich deck from becoming decorative.</div>
+      <div class="page">29</div>
+    </section>
+    <section class="slide" id="s30">
+      <div class="slide-header"><div class="context">FreeRTOS Module 07</div><div class="framing">Object Choice and Alternatives</div></div>
+      <div class="content">
+        <h2>Object Choice and Alternatives</h2>
+        
+      <p class="subtitle">Choosing not to use the current module's object can be the correct design decision.</p>
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/infographics/object_selection_map.png" alt="Object selection map"></div>
+        <div class="panel tint-blue"><h3>Alternative Questions</h3><ul><li>Do we need payload data?</li><li>Is there exactly one receiver?</li><li>Is ownership involved?</li><li>Do we need multiple bits or conditions?</li><li>Is this a byte stream or a message?</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Good engineering includes rejecting the wrong object.</div>
+      <div class="page">30</div>
+    </section>
+    <section class="slide" id="s31">
+      <div class="slide-header"><div class="context">FreeRTOS Module 07</div><div class="framing">Mini Architecture</div></div>
+      <div class="content">
+        <h2>Mini Architecture</h2>
+        
+      <p class="subtitle">A compact architecture sketch for this module.</p>
+      <div class="mini-arch">
+        <div class="arch-node"><strong>Producer side</strong>event, data, request, condition, or diagnostic sample</div><div class="arrow">&rarr;</div>
+        <div class="arch-node"><strong>FreeRTOS object</strong>chosen for semantics and caller context</div><div class="arrow">&rarr;</div>
+        <div class="arch-node"><strong>Consumer side</strong>worker, owner, parser, monitor, or reviewer</div>
+      </div>
+      <div class="warning" style="margin-top:22px;">If this diagram cannot be explained in one minute, the design probably needs a simpler ownership story.</div>
+    
+      </div>
+      <div class="takeaway">Architecture diagrams should make ownership and waiting visible.</div>
+      <div class="page">31</div>
+    </section>
+    <section class="slide" id="s32">
+      <div class="slide-header"><div class="context">FreeRTOS Module 07</div><div class="framing">Project Boundary Check</div></div>
+      <div class="content">
+        <h2>Project Boundary Check</h2>
+        
+      <p class="subtitle">Compact self-lab checklist for this module.</p>
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Build</h3><ul><li>Implement a mailbox with xQueueOverwrite().</li></ul></div>
+        <div class="panel tint-teal"><h3>Modify</h3><ul><li>Write a pointer ownership rule for a buffer queue.</li></ul></div>
+        <div class="panel tint-green"><h3>Explain</h3><ul><li>Simulate an ISR queue send and record which task wakes.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The lab output should be a short design note plus evidence.</div>
+      <div class="page">32</div>
+    </section>
+    <section class="slide" id="s33">
+      <div class="slide-header"><div class="context">FreeRTOS Module 07</div><div class="framing">Review Questions</div></div>
+      <div class="content">
+        <h2>Review Questions</h2>
+        
+      <p class="subtitle">These questions check understanding beyond API recall.</p>
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Question 1</h3><p>Why does a pointer queue not copy the pointed buffer?</p></div><div class="panel tint-blue"><h3>Question 2</h3><p>When is a mailbox better than a normal queue?</p></div><div class="panel tint-blue"><h3>Question 3</h3><p>Why is xQueueSendFromISR() not just a spelling variant of xQueueSend()?</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A good answer names object semantics, caller context, and failure evidence.</div>
+      <div class="page">33</div>
+    </section>
+    <section class="slide" id="s34">
+      <div class="slide-header"><div class="context">FreeRTOS Module 07</div><div class="framing">One-Slide Summary</div></div>
+      <div class="content">
+        <h2>One-Slide Summary</h2>
+        
+      <p class="subtitle">Keep the module summary short enough for students to remember.</p>
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Mechanism</h3><p>Explain pointer queue ownership and lifetime rules.</p></div>
+        <div class="panel tint-teal"><h3>Design rule</h3><p>Use mailbox and queue set patterns only when their semantics fit the problem.</p></div>
+        <div class="panel tint-green"><h3>Evidence</h3><p>Queue depth trend, Dropped pointer count, and source-level tracing support the design.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The summary should be memorable but still technical.</div>
+      <div class="page">34</div>
+    </section>
+    <section class="slide" id="s35">
+      <div class="slide-header"><div class="context">FreeRTOS Module 07</div><div class="framing">Bridge to the Next Module</div></div>
+      <div class="content">
+        <h2>Bridge to the Next Module</h2>
+        
+      <p class="subtitle">Module 08 generalizes the interrupt boundary beyond queues and focuses on deferred processing rules.</p>
+      <div class="grid-3">
+        <div class="icon-card"><img src="../shared_assets/icons/queue_message_passing.png" alt=""><div><strong>Queue patterns</strong><span>The same queue object can support several architectural patterns.</span></div></div>
+        <div class="icon-card"><img src="../shared_assets/icons/isr_handoff_generated.png" alt=""><div><strong>ISR boundary</strong><span>Interrupt context needs FromISR APIs and cannot block.</span></div></div>
+        <div class="icon-card"><img src="../shared_assets/icons/task_notification_generated.png" alt=""><div><strong>Alternatives</strong><span>Mailbox, queue set, and notification patterns should be compared explicitly.</span></div></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Each module should hand students a reason to keep learning.</div>
+      <div class="page">35</div>
+    </section>
+    <section class="slide" id="s36">
+      <div class="slide-header"><div class="context">FreeRTOS Module 07</div><div class="framing">References and Further Reading</div></div>
+      <div class="content">
+        <h2>References and Further Reading</h2>
+        
+      <p class="subtitle">References used in this module are separated from optional deeper reading.</p>
+      <div class="grid-2">
+        <div class="panel tint-blue">
+          <h3>References Used</h3>
+          <ul class="refs"><li>FreeRTOS Kernel Book, Chapter 5, Queue Management, advanced queue patterns.</li><li>FreeRTOS Kernel Book, Chapter 7, Interrupt Management examples for deferred processing.</li><li>Lab Project FreeRTOS Tutorials, Tutorial 09 and Tutorial 10.</li><li>FreeRTOS Kernel source: queue.c and port yield-from-ISR path.</li></ul>
+        </div>
+        <div class="panel tint-green">
+          <h3>Further Reading</h3>
+          <ul class="refs"><li>FreeRTOS API reference: queue sets, mailbox-related APIs, and FromISR queue APIs.</li><li>FreeRTOSConfig.h reference: configUSE_QUEUE_SETS and interrupt priority configuration.</li><li>Module 13 reading: task notification as a lighter single-receiver alternative.</li></ul>
+        </div>
+      </div>
+    
+      </div>
+      <div class="takeaway">References should support traceability and direct further study.</div>
+      <div class="page">36</div>
+    </section>
+  </main>
+  <script src="../shared_assets/slideshow.js"></script>
+</body>
+</html>

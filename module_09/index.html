@@ -1,0 +1,734 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FreeRTOS Module 09 - Software Timers and the Daemon Task</title>
+  <style>
+:root {
+  --indigo:#2e315b; --blue:#2563a6; --teal:#147d83; --green:#2f7d4e;
+  --amber:#9a6a16; --violet:#6d4aa2; --graphite:#2b2f36; --muted:#637083;
+  --line:#d8dee9; --paper:#fff; --bg:#f4f6f9; --code:#eef2f7;
+  --soft-blue:#eef5fc; --soft-teal:#edf8f8; --soft-amber:#fff7e8;
+}
+* { box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { margin:0; background:var(--bg); color:var(--graphite); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans",Arial,sans-serif; line-height:1.44; }
+.nav { position:sticky; top:0; z-index:10; width:1280px; margin:0 auto; padding:10px 16px; background:rgba(244,246,249,.96); border-bottom:1px solid var(--line); color:#4f5969; font-size:15px; }
+.nav a { margin-right:8px; color:var(--blue); text-decoration:none; font-weight:800; }
+.deck { width:1280px; margin:0 auto; padding:28px 0 64px; }
+.slide { position:relative; width:1280px; min-height:720px; margin:0 0 32px; overflow:hidden; background:var(--paper); border:1px solid var(--line); box-shadow:0 18px 40px rgba(38,49,91,.12); page-break-after:always; }
+.slide-header { display:flex; justify-content:space-between; align-items:center; height:54px; padding:0 34px; background:var(--indigo); color:#fff; font-size:18px; }
+.context { font-weight:800; }
+.framing { color:#e1e6ff; font-size:16px; }
+.content { padding:30px 42px 58px; }
+h1,h2,h3,p { margin-top:0; }
+h1 { margin-bottom:14px; color:#fff; font-size:45px; line-height:1.08; letter-spacing:0; }
+h2 { margin-bottom:10px; color:#20243d; font-size:34px; line-height:1.12; letter-spacing:0; }
+h3 { margin-bottom:10px; color:var(--indigo); font-size:22px; letter-spacing:0; }
+.subtitle { max-width:1060px; margin-bottom:22px; color:#4a5260; font-size:22px; line-height:1.36; }
+.small { color:var(--muted); font-size:17px; }
+ul,ol { margin:0; padding-left:22px; }
+li { font-size:18.2px; }
+li + li { margin-top:6px; }
+code { padding:1px 5px; border-radius:4px; background:var(--code); color:#1d3152; font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace; font-size:.93em; }
+pre { margin:0; padding:15px 17px; border-radius:8px; background:#1f2633; color:#edf2ff; font-size:14.2px; line-height:1.42; overflow:hidden; white-space:pre-wrap; }
+pre code { padding:0; background:transparent; color:inherit; font-size:inherit; }
+.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+.grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
+.grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+.grid-13 { display:grid; grid-template-columns:1.12fr .88fr; gap:22px; align-items:stretch; }
+.grid-31 { display:grid; grid-template-columns:.82fr 1.18fr; gap:22px; align-items:stretch; }
+.panel { border:1px solid var(--line); border-radius:8px; padding:17px 19px; background:#fff; }
+.tint-blue { border-top:5px solid var(--blue); } .tint-teal { border-top:5px solid var(--teal); } .tint-green { border-top:5px solid var(--green); } .tint-amber { border-top:5px solid var(--amber); } .tint-violet { border-top:5px solid var(--violet); }
+.question { padding:16px 18px; border-left:6px solid var(--blue); background:var(--soft-blue); font-size:20px; }
+.callout { padding:16px 18px; border-left:6px solid var(--teal); background:var(--soft-teal); font-size:19px; }
+.warning { padding:16px 18px; border-left:6px solid var(--amber); background:var(--soft-amber); font-size:19px; }
+.takeaway { position:absolute; left:42px; right:120px; bottom:22px; color:#515a6b; font-size:17px; font-weight:700; }
+.page { position:absolute; right:36px; bottom:22px; color:#7a8290; font-size:16px; font-weight:800; }
+.cover { color:#fff; background:linear-gradient(120deg,rgba(46,49,91,.98),rgba(20,125,131,.9)),#2e315b; }
+.cover .slide-header { background:transparent; border-bottom:1px solid rgba(255,255,255,.24); }
+.cover .content { display:grid; grid-template-columns:1.08fr .92fr; gap:46px; align-items:center; padding-top:54px; }
+.cover .subtitle { color:#eef5ff; }
+.cover-card { min-height:390px; padding:28px; border:1px solid rgba(255,255,255,.35); border-radius:10px; background:rgba(255,255,255,.08); }
+.cover-card h3 { color:#fff; font-size:25px; }
+.cover-card li { color:#edf2ff; font-size:20px; }
+.icon-card { min-height:150px; display:grid; grid-template-columns:86px 1fr; gap:14px; align-items:center; border:1px solid var(--line); border-radius:8px; padding:15px; background:#fff; }
+.icon-card img { width:76px; height:76px; object-fit:contain; }
+.icon-card strong { display:block; color:var(--indigo); font-size:19px; margin-bottom:5px; }
+.icon-card span { display:block; color:#4e5969; font-size:16.5px; }
+.figure-frame { display:flex; align-items:center; justify-content:center; min-height:410px; border:1px solid var(--line); border-radius:10px; background:#fbfcfe; padding:18px; }
+.figure-frame img { max-width:100%; max-height:420px; object-fit:contain; }
+.figure-frame.tall img { max-height:505px; }
+.asset-note { margin-top:8px; color:var(--muted); font-size:15px; }
+.mini-table { width:100%; border-collapse:collapse; font-size:17px; }
+.mini-table th,.mini-table td { padding:9px 10px; border:1px solid var(--line); vertical-align:top; }
+.mini-table th { background:#eef2f7; color:var(--indigo); text-align:left; }
+.flow { display:grid; grid-template-columns:1fr 48px 1fr 48px 1fr; gap:10px; align-items:center; }
+.flowbox { min-height:112px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fff; text-align:center; font-size:17px; }
+.flowbox strong { display:block; margin-bottom:8px; color:var(--indigo); font-size:19px; }
+.arrow { text-align:center; color:var(--blue); font-size:32px; font-weight:900; }
+.timeline { display:grid; gap:12px; margin-top:10px; }
+.lane { display:grid; grid-template-columns:150px 1fr; gap:12px; align-items:center; }
+.lane-label { padding:10px 12px; border-radius:8px; background:#edf2ff; color:var(--indigo); font-weight:900; text-align:center; }
+.lane-body { display:flex; gap:6px; align-items:center; min-height:46px; padding:8px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+.bar { height:30px; border-radius:6px; color:#fff; font-size:14px; font-weight:800; display:flex; align-items:center; justify-content:center; }
+.run { background:var(--blue); } .block { background:var(--amber); } .idle { background:var(--green); } .tick { width:6px; height:36px; background:var(--teal); border-radius:4px; }
+.w80 { width:80px; } .w120 { width:120px; } .w180 { width:180px; } .w240 { width:240px; }
+.refs li { margin-top:9px; font-size:18px; }
+@media print { body{background:#fff;} .nav{display:none;} .deck{padding:0;} .slide{margin:0; box-shadow:none; border:0;} }
+
+.api-list { display:flex; flex-wrap:wrap; gap:10px; margin-top:10px; }
+.api-list code { display:inline-block; padding:8px 10px; font-size:17px; }
+.decision-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+.decision { min-height:132px; padding:13px; border:1px solid var(--line); border-top:5px solid var(--blue); border-radius:8px; background:#fff; font-size:16px; }
+.decision:nth-child(2) { border-top-color:var(--teal); }
+.decision:nth-child(3) { border-top-color:var(--amber); }
+.decision:nth-child(4) { border-top-color:var(--green); }
+.decision strong { display:block; color:var(--indigo); font-size:18px; margin-bottom:6px; }
+.lane-stack { display:grid; gap:12px; margin-top:12px; }
+.lane { display:grid; grid-template-columns:160px 1fr; gap:12px; align-items:center; }
+.lane-label { padding:10px 12px; border-radius:8px; background:#edf2ff; color:var(--indigo); font-weight:900; text-align:center; }
+.lane-body { min-height:48px; display:flex; gap:7px; align-items:center; padding:8px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+.seg { min-width:80px; height:30px; padding:0 10px; display:flex; align-items:center; justify-content:center; border-radius:6px; color:#fff; font-weight:900; font-size:14px; }
+.blue { background:var(--blue); } .teal { background:var(--teal); } .amber { background:var(--amber); } .green { background:var(--green); } .violet { background:var(--violet); }
+.w120 { width:120px; } .w180 { width:180px; } .w240 { width:240px; }
+.mini-arch { display:grid; grid-template-columns:1fr 48px 1fr 48px 1fr; gap:10px; align-items:center; }
+.arch-node { min-height:96px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fff; text-align:center; font-size:17px; }
+.arch-node strong { display:block; color:var(--indigo); font-size:19px; margin-bottom:7px; }
+.arrow { text-align:center; color:var(--blue); font-size:32px; font-weight:900; }
+.source-card { min-height:120px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fbfcfe; font-size:16.5px; }
+.source-card strong { display:block; color:var(--indigo); font-size:18px; margin-bottom:6px; }
+
+.timer-path { display:grid; grid-template-columns:1fr 44px 1fr 44px 1fr 44px 1fr; gap:8px; align-items:stretch; margin-top:16px; }
+.path-node { min-height:116px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fff; font-size:16px; }
+.path-node strong { display:block; margin-bottom:8px; color:var(--indigo); font-size:18px; }
+.path-arrow { display:flex; align-items:center; justify-content:center; color:var(--blue); font-size:30px; font-weight:900; }
+.timer-lanes { display:grid; gap:10px; margin-top:14px; }
+.timer-lane { display:grid; grid-template-columns:170px 1fr; gap:10px; align-items:center; }
+.lane-label { padding:10px 12px; border-radius:8px; background:#edf2ff; color:var(--indigo); font-weight:900; text-align:center; }
+.lane-body { min-height:46px; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:#fff; font-size:16px; }
+.do-dont { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:14px; }
+.do-dont .panel { min-height:300px; }
+.icon-strip { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:16px; }
+.icon-mini { min-height:112px; padding:12px; border:1px solid var(--line); border-radius:8px; background:#fff; text-align:center; font-size:15px; }
+.icon-mini img { width:58px; height:58px; object-fit:contain; display:block; margin:0 auto 8px; }
+.queue-pressure { display:grid; grid-template-columns:160px repeat(5,1fr); gap:8px; margin-top:14px; align-items:center; }
+.q-head { padding:10px; border-radius:8px; background:var(--indigo); color:#fff; font-weight:900; text-align:center; }
+.q-cell { min-height:58px; display:flex; align-items:center; justify-content:center; padding:8px; border:1px solid var(--line); border-radius:8px; background:#fff; font-weight:800; color:#485164; text-align:center; }
+.q-full { background:#fff3d9; border-color:#e0a63a; color:#7a4f00; }
+</style>
+  <link rel="stylesheet" href="../shared_assets/slideshow.css">
+</head>
+<body>
+  <nav class="nav"><a href="#s1">01</a><a href="#s2">02</a><a href="#s3">03</a><a href="#s4">04</a><a href="#s5">05</a><a href="#s6">06</a><a href="#s7">07</a><a href="#s8">08</a><a href="#s9">09</a><a href="#s10">10</a><a href="#s11">11</a><a href="#s12">12</a><a href="#s13">13</a><a href="#s14">14</a><a href="#s15">15</a><a href="#s16">16</a><a href="#s17">17</a><a href="#s18">18</a><a href="#s19">19</a><a href="#s20">20</a><a href="#s21">21</a><a href="#s22">22</a><a href="#s23">23</a><a href="#s24">24</a><a href="#s25">25</a><a href="#s26">26</a><a href="#s27">27</a><a href="#s28">28</a><a href="#s29">29</a><a href="#s30">30</a><a href="#s31">31</a><a href="#s32">32</a><a href="#s33">33</a><a href="#s34">34</a><a href="#s35">35</a><a href="#s36">36</a><a href="#s37">37</a><button class="slideshow-toggle" type="button" data-slideshow-start>Slideshow</button></nav>
+  
+  <div class="slideshow-controls" aria-label="Slideshow controls">
+    <button class="slide-control" type="button" data-slide-prev>Prev</button>
+    <span class="slide-counter" data-slide-counter>01 / 37</span>
+    <button class="slide-control" type="button" data-slide-next>Next</button>
+    <button class="slide-control" type="button" data-slide-fullscreen>Full</button>
+    <button class="slide-control" type="button" data-slide-fill aria-pressed="false">Fill</button>
+    <button class="slide-control" type="button" data-slide-exit>Exit</button>
+  </div>
+  <div class="slideshow-hint">Keys: Left/Right or PageUp/PageDown to move, Home/End to jump, S to toggle slideshow, F for fullscreen, Z for fit/fill, Esc to exit.</div>
+
+  <main class="deck">
+    
+    <section class="slide cover" id="s1">
+      <div class="slide-header"><div class="context">FreeRTOS Module 09</div><div class="framing">Software Timers and the Daemon Task</div></div>
+      <div class="content">
+        <div class="cover-grid">
+          <div>
+            <h1>Software Timers and the Daemon Task</h1>
+            <p>Software timers represent future tick-based events, but their callbacks run in a FreeRTOS service task rather than in hardware interrupt context.</p>
+            <p class="cover-meta">Course: FreeRTOS Lecture<br>Embedded Systems Laboratory, Pusan National University<br>Instructor: Prof. Yunju Baek</p>
+          </div>
+          <div class="cover-card">
+            <h2>Learning path</h2>
+            <ul>
+              <li>Software timer object model</li>
+              <li>One-shot versus auto-reload state transitions</li>
+              <li>Timer command queue and daemon task context</li>
+              <li>Callback design, priority, and queue pressure</li>
+              <li>Tutorial 11 source reading and design review</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="takeaway">First target: a software timer callback is task-context service work, not an ISR.</div>
+      <div class="page">01</div>
+    </section>
+    <section class="slide" id="s2">
+      <div class="slide-header"><div class="context">FreeRTOS Module 09</div><div class="framing">Course Position</div></div>
+      <div class="content">
+        <h2>Course Position</h2>
+        
+      <p class="subtitle">Module 08 explained deferred interrupt processing. Module 09 uses a service task to defer time-based work.</p>
+      <div class="grid-3">
+        <div class="icon-card"><img src="../shared_assets/icons/software_timer.png" alt=""><div><strong>Timer object</strong><span>A kernel object that records a future expiry time and callback.</span></div></div>
+        <div class="icon-card"><img src="../shared_assets/icons/timer_service_generated.png" alt=""><div><strong>Daemon task</strong><span>The FreeRTOS timer service task processes timer commands and runs callbacks.</span></div></div>
+        <div class="icon-card"><img src="../shared_assets/icons/queue_transfer_generated.png" alt=""><div><strong>Command queue</strong><span>Timer API calls usually post commands to the timer command queue.</span></div></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A software timer is a task-context service mechanism built on tick time and a command queue.</div>
+      <div class="page">02</div>
+    </section>
+    <section class="slide" id="s3">
+      <div class="slide-header"><div class="context">FreeRTOS Module 09</div><div class="framing">Why Software Timers Exist</div></div>
+      <div class="content">
+        <h2>Why Software Timers Exist</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Future action</h3><ul><li>A task may need something to happen later.</li><li>A dedicated delay task for every timeout is wasteful.</li><li>A timer object represents the pending action compactly.</li></ul></div>
+        <div class="panel tint-teal"><h3>Periodic action</h3><ul><li>Housekeeping and sampling may need repeated tick-based events.</li><li>Auto-reload timers express repetition without a manual restart.</li><li>Callback duration still affects timing quality.</li></ul></div>
+        <div class="panel tint-amber"><h3>Deferred context</h3><ul><li>The callback runs in the timer service task.</li><li>The callback is not a hardware interrupt.</li><li>Long callbacks can delay other timer callbacks and commands.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Software timers remove extra application tasks only if callbacks remain lightweight.</div>
+      <div class="page">03</div>
+    </section>
+    <section class="slide" id="s4">
+      <div class="slide-header"><div class="context">FreeRTOS Module 09</div><div class="framing">Terminology Before APIs</div></div>
+      <div class="content">
+        <h2>Terminology Before APIs</h2>
+        
+      <table class="mini-table"><thead><tr><th>Term</th><th>Meaning in this module</th></tr></thead><tbody><tr><td><strong>Software timer</strong></td><td>A FreeRTOS kernel object that expires according to the kernel tick count.</td></tr><tr><td><strong>Timer period</strong></td><td>The number of ticks from start or reset to expiry.</td></tr><tr><td><strong>One-shot timer</strong></td><td>A timer that stops after one expiry unless explicitly restarted.</td></tr><tr><td><strong>Auto-reload timer</strong></td><td>A timer that automatically schedules its next expiry after each callback.</td></tr><tr><td><strong>Timer callback</strong></td><td>A function executed by the timer service task when the timer expires.</td></tr><tr><td><strong>Daemon task</strong></td><td>The FreeRTOS timer service task that processes timer commands and executes callbacks.</td></tr><tr><td><strong>Timer command queue</strong></td><td>The internal queue used for start, stop, reset, change period, and pended function commands.</td></tr></tbody></table>
+    
+      </div>
+      <div class="takeaway">The word callback does not imply interrupt context.</div>
+      <div class="page">04</div>
+    </section>
+    <section class="slide" id="s5">
+      <div class="slide-header"><div class="context">FreeRTOS Module 09</div><div class="framing">Software Timer Mental Model</div></div>
+      <div class="content">
+        <h2>Software Timer Mental Model</h2>
+        
+      <div class="timer-path">
+        <div class="path-node"><strong>Application task or ISR</strong>Requests timer start, stop, reset, period change, or pended function work.</div>
+        <div class="path-arrow">&rarr;</div>
+        <div class="path-node"><strong>Timer command queue</strong>Stores timer service commands until the daemon task processes them.</div>
+        <div class="path-arrow">&rarr;</div>
+        <div class="path-node"><strong>Daemon task</strong>Consumes commands, updates timer state, and runs callbacks on expiry.</div>
+        <div class="path-arrow">&rarr;</div>
+        <div class="path-node"><strong>Application effect</strong>Callback sends work onward, toggles state, or wakes another task.</div>
+      </div>
+      <div class="callout" style="margin-top:20px;">The command queue is the visible boundary between callers and the timer service task.</div>
+    
+      </div>
+      <div class="takeaway">Timer behavior is queue-mediated service-task behavior.</div>
+      <div class="page">05</div>
+    </section>
+    <section class="slide" id="s6">
+      <div class="slide-header"><div class="context">FreeRTOS Module 09</div><div class="framing">Primary Visual Anchor</div></div>
+      <div class="content">
+        <h2>Primary Visual Anchor</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_6_4_the_timer_command_queue_being_used_by_a_software_timer_api_function_to_c.png" alt="Kernel Book Figure 6.4 timer command queue"></div>
+        <div class="panel tint-blue"><h3>Reading Order</h3><ul><li>Find the task or ISR that calls a timer API.</li><li>Track the command entering the timer command queue.</li><li>Find the daemon task as the command consumer.</li><li>Ask what happens if the queue is full or the callback runs too long.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Figure 6.4.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Use the command queue figure as the central mental model for the module.</div>
+      <div class="page">06</div>
+    </section>
+    <section class="slide" id="s7">
+      <div class="slide-header"><div class="context">FreeRTOS Module 09</div><div class="framing">Hardware Timer Versus Software Timer</div></div>
+      <div class="content">
+        <h2>Hardware Timer Versus Software Timer</h2>
+        
+      <table class="mini-table">
+        <thead><tr><th>Aspect</th><th>Hardware timer interrupt</th><th>FreeRTOS software timer</th></tr></thead>
+        <tbody>
+          <tr><td>Execution context</td><td>ISR context</td><td>Timer daemon task context</td></tr>
+          <tr><td>Time base</td><td>Peripheral clock and hardware registers</td><td>FreeRTOS tick count</td></tr>
+          <tr><td>Callback work</td><td>Must be minimal and non-blocking</td><td>Still should be short; can affect other timers</td></tr>
+          <tr><td>Best use</td><td>Precise capture/compare, PWM, low-level timing</td><td>Timeouts, debounce, protocol gaps, periodic housekeeping</td></tr>
+        </tbody>
+      </table>
+    
+      </div>
+      <div class="takeaway">Software timers are convenient, not a replacement for every hardware timing requirement.</div>
+      <div class="page">07</div>
+    </section>
+    <section class="slide" id="s8">
+      <div class="slide-header"><div class="context">FreeRTOS Module 09</div><div class="framing">Timer API Surface</div></div>
+      <div class="content">
+        <h2>Timer API Surface</h2>
+        
+      <p class="subtitle">Most timer APIs create commands. Return values matter because the command queue can reject work.</p>
+      <div class="api-list"><code>xTimerCreate()</code><code>xTimerCreateStatic()</code><code>xTimerStart()</code><code>xTimerStop()</code><code>xTimerReset()</code><code>xTimerChangePeriod()</code><code>xTimerDelete()</code><code>pvTimerGetTimerID()</code><code>xTimerPendFunctionCall()</code></div>
+      <div class="grid-3" style="margin-top:18px;">
+        <div class="panel tint-blue"><h3>Create</h3><ul><li>Choose dynamic or static storage.</li><li>Provide callback and timer ID.</li><li>Check returned handle.</li></ul></div>
+        <div class="panel tint-teal"><h3>Command</h3><ul><li>Start, stop, reset, change period.</li><li>Use block time only from task context.</li><li>Check pdPASS or pdFAIL.</li></ul></div>
+        <div class="panel tint-green"><h3>Inspect</h3><ul><li>Use timer ID to find owner state.</li><li>Use return values and trace to confirm behavior.</li><li>Avoid guessing callback timing.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Timer API review starts with command queue behavior.</div>
+      <div class="page">08</div>
+    </section>
+    <section class="slide" id="s9">
+      <div class="slide-header"><div class="context">FreeRTOS Module 09</div><div class="framing">Configuration and Build Switches</div></div>
+      <div class="content">
+        <h2>Configuration and Build Switches</h2>
+        
+      <div class="grid-2">
+        <div class="panel tint-blue"><h3>Required timer configuration</h3><div class="api-list"><code>configUSE_TIMERS</code><code>configTIMER_TASK_PRIORITY</code><code>configTIMER_QUEUE_LENGTH</code><code>configTIMER_TASK_STACK_DEPTH</code></div></div>
+        <div class="panel tint-amber"><h3>Configuration questions</h3><ul><li>Is the timer service task enabled?</li><li>Can the daemon task run promptly under application load?</li><li>Is the command queue long enough for expected bursts?</li><li>Is the daemon stack large enough for callback code?</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Timer behavior is partly a FreeRTOSConfig.h design decision.</div>
+      <div class="page">09</div>
+    </section>
+    <section class="slide" id="s10">
+      <div class="slide-header"><div class="context">FreeRTOS Module 09</div><div class="framing">One-Shot and Auto-Reload Overview</div></div>
+      <div class="content">
+        <h2>One-Shot and Auto-Reload Overview</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_6_1_the_difference_in_behavior_between_one_shot_and_auto_reload_software_tim.png" alt="Kernel Book Figure 6.1 one-shot and auto-reload"></div>
+        <div class="panel tint-blue"><h3>Reading Focus</h3><ul><li>One-shot timers stop after the callback.</li><li>Auto-reload timers reschedule themselves after expiry.</li><li>Both are driven by the kernel tick.</li><li>Callback code still runs in the daemon task.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Figure 6.1.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">One-shot and auto-reload timers represent different state machines.</div>
+      <div class="page">10</div>
+    </section>
+    <section class="slide" id="s11">
+      <div class="slide-header"><div class="context">FreeRTOS Module 09</div><div class="framing">Auto-Reload State Transitions</div></div>
+      <div class="content">
+        <h2>Auto-Reload State Transitions</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_6_2_auto_reload_software_timer_states_and_transitions.png" alt="Kernel Book Figure 6.2 auto-reload timer states"></div>
+        <div class="panel tint-teal"><h3>Reading Focus</h3><ul><li>A dormant timer is not counting toward expiry.</li><li>Starting moves it into active timing behavior.</li><li>Expiry triggers callback and automatic reload.</li><li>Stopping or deleting changes the state path.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Figure 6.2.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Auto-reload behavior should be read as a state transition diagram.</div>
+      <div class="page">11</div>
+    </section>
+    <section class="slide" id="s12">
+      <div class="slide-header"><div class="context">FreeRTOS Module 09</div><div class="framing">One-Shot State Transitions</div></div>
+      <div class="content">
+        <h2>One-Shot State Transitions</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_6_3_one_shot_software_timer_states_and_transitions.png" alt="Kernel Book Figure 6.3 one-shot timer states"></div>
+        <div class="panel tint-blue"><h3>Reading Focus</h3><ul><li>A one-shot timer becomes dormant after expiry.</li><li>Reset restarts the timing window.</li><li>One-shot timers are natural for timeouts and debounce.</li><li>Restart policy belongs in the design, not in intuition.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Figure 6.3.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">One-shot timers are useful when a future event should happen once unless reset.</div>
+      <div class="page">12</div>
+    </section>
+    <section class="slide" id="s13">
+      <div class="slide-header"><div class="context">FreeRTOS Module 09</div><div class="framing">Callback Context Rules</div></div>
+      <div class="content">
+        <h2>Callback Context Rules</h2>
+        
+      <div class="do-dont">
+        <div class="panel tint-green"><h3>Callback should</h3><ul><li>Run quickly.</li><li>Send work to a worker task if processing is nontrivial.</li><li>Avoid long loops and slow I/O.</li><li>Use timer ID to locate small owner state.</li><li>Check downstream queue or notification return values.</li></ul></div>
+        <div class="panel tint-amber"><h3>Callback should avoid</h3><ul><li>Blocking for long periods.</li><li>Waiting on resources that can be held by tasks needing timer service.</li><li>Calling slow print or storage functions.</li><li>Starting complex state machines inside the daemon task.</li><li>Assuming it runs at hardware interrupt priority.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A callback can be task context and still be a shared service bottleneck.</div>
+      <div class="page">13</div>
+    </section>
+    <section class="slide" id="s14">
+      <div class="slide-header"><div class="context">FreeRTOS Module 09</div><div class="framing">Timer Command Queue Pressure</div></div>
+      <div class="content">
+        <h2>Timer Command Queue Pressure</h2>
+        
+      <p class="subtitle">Timer API calls can fail when command bursts exceed the configured timer command queue length.</p>
+      <div class="queue-pressure">
+        <div class="q-head">Queue</div><div class="q-cell q-full">Start A</div><div class="q-cell q-full">Reset B</div><div class="q-cell q-full">Change C</div><div class="q-cell q-full">Pend Fn</div><div class="q-cell">Next?</div>
+        <div class="q-head">Evidence</div><div class="q-cell">pdPASS</div><div class="q-cell">pdPASS</div><div class="q-cell">pdPASS</div><div class="q-cell">pdPASS</div><div class="q-cell q-full">pdFAIL risk</div>
+      </div>
+      <div class="callout" style="margin-top:20px;">A timer command failure is a design signal: queue length, burst behavior, caller block time, or daemon priority needs review.</div>
+    
+      </div>
+      <div class="takeaway">Checking timer API return values is mandatory engineering, not defensive ornament.</div>
+      <div class="page">14</div>
+    </section>
+    <section class="slide" id="s15">
+      <div class="slide-header"><div class="context">FreeRTOS Module 09</div><div class="framing">Daemon Priority Above Caller</div></div>
+      <div class="content">
+        <h2>Daemon Priority Above Caller</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_6_5_the_execution_pattern_when_the_priority_of_a_task_calling_xtimerstart_is.png" alt="Kernel Book Figure 6.5 daemon priority relationship"></div>
+        <div class="panel tint-blue"><h3>Reading Focus</h3><ul><li>Compare caller priority with daemon task priority.</li><li>Ask when the daemon can process the start command.</li><li>Connect priority to observed start timing.</li><li>Use this figure to discuss latency, not just correctness.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Figure 6.5.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Daemon priority changes when timer commands are serviced.</div>
+      <div class="page">15</div>
+    </section>
+    <section class="slide" id="s16">
+      <div class="slide-header"><div class="context">FreeRTOS Module 09</div><div class="framing">Daemon Priority Below Caller</div></div>
+      <div class="content">
+        <h2>Daemon Priority Below Caller</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_6_6_the_execution_pattern_when_the_priority_of_a_task_calling_xtimerstart_is.png" alt="Kernel Book Figure 6.6 daemon priority relationship"></div>
+        <div class="panel tint-amber"><h3>Reading Focus</h3><ul><li>A higher-priority caller can continue running after posting the command.</li><li>The daemon may not process the command immediately.</li><li>The apparent timer start time can be misunderstood.</li><li>This is a scheduling interaction, not a timer bug.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Figure 6.6.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A posted command is not necessarily processed at the same instant.</div>
+      <div class="page">16</div>
+    </section>
+    <section class="slide" id="s17">
+      <div class="slide-header"><div class="context">FreeRTOS Module 09</div><div class="framing">Resetting a Timer</div></div>
+      <div class="content">
+        <h2>Resetting a Timer</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_6_9_starting_and_resetting_a_software_timer_that_has_a_period_of_6_ticks.png" alt="Kernel Book Figure 6.9 reset timer"></div>
+        <div class="panel tint-teal"><h3>Reading Focus</h3><ul><li>Reset restarts the timing window.</li><li>Repeated resets can postpone expiry.</li><li>This is the core of many debounce and inactivity-timeout designs.</li><li>The reset command itself still passes through timer service behavior.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Figure 6.9.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Reset semantics are central to timeout and debounce design.</div>
+      <div class="page">17</div>
+    </section>
+    <section class="slide" id="s18">
+      <div class="slide-header"><div class="context">FreeRTOS Module 09</div><div class="framing">Pended Function Calls</div></div>
+      <div class="content">
+        <h2>Pended Function Calls</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Purpose</h3><ul><li>Request a function to run in the timer daemon task.</li><li>Often useful from ISR context for small deferred service work.</li><li>Still shares daemon capacity with timer callbacks.</li></ul></div>
+        <div class="panel tint-teal"><h3>API family</h3><div class="api-list"><code>xTimerPendFunctionCall()</code><code>xTimerPendFunctionCallFromISR()</code></div></div>
+        <div class="panel tint-amber"><h3>Review rule</h3><ul><li>The function must be short.</li><li>It should not monopolize the daemon task.</li><li>Use a worker task for heavier processing.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Pended functions are convenient only while they remain service-task scale.</div>
+      <div class="page">18</div>
+    </section>
+    <section class="slide" id="s19">
+      <div class="slide-header"><div class="context">FreeRTOS Module 09</div><div class="framing">Pattern Board</div></div>
+      <div class="content">
+        <h2>Pattern Board</h2>
+        
+      <div class="decision-grid"><div class="decision"><strong>Debounce</strong>Reset a one-shot timer on every edge; act only when the timer finally expires.</div><div class="decision"><strong>Inactivity timeout</strong>Start or reset a timer when activity occurs; expire when the channel goes quiet.</div><div class="decision"><strong>Periodic housekeeping</strong>Use auto-reload for lightweight checks that do not need a dedicated task.</div><div class="decision"><strong>Worker handoff</strong>Callback sends a small event to a worker when processing would be too heavy for the daemon task.</div></div>
+      <div class="icon-strip">
+        <div class="icon-mini"><img src="../shared_assets/icons/gpio_pin.png" alt="">Debounce edge</div>
+        <div class="icon-mini"><img src="../shared_assets/icons/watchdog_timer.png" alt="">Timeout</div>
+        <div class="icon-mini"><img src="../shared_assets/icons/tick_clock_generated.png" alt="">Tick based</div>
+        <div class="icon-mini"><img src="../shared_assets/icons/queue_transfer_generated.png" alt="">Worker handoff</div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A timer pattern is a time policy plus callback discipline.</div>
+      <div class="page">19</div>
+    </section>
+    <section class="slide" id="s20">
+      <div class="slide-header"><div class="context">FreeRTOS Module 09</div><div class="framing">Failure Modes Worth Naming Early</div></div>
+      <div class="content">
+        <h2>Failure Modes Worth Naming Early</h2>
+        
+      <div class="grid-3"><div class="panel tint-blue"><h3>Long callback</h3><ul><li>A callback performs parsing, printing, or slow I/O.</li><li>Other callbacks and commands wait behind it.</li><li>Move heavy work to a worker task.</li></ul></div><div class="panel tint-teal"><h3>Low daemon priority</h3><ul><li>Callbacks arrive late under CPU load.</li><li>Command queue may accumulate.</li><li>Review priority relative to time-sensitive tasks.</li></ul></div><div class="panel tint-amber"><h3>Command queue full</h3><ul><li>Start, reset, or pended function command fails.</li><li>Caller ignores pdFAIL.</li><li>Increase queue length only after analyzing burst sources.</li></ul></div></div>
+    
+      </div>
+      <div class="takeaway">Timer bugs often look like timing bugs but start as service-task design bugs.</div>
+      <div class="page">20</div>
+    </section>
+    <section class="slide" id="s21">
+      <div class="slide-header"><div class="context">FreeRTOS Module 09</div><div class="framing">Diagnostic Evidence</div></div>
+      <div class="content">
+        <h2>Diagnostic Evidence</h2>
+        
+      <div class="icon-strip">
+        <div class="icon-mini"><img src="../shared_assets/icons/timer_service_generated.png" alt="">Daemon state</div>
+        <div class="icon-mini"><img src="../shared_assets/icons/timing_deadline.png" alt="">Callback latency</div>
+        <div class="icon-mini"><img src="../shared_assets/icons/trace_diagnostics.png" alt="">Trace</div>
+        <div class="icon-mini"><img src="../shared_assets/icons/config_assertion.png" alt="">Return checks</div>
+      </div>
+      <div class="grid-3" style="margin-top:18px;">
+        <div class="panel tint-blue"><h3>Timing evidence</h3><ul><li>Command call timestamp.</li><li>Daemon processing timestamp.</li><li>Callback entry and exit timestamp.</li></ul></div>
+        <div class="panel tint-teal"><h3>Capacity evidence</h3><ul><li>Timer API return values.</li><li>Command queue pressure.</li><li>Number of callbacks waiting.</li></ul></div>
+        <div class="panel tint-amber"><h3>Configuration evidence</h3><ul><li>Daemon task priority.</li><li>Queue length.</li><li>Daemon stack high-water mark.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Measure the command path before changing priorities or periods.</div>
+      <div class="page">21</div>
+    </section>
+    <section class="slide" id="s22">
+      <div class="slide-header"><div class="context">FreeRTOS Module 09</div><div class="framing">Tutorial 11 Reading Path</div></div>
+      <div class="content">
+        <h2>Tutorial 11 Reading Path</h2>
+        
+      <div class="timer-lanes">
+        <div class="timer-lane"><div class="lane-label">Create</div><div class="lane-body">Find xTimerCreate or xTimerCreateStatic, period, reload mode, callback, and timer ID.</div></div>
+        <div class="timer-lane"><div class="lane-label">Start</div><div class="lane-body">Find xTimerStart, block time, return-value check, and caller priority.</div></div>
+        <div class="timer-lane"><div class="lane-label">Callback</div><div class="lane-body">Read the callback as daemon-task code and identify any work that should be handed to another task.</div></div>
+        <div class="timer-lane"><div class="lane-label">Variation</div><div class="lane-body">Change reload mode or period and predict the output before running the tutorial.</div></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Students should explain timer state and daemon context before reading output.</div>
+      <div class="page">22</div>
+    </section>
+    <section class="slide" id="s23">
+      <div class="slide-header"><div class="context">FreeRTOS Module 09</div><div class="framing">Mini Case: Button Debounce</div></div>
+      <div class="content">
+        <h2>Mini Case: Button Debounce</h2>
+        
+      <div class="timer-path">
+        <div class="path-node"><strong>GPIO edge</strong>ISR or task observes a possibly bouncing edge.</div>
+        <div class="path-arrow">&rarr;</div>
+        <div class="path-node"><strong>Reset one-shot timer</strong>Every new edge restarts the quiet interval.</div>
+        <div class="path-arrow">&rarr;</div>
+        <div class="path-node"><strong>Timer callback</strong>Runs only after no edge resets the timer for the full period.</div>
+        <div class="path-arrow">&rarr;</div>
+        <div class="path-node"><strong>Clean event</strong>Callback notifies UI or control task of a stable button event.</div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Debounce is a reset semantics lesson, not only a button example.</div>
+      <div class="page">23</div>
+    </section>
+    <section class="slide" id="s24">
+      <div class="slide-header"><div class="context">FreeRTOS Module 09</div><div class="framing">Mini Case: Communication Timeout</div></div>
+      <div class="content">
+        <h2>Mini Case: Communication Timeout</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Start condition</h3><ul><li>Request sent.</li><li>Expected response window begins.</li><li>One-shot timer starts.</li></ul></div>
+        <div class="panel tint-teal"><h3>Normal response</h3><ul><li>Response arrives before expiry.</li><li>Timer is stopped or reset.</li><li>Protocol task continues.</li></ul></div>
+        <div class="panel tint-amber"><h3>Expiry path</h3><ul><li>Callback sends timeout event.</li><li>Protocol task decides retry or failure.</li><li>Callback does not implement the full protocol.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The callback should report timeout, not become the protocol task.</div>
+      <div class="page">24</div>
+    </section>
+    <section class="slide" id="s25">
+      <div class="slide-header"><div class="context">FreeRTOS Module 09</div><div class="framing">Mini Case: Periodic Health Monitor</div></div>
+      <div class="content">
+        <h2>Mini Case: Periodic Health Monitor</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Auto-reload fit</h3><ul><li>Periodic check interval.</li><li>Small amount of work.</li><li>Callback period tolerance acceptable.</li></ul></div>
+        <div class="panel tint-teal"><h3>Worker handoff fit</h3><ul><li>Health check reads several subsystems.</li><li>Logging or communication may be slow.</li><li>Callback sends a short command to a monitor task.</li></ul></div>
+        <div class="panel tint-green"><h3>Evidence</h3><ul><li>Callback duration.</li><li>Monitor task backlog.</li><li>Missed deadline count.</li><li>Daemon high-water mark.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Periodic does not automatically mean safe inside the callback.</div>
+      <div class="page">25</div>
+    </section>
+    <section class="slide" id="s26">
+      <div class="slide-header"><div class="context">FreeRTOS Module 09</div><div class="framing">Source Reading: timers.c</div></div>
+      <div class="content">
+        <h2>Source Reading: timers.c</h2>
+        
+      <div class="grid-3">
+        <div class="source-card"><strong>Timer list management</strong>Read how active timers are tracked and how expiry is detected.</div>
+        <div class="source-card"><strong>Command processing</strong>Find command types for start, stop, reset, change period, delete, and pended functions.</div>
+        <div class="source-card"><strong>Callback execution</strong>Confirm that callbacks execute through the timer service task path.</div>
+      </div>
+      <div class="warning" style="margin-top:22px;">Do not teach timers as magic delays; teach them as source-visible command processing.</div>
+    
+      </div>
+      <div class="takeaway">The implementation confirms the command-queue mental model.</div>
+      <div class="page">26</div>
+    </section>
+    <section class="slide" id="s27">
+      <div class="slide-header"><div class="context">FreeRTOS Module 09</div><div class="framing">Source Reading: queue.c and tasks.c Links</div></div>
+      <div class="content">
+        <h2>Source Reading: queue.c and tasks.c Links</h2>
+        
+      <div class="grid-2">
+        <div class="panel tint-blue"><h3>queue.c connection</h3><ul><li>Timer command queue uses queue mechanisms.</li><li>Command send failure has queue-capacity roots.</li><li>Return values expose pressure.</li></ul></div>
+        <div class="panel tint-teal"><h3>tasks.c connection</h3><ul><li>Daemon task priority determines when service work runs.</li><li>Callback execution competes with other Ready tasks.</li><li>Blocking or preemption behavior still follows scheduler rules.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Timers reconnect queue behavior and scheduling behavior.</div>
+      <div class="page">27</div>
+    </section>
+    <section class="slide" id="s28">
+      <div class="slide-header"><div class="context">FreeRTOS Module 09</div><div class="framing">Design Decision Table</div></div>
+      <div class="content">
+        <h2>Design Decision Table</h2>
+        
+      <table class="mini-table">
+        <thead><tr><th>Decision</th><th>Question</th><th>Evidence</th></tr></thead>
+        <tbody>
+          <tr><td>Timer type</td><td>Should expiry happen once or repeatedly?</td><td>One-shot or auto-reload state transition</td></tr>
+          <tr><td>Callback work</td><td>Can this code safely run in the shared daemon task?</td><td>Measured callback duration and queue impact</td></tr>
+          <tr><td>Command burst</td><td>Can callers flood start, reset, or pended-function commands?</td><td>Return value checks and command queue length</td></tr>
+          <tr><td>Daemon priority</td><td>When must timer commands and callbacks run under load?</td><td>Trace timing and priority review</td></tr>
+          <tr><td>Alternative</td><td>Would a dedicated task or hardware timer be clearer?</td><td>Precision, workload, and ownership requirements</td></tr>
+        </tbody>
+      </table>
+    
+      </div>
+      <div class="takeaway">Timer design is a scheduling and service-capacity decision.</div>
+      <div class="page">28</div>
+    </section>
+    <section class="slide" id="s29">
+      <div class="slide-header"><div class="context">FreeRTOS Module 09</div><div class="framing">Testing Checklist</div></div>
+      <div class="content">
+        <h2>Testing Checklist</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Nominal path</h3><ul><li>Timer created successfully.</li><li>Start/reset command returns pdPASS.</li><li>Callback runs at expected sequence point.</li></ul></div>
+        <div class="panel tint-teal"><h3>Pressure path</h3><ul><li>Burst reset commands.</li><li>CPU load above daemon priority.</li><li>Slow callback inserted intentionally.</li></ul></div>
+        <div class="panel tint-green"><h3>Failure path</h3><ul><li>Return values checked.</li><li>Command queue pressure visible.</li><li>Worker handoff protects daemon task.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A timer demo should include one pressure path, not only a blinking success path.</div>
+      <div class="page">29</div>
+    </section>
+    <section class="slide" id="s30">
+      <div class="slide-header"><div class="context">FreeRTOS Module 09</div><div class="framing">Code Review Checklist</div></div>
+      <div class="content">
+        <h2>Code Review Checklist</h2>
+        
+      <div class="grid-2">
+        <div class="panel tint-blue"><h3>API review</h3><ul><li>Is configUSE_TIMERS enabled?</li><li>Are handles checked after create?</li><li>Are command return values checked?</li><li>Is block time legal for caller context?</li></ul></div>
+        <div class="panel tint-green"><h3>Design review</h3><ul><li>Is callback work short?</li><li>Is daemon priority justified?</li><li>Is command queue length justified?</li><li>Is a worker task used for heavy processing?</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Review timer code as service-task code plus queue commands.</div>
+      <div class="page">30</div>
+    </section>
+    <section class="slide" id="s31">
+      <div class="slide-header"><div class="context">FreeRTOS Module 09</div><div class="framing">Object Choice and Alternatives</div></div>
+      <div class="content">
+        <h2>Object Choice and Alternatives</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/infographics/object_selection_map.png" alt="Object selection map"></div>
+        <div class="panel tint-blue"><h3>Alternative Questions</h3><ul><li>Is this really a future event?</li><li>Does work need precise hardware timing?</li><li>Should expiry wake a worker task instead of doing work directly?</li><li>Could vTaskDelayUntil be clearer for a periodic task?</li><li>Is a hardware timer peripheral required?</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Good timer design includes knowing when not to use a software timer.</div>
+      <div class="page">31</div>
+    </section>
+    <section class="slide" id="s32">
+      <div class="slide-header"><div class="context">FreeRTOS Module 09</div><div class="framing">Project Boundary Check</div></div>
+      <div class="content">
+        <h2>Project Boundary Check</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Build</h3><ul><li>Create a one-shot timer.</li><li>Create an auto-reload timer.</li><li>Log callback entry and exit.</li></ul></div>
+        <div class="panel tint-teal"><h3>Modify</h3><ul><li>Change daemon task priority.</li><li>Increase reset command burst.</li><li>Move heavy callback work into a worker task.</li></ul></div>
+        <div class="panel tint-green"><h3>Explain</h3><ul><li>Draw the command queue path.</li><li>Explain observed callback timing.</li><li>Document return-value checks.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The lab output should show command path evidence.</div>
+      <div class="page">32</div>
+    </section>
+    <section class="slide" id="s33">
+      <div class="slide-header"><div class="context">FreeRTOS Module 09</div><div class="framing">Classroom Board Questions</div></div>
+      <div class="content">
+        <h2>Classroom Board Questions</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>What expires?</h3><ul><li>Timer object.</li><li>Period in ticks.</li><li>One-shot or auto-reload state.</li></ul></div>
+        <div class="panel tint-teal"><h3>Who runs?</h3><ul><li>Timer daemon task.</li><li>Not hardware ISR.</li><li>Priority set by configTIMER_TASK_PRIORITY.</li></ul></div>
+        <div class="panel tint-amber"><h3>What can fail?</h3><ul><li>Create failure.</li><li>Command queue full.</li><li>Late callback.</li><li>Overlong callback.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">These three questions usually expose timer misconceptions.</div>
+      <div class="page">33</div>
+    </section>
+    <section class="slide" id="s34">
+      <div class="slide-header"><div class="context">FreeRTOS Module 09</div><div class="framing">Review Questions</div></div>
+      <div class="content">
+        <h2>Review Questions</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Question 1</h3><p>Why is a software timer callback not the same thing as a hardware timer interrupt handler?</p></div>
+        <div class="panel tint-teal"><h3>Question 2</h3><p>Why can xTimerStart return failure, and what should the application do with that evidence?</p></div>
+        <div class="panel tint-amber"><h3>Question 3</h3><p>How can daemon task priority change the observed timing of a timer command?</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A strong answer names daemon context, command queue, and scheduler priority.</div>
+      <div class="page">34</div>
+    </section>
+    <section class="slide" id="s35">
+      <div class="slide-header"><div class="context">FreeRTOS Module 09</div><div class="framing">One-Slide Summary</div></div>
+      <div class="content">
+        <h2>One-Slide Summary</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Mechanism</h3><ul><li>Timer APIs post commands.</li><li>Daemon task processes commands.</li><li>Callbacks run in daemon task context.</li></ul></div>
+        <div class="panel tint-teal"><h3>Design rule</h3><ul><li>Keep callbacks short.</li><li>Check command return values.</li><li>Use worker tasks for heavy work.</li></ul></div>
+        <div class="panel tint-green"><h3>Evidence</h3><ul><li>Command queue pressure.</li><li>Callback entry and exit timing.</li><li>Daemon priority and stack usage.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A software timer is a service-task design tool.</div>
+      <div class="page">35</div>
+    </section>
+    <section class="slide" id="s36">
+      <div class="slide-header"><div class="context">FreeRTOS Module 09</div><div class="framing">Bridge to Module 10</div></div>
+      <div class="content">
+        <h2>Bridge to Module 10</h2>
+        
+      <p class="subtitle">Module 10 moves from time-based service work to synchronization objects: semaphores, mutexes, and short critical sections.</p>
+      <div class="grid-3">
+        <div class="icon-card"><img src="../shared_assets/icons/software_timer.png" alt=""><div><strong>Timer</strong><span>A future event represented by a kernel object.</span></div></div>
+        <div class="icon-card"><img src="../shared_assets/icons/semaphore_signal.png" alt=""><div><strong>Semaphore</strong><span>A signal or count used for synchronization.</span></div></div>
+        <div class="icon-card"><img src="../shared_assets/icons/mutex_ownership_generated.png" alt=""><div><strong>Mutex</strong><span>An ownership object for shared resource protection.</span></div></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The next module shifts from time policy to ownership and synchronization policy.</div>
+      <div class="page">36</div>
+    </section>
+    <section class="slide" id="s37">
+      <div class="slide-header"><div class="context">FreeRTOS Module 09</div><div class="framing">References and Further Reading</div></div>
+      <div class="content">
+        <h2>References and Further Reading</h2>
+        
+      <p class="subtitle">References used in this module are separated from optional deeper reading.</p>
+      <div class="grid-2">
+        <div class="panel tint-blue">
+          <h3>References Used</h3>
+          <ul class="refs">
+            <li>FreeRTOS Kernel Book, Chapter 6, Software Timer Management.</li>
+            <li>FreeRTOS Kernel Book, Figures 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, and 6.9.</li>
+            <li>Lab Project FreeRTOS Tutorials, Tutorial 11.</li>
+            <li>FreeRTOS Kernel source: timers.c, queue.c, and tasks.c.</li>
+          </ul>
+        </div>
+        <div class="panel tint-green">
+          <h3>Further Reading</h3>
+          <ul class="refs">
+            <li>FreeRTOS API reference: software timer APIs and pended function calls.</li>
+            <li>FreeRTOSConfig.h reference: configUSE_TIMERS, configTIMER_TASK_PRIORITY, configTIMER_QUEUE_LENGTH, and configTIMER_TASK_STACK_DEPTH.</li>
+            <li>MCU reference manual timer chapter for comparing hardware timer precision with RTOS software timer behavior.</li>
+            <li>Tracealyzer or FreeRTOS trace documentation for observing daemon task execution and timer callback latency.</li>
+          </ul>
+        </div>
+      </div>
+    
+      </div>
+      <div class="takeaway">References should support traceability and direct further study.</div>
+      <div class="page">37</div>
+    </section>
+  </main>
+  <script src="../shared_assets/slideshow.js"></script>
+</body>
+</html>

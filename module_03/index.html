@@ -1,0 +1,713 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FreeRTOS Module 03 - Priority, Tick, and Task State</title>
+  <style>
+:root {
+  --indigo:#2e315b; --blue:#2563a6; --teal:#147d83; --green:#2f7d4e;
+  --amber:#9a6a16; --violet:#6d4aa2; --graphite:#2b2f36; --muted:#637083;
+  --line:#d8dee9; --paper:#fff; --bg:#f4f6f9; --code:#eef2f7;
+  --soft-blue:#eef5fc; --soft-teal:#edf8f8; --soft-amber:#fff7e8;
+}
+* { box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { margin:0; background:var(--bg); color:var(--graphite); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans",Arial,sans-serif; line-height:1.44; }
+.nav { position:sticky; top:0; z-index:10; width:1280px; margin:0 auto; padding:10px 16px; background:rgba(244,246,249,.96); border-bottom:1px solid var(--line); color:#4f5969; font-size:15px; }
+.nav a { margin-right:8px; color:var(--blue); text-decoration:none; font-weight:800; }
+.deck { width:1280px; margin:0 auto; padding:28px 0 64px; }
+.slide { position:relative; width:1280px; min-height:720px; margin:0 0 32px; overflow:hidden; background:var(--paper); border:1px solid var(--line); box-shadow:0 18px 40px rgba(38,49,91,.12); page-break-after:always; }
+.slide-header { display:flex; justify-content:space-between; align-items:center; height:54px; padding:0 34px; background:var(--indigo); color:#fff; font-size:18px; }
+.context { font-weight:800; }
+.framing { color:#e1e6ff; font-size:16px; }
+.content { padding:30px 42px 58px; }
+h1,h2,h3,p { margin-top:0; }
+h1 { margin-bottom:14px; color:#fff; font-size:45px; line-height:1.08; letter-spacing:0; }
+h2 { margin-bottom:10px; color:#20243d; font-size:34px; line-height:1.12; letter-spacing:0; }
+h3 { margin-bottom:10px; color:var(--indigo); font-size:22px; letter-spacing:0; }
+.subtitle { max-width:1060px; margin-bottom:22px; color:#4a5260; font-size:22px; line-height:1.36; }
+.small { color:var(--muted); font-size:17px; }
+ul,ol { margin:0; padding-left:22px; }
+li { font-size:18.2px; }
+li + li { margin-top:6px; }
+code { padding:1px 5px; border-radius:4px; background:var(--code); color:#1d3152; font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace; font-size:.93em; }
+pre { margin:0; padding:15px 17px; border-radius:8px; background:#1f2633; color:#edf2ff; font-size:14.2px; line-height:1.42; overflow:hidden; white-space:pre-wrap; }
+pre code { padding:0; background:transparent; color:inherit; font-size:inherit; }
+.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+.grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
+.grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+.grid-13 { display:grid; grid-template-columns:1.12fr .88fr; gap:22px; align-items:stretch; }
+.grid-31 { display:grid; grid-template-columns:.82fr 1.18fr; gap:22px; align-items:stretch; }
+.panel { border:1px solid var(--line); border-radius:8px; padding:17px 19px; background:#fff; }
+.tint-blue { border-top:5px solid var(--blue); } .tint-teal { border-top:5px solid var(--teal); } .tint-green { border-top:5px solid var(--green); } .tint-amber { border-top:5px solid var(--amber); } .tint-violet { border-top:5px solid var(--violet); }
+.question { padding:16px 18px; border-left:6px solid var(--blue); background:var(--soft-blue); font-size:20px; }
+.callout { padding:16px 18px; border-left:6px solid var(--teal); background:var(--soft-teal); font-size:19px; }
+.warning { padding:16px 18px; border-left:6px solid var(--amber); background:var(--soft-amber); font-size:19px; }
+.takeaway { position:absolute; left:42px; right:120px; bottom:22px; color:#515a6b; font-size:17px; font-weight:700; }
+.page { position:absolute; right:36px; bottom:22px; color:#7a8290; font-size:16px; font-weight:800; }
+.cover { color:#fff; background:linear-gradient(120deg,rgba(46,49,91,.98),rgba(20,125,131,.9)),#2e315b; }
+.cover .slide-header { background:transparent; border-bottom:1px solid rgba(255,255,255,.24); }
+.cover .content { display:grid; grid-template-columns:1.08fr .92fr; gap:46px; align-items:center; padding-top:54px; }
+.cover .subtitle { color:#eef5ff; }
+.cover-card { min-height:390px; padding:28px; border:1px solid rgba(255,255,255,.35); border-radius:10px; background:rgba(255,255,255,.08); }
+.cover-card h3 { color:#fff; font-size:25px; }
+.cover-card li { color:#edf2ff; font-size:20px; }
+.icon-card { min-height:150px; display:grid; grid-template-columns:86px 1fr; gap:14px; align-items:center; border:1px solid var(--line); border-radius:8px; padding:15px; background:#fff; }
+.icon-card img { width:76px; height:76px; object-fit:contain; }
+.icon-card strong { display:block; color:var(--indigo); font-size:19px; margin-bottom:5px; }
+.icon-card span { display:block; color:#4e5969; font-size:16.5px; }
+.figure-frame { display:flex; align-items:center; justify-content:center; min-height:410px; border:1px solid var(--line); border-radius:10px; background:#fbfcfe; padding:18px; }
+.figure-frame img { max-width:100%; max-height:420px; object-fit:contain; }
+.figure-frame.tall img { max-height:505px; }
+.asset-note { margin-top:8px; color:var(--muted); font-size:15px; }
+.mini-table { width:100%; border-collapse:collapse; font-size:17px; }
+.mini-table th,.mini-table td { padding:9px 10px; border:1px solid var(--line); vertical-align:top; }
+.mini-table th { background:#eef2f7; color:var(--indigo); text-align:left; }
+.flow { display:grid; grid-template-columns:1fr 48px 1fr 48px 1fr; gap:10px; align-items:center; }
+.flowbox { min-height:112px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fff; text-align:center; font-size:17px; }
+.flowbox strong { display:block; margin-bottom:8px; color:var(--indigo); font-size:19px; }
+.arrow { text-align:center; color:var(--blue); font-size:32px; font-weight:900; }
+.timeline { display:grid; gap:12px; margin-top:10px; }
+.lane { display:grid; grid-template-columns:150px 1fr; gap:12px; align-items:center; }
+.lane-label { padding:10px 12px; border-radius:8px; background:#edf2ff; color:var(--indigo); font-weight:900; text-align:center; }
+.lane-body { display:flex; gap:6px; align-items:center; min-height:46px; padding:8px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+.bar { height:30px; border-radius:6px; color:#fff; font-size:14px; font-weight:800; display:flex; align-items:center; justify-content:center; }
+.run { background:var(--blue); } .block { background:var(--amber); } .idle { background:var(--green); } .tick { width:6px; height:36px; background:var(--teal); border-radius:4px; }
+.w80 { width:80px; } .w120 { width:120px; } .w180 { width:180px; } .w240 { width:240px; }
+.refs li { margin-top:9px; font-size:18px; }
+@media print { body{background:#fff;} .nav{display:none;} .deck{padding:0;} .slide{margin:0; box-shadow:none; border:0;} }
+</style>
+  <link rel="stylesheet" href="../shared_assets/slideshow.css">
+</head>
+<body>
+  <nav class="nav"><a href="#s1">01</a><a href="#s2">02</a><a href="#s3">03</a><a href="#s4">04</a><a href="#s5">05</a><a href="#s6">06</a><a href="#s7">07</a><a href="#s8">08</a><a href="#s9">09</a><a href="#s10">10</a><a href="#s11">11</a><a href="#s12">12</a><a href="#s13">13</a><a href="#s14">14</a><a href="#s15">15</a><a href="#s16">16</a><a href="#s17">17</a><a href="#s18">18</a><a href="#s19">19</a><a href="#s20">20</a><a href="#s21">21</a><a href="#s22">22</a><a href="#s23">23</a><a href="#s24">24</a><a href="#s25">25</a><a href="#s26">26</a><a href="#s27">27</a><a href="#s28">28</a><a href="#s29">29</a><a href="#s30">30</a><a href="#s31">31</a><a href="#s32">32</a><a href="#s33">33</a><a href="#s34">34</a><a href="#s35">35</a>    <button class="slideshow-toggle" type="button" data-slideshow-start>Slideshow</button>
+  </nav>
+
+  <div class="slideshow-controls" aria-label="Slideshow controls">
+    <button class="slide-control" type="button" data-slide-prev>Prev</button>
+    <span class="slide-counter" data-slide-counter>01 / 35</span>
+    <button class="slide-control" type="button" data-slide-next>Next</button>
+    <button class="slide-control" type="button" data-slide-fullscreen>Full</button>
+    <button class="slide-control" type="button" data-slide-fill aria-pressed="false">Fill</button>
+    <button class="slide-control" type="button" data-slide-exit>Exit</button>
+  </div>
+  <div class="slideshow-hint">Keys: Left/Right or PageUp/PageDown to move, Home/End to jump, S to toggle slideshow, F for fullscreen, Z for fit/fill, Esc to exit.</div>
+
+  <main class="deck">
+    
+    <section class="slide cover" id="s1">
+      <div class="slide-header"><div class="context">FreeRTOS Module 03</div><div class="framing">Priority, Tick, and Task State</div></div>
+      <div class="content">
+        <div>
+          <h1>Priority, Tick, and Task State</h1>
+          <p class="subtitle">A task does not simply run or sleep. It moves through scheduler-visible states, and each API call either keeps it eligible for the CPU or deliberately removes it from selection.</p>
+        </div>
+        <div class="cover-card">
+          <h3>What Students Should Be Able To Do</h3>
+          <ul><li>Explain Ready, Running, Blocked, and Suspended without relying on memorized diagrams.</li><li>Predict why a high priority task can starve lower priority work.</li><li>Explain how the tick interrupt makes delay-based unblocking possible.</li><li>Choose between vTaskDelay() and vTaskDelayUntil() for periodic work.</li></ul>
+        </div>
+      </div>
+      <div class="page">01</div>
+    </section>
+    <section class="slide" id="s2">
+      <div class="slide-header"><div class="context">FreeRTOS Module 03</div><div class="framing">Module Position in the Course</div></div>
+      <div class="content">
+        <h2>Module Position in the Course</h2>
+        
+  <p class="subtitle">Module 02 created tasks and started the scheduler. Module 03 asks what the scheduler can choose after the system is running.</p>
+  <div class="grid-3">
+    <div class="icon-card"><img src="../shared_assets/icons/task_execution.png" alt=""><div><strong>From Module 02</strong><span>A task function, stack, TCB, and priority now exist.</span></div></div>
+    <div class="icon-card"><img src="../shared_assets/icons/priority_ladder_generated.png" alt=""><div><strong>This Module</strong><span>Priority and state decide which task can run.</span></div></div>
+    <div class="icon-card"><img src="../shared_assets/icons/configuration_switches.png" alt=""><div><strong>To Module 04</strong><span>Scheduler policy changes the same state rules into different execution patterns.</span></div></div>
+  </div>
+
+      </div>
+      <div class="takeaway">The transition from task creation to task scheduling is the first real RTOS mental shift.</div>
+      <div class="page">02</div>
+    </section>
+    <section class="slide" id="s3">
+      <div class="slide-header"><div class="context">FreeRTOS Module 03</div><div class="framing">Why This Module Matters</div></div>
+      <div class="content">
+        <h2>Why This Module Matters</h2>
+        
+  <p class="subtitle">For a third-year CS student, this is where OS scheduling concepts meet embedded constraints.</p>
+  <div class="grid-3">
+    <div class="panel tint-blue"><h3>Single CPU Reality</h3><ul><li>Most target boards run many logical tasks on one CPU core.</li><li>Only one task is Running on that core at a time.</li><li>Concurrency is created by controlled switching, not by magic parallelism.</li></ul></div>
+    <div class="panel tint-teal"><h3>Embedded Timing</h3><ul><li>A sensor loop may need a stable release period.</li><li>A logger should not steal CPU from control work.</li><li>A delay API affects responsiveness and jitter.</li></ul></div>
+    <div class="panel tint-amber"><h3>Debugging Impact</h3><ul><li>Wrong priority looks like a missing print.</li><li>A busy loop looks like a broken scheduler.</li><li>A tick misunderstanding creates timing bugs.</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">Priority and state are not vocabulary; they are the grammar of FreeRTOS behavior.</div>
+      <div class="page">03</div>
+    </section>
+    <section class="slide" id="s4">
+      <div class="slide-header"><div class="context">FreeRTOS Module 03</div><div class="framing">Minimal Scheduler Refresher</div></div>
+      <div class="content">
+        <h2>Minimal Scheduler Refresher</h2>
+        
+  <p class="subtitle">The scheduler is the kernel mechanism that chooses the next task to run. It does not choose from every task in the system.</p>
+  <div class="flow">
+    <div class="flowbox"><strong>All tasks</strong>Created task objects in several states</div>
+    <div class="arrow">&rarr;</div>
+    <div class="flowbox"><strong>Ready tasks</strong>Eligible to execute immediately</div>
+    <div class="arrow">&rarr;</div>
+    <div class="flowbox"><strong>Running task</strong>Highest priority Ready task selected for the CPU</div>
+  </div>
+  <div class="callout" style="margin-top:22px;">A task in Blocked or Suspended state is still a valid task object, but it is not a candidate for CPU selection.</div>
+
+      </div>
+      <div class="takeaway">The scheduler chooses from Ready tasks, not from all tasks.</div>
+      <div class="page">04</div>
+    </section>
+    <section class="slide" id="s5">
+      <div class="slide-header"><div class="context">FreeRTOS Module 03</div><div class="framing">Terminology Before State Diagrams</div></div>
+      <div class="content">
+        <h2>Terminology Before State Diagrams</h2>
+        
+  <p class="subtitle">These terms will appear repeatedly in the module. Define them before using them in behavior explanations.</p>
+  <table class="mini-table"><thead><tr><th>Term</th><th>Meaning in this module</th></tr></thead><tbody>
+    <tr><td><strong>Task</strong></td><td>A FreeRTOS execution unit implemented as a C function plus a TCB and stack.</td></tr><tr><td><strong>TCB</strong></td><td>Task Control Block; kernel metadata used to track state, priority, stack pointer, and list membership.</td></tr><tr><td><strong>Ready list</strong></td><td>A kernel list containing tasks that can run immediately at a given priority.</td></tr><tr><td><strong>Tick</strong></td><td>A periodic interrupt used by the kernel to maintain time and unblock delayed tasks.</td></tr>
+  </tbody></table>
+
+      </div>
+      <div class="takeaway">A term should point to a runtime object or event.</div>
+      <div class="page">05</div>
+    </section>
+    <section class="slide" id="s6">
+      <div class="slide-header"><div class="context">FreeRTOS Module 03</div><div class="framing">Task State Vocabulary</div></div>
+      <div class="content">
+        <h2>Task State Vocabulary</h2>
+        
+  <p class="subtitle">State names are shorthand for scheduler eligibility.</p>
+  <div class="grid-4">
+    <div class="panel tint-blue"><h3>Ready</h3><p>The task can run now if selected. It has all it needs except the CPU.</p></div><div class="panel tint-blue"><h3>Running</h3><p>The task currently owns the CPU core. On a single core, only one task is Running.</p></div><div class="panel tint-blue"><h3>Blocked</h3><p>The task is waiting for time, data, a semaphore, a queue item, or another event.</p></div><div class="panel tint-blue"><h3>Suspended</h3><p>The task is outside normal scheduling until another task explicitly resumes it.</p></div>
+  </div>
+  <div class="warning" style="margin-top:20px;">Blocked and Suspended are often confused. Blocked usually has an event or timeout path back to Ready. Suspended has no natural timeout.</div>
+
+      </div>
+      <div class="takeaway">State explains whether the scheduler may select the task.</div>
+      <div class="page">06</div>
+    </section>
+    <section class="slide" id="s7">
+      <div class="slide-header"><div class="context">FreeRTOS Module 03</div><div class="framing">State Transition Overview</div></div>
+      <div class="content">
+        <h2>State Transition Overview</h2>
+        
+  <div class="grid-13">
+    <div class="figure-frame tall"><img src="../shared_assets/infographics/task_state_scheduler_map.png" alt="Task state and scheduler selection map"></div>
+    <div class="panel tint-blue">
+      <h3>Reading Order</h3>
+      <ul><li>Ready tasks are grouped by priority.</li><li>The scheduler chooses the highest-priority Ready task.</li><li>Running tasks become Blocked when they call delay or wait APIs.</li><li>Tick expiry or an event moves a task back to Ready.</li><li>Suspended tasks return only through an explicit resume.</li></ul>
+    </div>
+  </div>
+
+      </div>
+      <div class="takeaway">The generated diagram is a reasoning map for later API examples.</div>
+      <div class="page">07</div>
+    </section>
+    <section class="slide" id="s8">
+      <div class="slide-header"><div class="context">FreeRTOS Module 03</div><div class="framing">The Scheduler Question</div></div>
+      <div class="content">
+        <h2>The Scheduler Question</h2>
+        
+  <p class="subtitle">At each scheduling point, FreeRTOS asks a small but strict question.</p>
+  <div class="question">Among the tasks that are Ready, which task has the highest priority?</div>
+  <div class="grid-3" style="margin-top:22px;">
+    <div class="panel tint-blue"><h3>Not Ready</h3><ul><li>A task blocked on time or data is skipped.</li><li>A suspended task is skipped.</li><li>A deleted task no longer participates.</li></ul></div>
+    <div class="panel tint-teal"><h3>Highest Priority</h3><ul><li>Priority is the first ordering rule.</li><li>Higher numeric priority means more urgent in FreeRTOS.</li><li>Priority ties are handled by scheduler policy.</li></ul></div>
+    <div class="panel tint-green"><h3>Scheduling Point</h3><ul><li>Tick interrupt</li><li>Blocking API call</li><li>Yield</li><li>ISR unblocking a higher priority task</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">State filters the candidates; priority orders the candidates.</div>
+      <div class="page">08</div>
+    </section>
+    <section class="slide" id="s9">
+      <div class="slide-header"><div class="context">FreeRTOS Module 03</div><div class="framing">Priority Numbering</div></div>
+      <div class="content">
+        <h2>Priority Numbering</h2>
+        
+  <p class="subtitle">FreeRTOS priorities are integer levels from zero to <code>configMAX_PRIORITIES - 1</code>.</p>
+  <div class="grid-2">
+    <div class="panel tint-blue">
+      <h3>Rules</h3>
+      <ul><li>Priority 0 is the lowest task priority.</li><li>The highest valid priority is configMAX_PRIORITIES - 1.</li><li>Any number of tasks may share the same priority.</li><li>A priority above the configured maximum is capped by the kernel.</li></ul>
+    </div>
+    <div class="figure-frame">
+      <img src="../shared_assets/icons/priority_ladder_generated.png" alt="Priority ladder icon">
+    </div>
+  </div>
+
+      </div>
+      <div class="takeaway">A priority value is a design decision, not just an API argument.</div>
+      <div class="page">09</div>
+    </section>
+    <section class="slide" id="s10">
+      <div class="slide-header"><div class="context">FreeRTOS Module 03</div><div class="framing">configMAX_PRIORITIES as a Design Limit</div></div>
+      <div class="content">
+        <h2>configMAX_PRIORITIES as a Design Limit</h2>
+        
+  <p class="subtitle">The macro sets how many task priority levels the application can use.</p>
+  <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;"><code style="display:inline-block;padding:8px 10px;font-size:17px;">configMAX_PRIORITIES</code><code style="display:inline-block;padding:8px 10px;font-size:17px;">uxPriority</code><code style="display:inline-block;padding:8px 10px;font-size:17px;">tskIDLE_PRIORITY</code></div>
+  <div class="grid-3" style="margin-top:22px;">
+    <div class="panel tint-teal"><h3>Too Few</h3><ul><li>Different timing roles are forced into the same level.</li><li>The design may depend too much on time slicing.</li><li>Urgency distinctions become less explicit.</li></ul></div>
+    <div class="panel tint-green"><h3>Enough</h3><ul><li>Control, communication, logging, and idle work have clear roles.</li><li>Equal priorities are used intentionally.</li><li>The priority map can be explained in one table.</li></ul></div>
+    <div class="panel tint-amber"><h3>Too Many</h3><ul><li>Students may invent artificial levels.</li><li>Review becomes harder.</li><li>Some ports have selection cost or implementation limits.</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">Keep the priority map as small as the design allows.</div>
+      <div class="page">10</div>
+    </section>
+    <section class="slide" id="s11">
+      <div class="slide-header"><div class="context">FreeRTOS Module 03</div><div class="framing">Ready Lists and Equal Priority</div></div>
+      <div class="content">
+        <h2>Ready Lists and Equal Priority</h2>
+        
+  <p class="subtitle">FreeRTOS tracks Ready tasks by priority. Equal-priority behavior depends on later scheduler policy, but the state rule is already visible.</p>
+  <table class="mini-table">
+    <thead><tr><th>Priority level</th><th>Possible Ready tasks</th><th>Scheduler implication</th></tr></thead>
+    <tbody>
+      <tr><td>3</td><td>ControlTask</td><td>Selected before lower Ready tasks</td></tr>
+      <tr><td>2</td><td>SensorTask, CommTask</td><td>Both are eligible at the same priority</td></tr>
+      <tr><td>1</td><td>LoggerTask</td><td>Runs when no higher priority task is Ready</td></tr>
+      <tr><td>0</td><td>IdleTask</td><td>Runs when no application task is Ready</td></tr>
+    </tbody>
+  </table>
+
+      </div>
+      <div class="takeaway">Ready does not mean Running; it means eligible.</div>
+      <div class="page">11</div>
+    </section>
+    <section class="slide" id="s12">
+      <div class="slide-header"><div class="context">FreeRTOS Module 03</div><div class="framing">Tick Interrupt Concept</div></div>
+      <div class="content">
+        <h2>Tick Interrupt Concept</h2>
+        
+  <p class="subtitle">The tick interrupt gives the kernel a periodic time base.</p>
+  <div class="grid-3">
+    <div class="icon-card"><img src="../shared_assets/icons/tick_clock_generated.png" alt=""><div><strong>Periodic</strong><span>The hardware timer interrupts at the configured tick rate.</span></div></div>
+    <div class="icon-card"><img src="../shared_assets/icons/rtos_kernel.png" alt=""><div><strong>Kernel Time</strong><span>The kernel increments its tick count and checks delayed tasks.</span></div></div>
+    <div class="icon-card"><img src="../shared_assets/icons/blocked_waiting_state.png" alt=""><div><strong>Unblock</strong><span>A delayed task can move from Blocked to Ready when its wake tick arrives.</span></div></div>
+  </div>
+  <div class="callout" style="margin-top:22px;">The tick is not the only scheduling trigger, but it is the key trigger for time-based blocking.</div>
+
+      </div>
+      <div class="takeaway">Without a time base, delay APIs cannot know when to unblock a task.</div>
+      <div class="page">12</div>
+    </section>
+    <section class="slide" id="s13">
+      <div class="slide-header"><div class="context">FreeRTOS Module 03</div><div class="framing">configTICK_RATE_HZ and Time Conversion</div></div>
+      <div class="content">
+        <h2>configTICK_RATE_HZ and Time Conversion</h2>
+        
+  <p class="subtitle">Application code should usually express human-readable time in milliseconds, then convert to ticks.</p>
+  <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;"><code style="display:inline-block;padding:8px 10px;font-size:17px;">configTICK_RATE_HZ</code><code style="display:inline-block;padding:8px 10px;font-size:17px;">TickType_t</code><code style="display:inline-block;padding:8px 10px;font-size:17px;">pdMS_TO_TICKS()</code><code style="display:inline-block;padding:8px 10px;font-size:17px;">xTaskGetTickCount()</code></div>
+  <div class="grid-2" style="margin-top:22px;">
+    <div class="panel tint-blue"><h3>What the macro controls</h3><ul><li>Number of tick interrupts per second.</li><li>Resolution of time-based delays.</li><li>Potential overhead from frequent tick interrupts.</li></ul></div>
+    <div class="panel tint-amber"><h3>What it does not guarantee</h3><ul><li>Sub-tick precision.</li><li>Exact wake time under all interrupt and priority conditions.</li><li>A replacement for hardware timers when precise capture/compare timing is needed.</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">Tick resolution is a system trade-off, not just a constant.</div>
+      <div class="page">13</div>
+    </section>
+    <section class="slide" id="s14">
+      <div class="slide-header"><div class="context">FreeRTOS Module 03</div><div class="framing">Book Figure: Tick Interrupt in the Execution Sequence</div></div>
+      <div class="content">
+        <h2>Book Figure: Tick Interrupt in the Execution Sequence</h2>
+        
+  <div class="grid-13">
+    <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_4_4_the_execution_sequence_expanded_to_show_the_tick_interrupt_executing.png" alt="Kernel Book Figure 4.4"></div>
+    <div class="panel tint-teal">
+      <h3>Teaching Use</h3>
+      <ul><li>The top line marks scheduler execution.</li><li>The task lines show apparent concurrency on one core.</li><li>Tick interrupts create regular opportunities for scheduler decisions.</li><li>This figure prepares students for time slicing in Module 04.</li></ul>
+      <p class="asset-note">Source: Kernel Book Figure 4.4.</p>
+    </div>
+  </div>
+
+      </div>
+      <div class="takeaway">Use Book figures as primary evidence, then explain them in local course language.</div>
+      <div class="page">14</div>
+    </section>
+    <section class="slide" id="s15">
+      <div class="slide-header"><div class="context">FreeRTOS Module 03</div><div class="framing">vTaskDelay() as Relative Blocking</div></div>
+      <div class="content">
+        <h2>vTaskDelay() as Relative Blocking</h2>
+        
+  <p class="subtitle"><code>vTaskDelay()</code> moves the calling task into Blocked state for a number of tick periods relative to the time of the call.</p>
+  <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;"><code style="display:inline-block;padding:8px 10px;font-size:17px;">void vTaskDelay( TickType_t xTicksToDelay );</code><code style="display:inline-block;padding:8px 10px;font-size:17px;">vTaskDelay( pdMS_TO_TICKS( 250 ) );</code></div>
+  <div class="grid-3" style="margin-top:22px;">
+    <div class="panel tint-blue"><h3>Before Call</h3><ul><li>Task is Running.</li><li>It owns the CPU.</li><li>It decides to wait for time.</li></ul></div>
+    <div class="panel tint-teal"><h3>During Delay</h3><ul><li>Task is Blocked.</li><li>It is not eligible for CPU selection.</li><li>Other Ready tasks can run.</li></ul></div>
+    <div class="panel tint-green"><h3>After Timeout</h3><ul><li>Task returns to Ready.</li><li>It does not necessarily run immediately.</li><li>Priority still decides selection.</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">Delay is a state transition, not a CPU-consuming sleep loop.</div>
+      <div class="page">15</div>
+    </section>
+    <section class="slide" id="s16">
+      <div class="slide-header"><div class="context">FreeRTOS Module 03</div><div class="framing">The vTaskDelay(1) Caveat</div></div>
+      <div class="content">
+        <h2>The vTaskDelay(1) Caveat</h2>
+        
+  <p class="subtitle"><code>vTaskDelay(1)</code> means the task will unblock after the next tick boundary, not after a guaranteed full tick duration.</p>
+  <div class="timeline">
+    <div class="lane"><div class="lane-label">Call early</div><div class="lane-body"><div class="bar run w80">Run</div><div class="bar block w240">Blocked until next tick</div><div class="tick"></div><div class="bar run w80">Ready</div></div></div>
+    <div class="lane"><div class="lane-label">Call late</div><div class="lane-body"><div class="bar run w180">Run almost to tick</div><div class="bar block w80">Blocked</div><div class="tick"></div><div class="bar run w80">Ready</div></div></div>
+  </div>
+  <div class="warning" style="margin-top:22px;">This is why students should avoid reading a tick count as an exact wall-clock promise.</div>
+
+      </div>
+      <div class="takeaway">Tick APIs provide deterministic units, but not arbitrary precision.</div>
+      <div class="page">16</div>
+    </section>
+    <section class="slide" id="s17">
+      <div class="slide-header"><div class="context">FreeRTOS Module 03</div><div class="framing">Book Figure: Delay Makes CPU Time Available</div></div>
+      <div class="content">
+        <h2>Book Figure: Delay Makes CPU Time Available</h2>
+        
+  <div class="grid-13">
+    <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_4_9_the_execution_sequence_when_the_tasks_use_vtaskdelay_in_place_of.png" alt="Kernel Book Figure 4.9"></div>
+    <div class="panel tint-blue">
+      <h3>What Changed</h3>
+      <ul><li>The tasks no longer spin in a null loop.</li><li>Each task enters Blocked state for a delay period.</li><li>The idle task or another Ready task can now execute.</li><li>The log becomes explainable by state transitions.</li></ul>
+      <p class="asset-note">Source: Kernel Book Figure 4.9.</p>
+    </div>
+  </div>
+
+      </div>
+      <div class="takeaway">Blocking is the mechanism that gives other work a chance to run.</div>
+      <div class="page">17</div>
+    </section>
+    <section class="slide" id="s18">
+      <div class="slide-header"><div class="context">FreeRTOS Module 03</div><div class="framing">vTaskDelayUntil() as Periodic Release</div></div>
+      <div class="content">
+        <h2>vTaskDelayUntil() as Periodic Release</h2>
+        
+  <p class="subtitle"><code>vTaskDelayUntil()</code> is for tasks that need a fixed period rather than a fixed delay after work completes.</p>
+  <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;"><code style="display:inline-block;padding:8px 10px;font-size:17px;">void vTaskDelayUntil( TickType_t *pxPreviousWakeTime, TickType_t xTimeIncrement );</code><code style="display:inline-block;padding:8px 10px;font-size:17px;">xLastWakeTime = xTaskGetTickCount();</code></div>
+  <div class="grid-2" style="margin-top:22px;">
+    <div class="panel tint-blue"><h3>pxPreviousWakeTime</h3><ul><li>Stores the previous release tick.</li><li>Updated by the API.</li><li>Maintains the schedule across loop iterations.</li></ul></div>
+    <div class="panel tint-green"><h3>xTimeIncrement</h3><ul><li>The desired period in ticks.</li><li>Usually produced by pdMS_TO_TICKS().</li><li>Represents a cadence, not a one-time sleep.</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">Periodic control or sampling loops need release-time thinking.</div>
+      <div class="page">18</div>
+    </section>
+    <section class="slide" id="s19">
+      <div class="slide-header"><div class="context">FreeRTOS Module 03</div><div class="framing">Generated Timeline: Relative Delay vs Fixed Period</div></div>
+      <div class="content">
+        <h2>Generated Timeline: Relative Delay vs Fixed Period</h2>
+        
+  <div class="grid-13">
+    <div class="figure-frame tall"><img src="../shared_assets/infographics/delay_until_timeline.png" alt="vTaskDelay and vTaskDelayUntil timeline comparison"></div>
+    <div class="panel tint-teal">
+      <h3>Interpretation</h3>
+      <ul><li>vTaskDelay starts counting after work reaches the delay call.</li><li>Longer work can shift later wake points.</li><li>vTaskDelayUntil keeps the release schedule anchored.</li><li>The task still must finish work before the next period expires.</li></ul>
+    </div>
+  </div>
+
+      </div>
+      <div class="takeaway">This distinction is central for control loops and sampling loops.</div>
+      <div class="page">19</div>
+    </section>
+    <section class="slide" id="s20">
+      <div class="slide-header"><div class="context">FreeRTOS Module 03</div><div class="framing">Jitter, Drift, and Deadline Vocabulary</div></div>
+      <div class="content">
+        <h2>Jitter, Drift, and Deadline Vocabulary</h2>
+        
+  <p class="subtitle">Three timing terms need to be separated before students use delay APIs in designs.</p>
+  <table class="mini-table">
+    <thead><tr><th>Term</th><th>Meaning</th><th>FreeRTOS connection</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Jitter</strong></td><td>Variation in when a task starts or completes relative to the expected time</td><td>Priority, interrupts, and blocking paths affect it</td></tr>
+      <tr><td><strong>Drift</strong></td><td>Gradual movement away from the intended periodic schedule</td><td>vTaskDelay() can drift when work duration varies</td></tr>
+      <tr><td><strong>Deadline</strong></td><td>Latest acceptable completion time for a job</td><td>Priority alone does not prove a deadline is met</td></tr>
+    </tbody>
+  </table>
+
+      </div>
+      <div class="takeaway">Do not call every timing problem latency; name the timing error precisely.</div>
+      <div class="page">20</div>
+    </section>
+    <section class="slide" id="s21">
+      <div class="slide-header"><div class="context">FreeRTOS Module 03</div><div class="framing">Blocking Is a Scheduling Contract</div></div>
+      <div class="content">
+        <h2>Blocking Is a Scheduling Contract</h2>
+        
+  <p class="subtitle">A blocking call is a promise to the scheduler: this task cannot make progress until a condition changes.</p>
+  <div class="grid-3">
+    <div class="panel tint-blue"><h3>Time Condition</h3><ul><li>vTaskDelay()</li><li>vTaskDelayUntil()</li><li>Timer expiry</li><li>Tick timeout</li></ul></div>
+    <div class="panel tint-teal"><h3>Data Condition</h3><ul><li>Queue receive</li><li>Stream buffer receive</li><li>Message buffer receive</li><li>Notification wait</li></ul></div>
+    <div class="panel tint-green"><h3>Synchronization Condition</h3><ul><li>Semaphore take</li><li>Event group wait</li><li>Mutex acquisition</li><li>Barrier sync</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">Module 03 gives the state language used by every later blocking API.</div>
+      <div class="page">21</div>
+    </section>
+    <section class="slide" id="s22">
+      <div class="slide-header"><div class="context">FreeRTOS Module 03</div><div class="framing">taskYIELD() as Voluntary Reschedule</div></div>
+      <div class="content">
+        <h2>taskYIELD() as Voluntary Reschedule</h2>
+        
+  <p class="subtitle"><code>taskYIELD()</code> asks the scheduler to run. It does not place the task in Blocked state.</p>
+  <div class="grid-2">
+    <div class="panel tint-blue"><h3>Yield</h3><ul><li>The task remains Ready.</li><li>It may run again if no equal or higher priority task is a better candidate.</li><li>It is a cooperation signal, not a timed wait.</li></ul></div>
+    <div class="panel tint-amber"><h3>Delay</h3><ul><li>The task becomes Blocked.</li><li>It cannot run until timeout expires.</li><li>It creates CPU availability for lower priority Ready tasks.</li></ul></div>
+  </div>
+  <div class="callout" style="margin-top:22px;">Yield and delay are easy to confuse because both can lead to another task running. The resulting state is different.</div>
+
+      </div>
+      <div class="takeaway">Always ask what state the calling task enters after the API call.</div>
+      <div class="page">22</div>
+    </section>
+    <section class="slide" id="s23">
+      <div class="slide-header"><div class="context">FreeRTOS Module 03</div><div class="framing">Suspended State vs Blocked State</div></div>
+      <div class="content">
+        <h2>Suspended State vs Blocked State</h2>
+        
+  <p class="subtitle">Both states remove a task from CPU selection, but the return path is different.</p>
+  <table class="mini-table">
+    <thead><tr><th>State</th><th>How it entered</th><th>How it returns</th><th>Typical use</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Blocked</strong></td><td>Delay, queue wait, semaphore wait, event wait</td><td>Timeout, data, signal, event</td><td>Normal waiting behavior</td></tr>
+      <tr><td><strong>Suspended</strong></td><td>vTaskSuspend()</td><td>vTaskResume() or FromISR resume variant</td><td>Explicit external pause</td></tr>
+    </tbody>
+  </table>
+  <div class="warning" style="margin-top:22px;">Do not use Suspended as a casual replacement for timed blocking. It changes the ownership of the wake-up decision.</div>
+
+      </div>
+      <div class="takeaway">Blocked has a condition; Suspended has an external controller.</div>
+      <div class="page">23</div>
+    </section>
+    <section class="slide" id="s24">
+      <div class="slide-header"><div class="context">FreeRTOS Module 03</div><div class="framing">eTaskGetState() and Debugging Caution</div></div>
+      <div class="content">
+        <h2>eTaskGetState() and Debugging Caution</h2>
+        
+  <p class="subtitle"><code>eTaskGetState()</code> can report a task state, but state observation is a snapshot of a moving system.</p>
+  <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;"><code style="display:inline-block;padding:8px 10px;font-size:17px;">eTaskGetState()</code><code style="display:inline-block;padding:8px 10px;font-size:17px;">TaskStatus_t</code><code style="display:inline-block;padding:8px 10px;font-size:17px;">vTaskList()</code><code style="display:inline-block;padding:8px 10px;font-size:17px;">trace hooks</code></div>
+  <div class="grid-3" style="margin-top:22px;">
+    <div class="panel tint-blue"><h3>Useful For</h3><ul><li>Debug print while learning.</li><li>Checking expected blocked tasks.</li><li>Building a mental model of examples.</li></ul></div>
+    <div class="panel tint-amber"><h3>Be Careful</h3><ul><li>State may change immediately after observation.</li><li>Instrumentation changes timing.</li><li>A snapshot is not a full trace.</li></ul></div>
+    <div class="panel tint-green"><h3>Better Evidence</h3><ul><li>Task list plus timestamps.</li><li>Trace timeline.</li><li>Queue depth and timeout logs.</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">Runtime observation is evidence, but it still needs interpretation.</div>
+      <div class="page">24</div>
+    </section>
+    <section class="slide" id="s25">
+      <div class="slide-header"><div class="context">FreeRTOS Module 03</div><div class="framing">Source Reading: tasks.c</div></div>
+      <div class="content">
+        <h2>Source Reading: tasks.c</h2>
+        
+  <p class="subtitle">The goal is not to read all of <code>tasks.c</code>. The goal is to recognize the objects behind the state model.</p>
+  <div class="grid-3">
+    <div class="panel tint-blue"><h3>TCB Fields</h3><ul><li>Task priority</li><li>List items</li><li>Stack pointer</li><li>Task name and state support fields</li></ul></div>
+    <div class="panel tint-teal"><h3>Kernel Lists</h3><ul><li>Ready lists by priority</li><li>Delayed lists</li><li>Suspended list</li><li>Pending ready list in scheduler-suspended paths</li></ul></div>
+    <div class="panel tint-green"><h3>API Paths</h3><ul><li>Delay API moves task to delayed list.</li><li>Unblock path returns task to Ready.</li><li>Scheduler chooses from top Ready priority.</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">Read source files by behavior path, not from top to bottom.</div>
+      <div class="page">25</div>
+    </section>
+    <section class="slide" id="s26">
+      <div class="slide-header"><div class="context">FreeRTOS Module 03</div><div class="framing">Source Reading: Delay Path</div></div>
+      <div class="content">
+        <h2>Source Reading: Delay Path</h2>
+        
+  <p class="subtitle">A simplified reading path for delay behavior.</p>
+  <pre><code>Task loop
+  -> vTaskDelay() or vTaskDelayUntil()
+  -> calculate wake tick
+  -> remove current task from Ready list
+  -> insert task into delayed list
+  -> scheduler selects another Ready task
+  -> tick interrupt advances time
+  -> expired delayed task returns to Ready list</code></pre>
+  <div class="callout" style="margin-top:22px;">This pseudocode is a reading guide. Students should compare it with the actual source names and list operations in the kernel.</div>
+
+      </div>
+      <div class="takeaway">A source-reading slide should lower the entry barrier without hiding the real file names.</div>
+      <div class="page">26</div>
+    </section>
+    <section class="slide" id="s27">
+      <div class="slide-header"><div class="context">FreeRTOS Module 03</div><div class="framing">Tutorial 04: Priority Experiment</div></div>
+      <div class="content">
+        <h2>Tutorial 04: Priority Experiment</h2>
+        
+  <p class="subtitle">Tutorial 04 demonstrates that changing priority changes execution order even when task code looks similar.</p>
+  <div class="grid-3">
+    <div class="panel tint-blue"><h3>What to inspect</h3><ul><li>xTaskCreate() priority argument</li><li>Task function loop body</li><li>Scheduler start point</li></ul></div>
+    <div class="panel tint-teal"><h3>What to predict</h3><ul><li>Which task is Ready after scheduler start</li><li>Which task has higher priority</li><li>Whether the lower priority task gets CPU time</li></ul></div>
+    <div class="panel tint-amber"><h3>What to avoid</h3><ul><li>Explaining output order only as print speed</li><li>Ignoring blocking or yielding points</li><li>Assuming equal priority without checking arguments</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">Before running code, students should predict the Ready and Running sequence.</div>
+      <div class="page">27</div>
+    </section>
+    <section class="slide" id="s28">
+      <div class="slide-header"><div class="context">FreeRTOS Module 03</div><div class="framing">Tutorial 05: Parameters and Timing Context</div></div>
+      <div class="content">
+        <h2>Tutorial 05: Parameters and Timing Context</h2>
+        
+  <p class="subtitle">Tutorial 05 is primarily about task parameters, but it also gives another chance to connect task identity, priority, and delay behavior.</p>
+  <div class="grid-2">
+    <div class="panel tint-blue"><h3>Parameter Connection</h3><ul><li>The same task function can create multiple task instances.</li><li>Each instance has its own TCB and stack.</li><li>The parameter helps identify which instance produced a log line.</li></ul></div>
+    <div class="panel tint-green"><h3>Scheduling Connection</h3><ul><li>A log line should be mapped back to task identity.</li><li>Delay calls explain why another task appears next.</li><li>Priority explains which Ready task wins after a wake-up.</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">Task identity matters when logs from multiple instances interleave.</div>
+      <div class="page">28</div>
+    </section>
+    <section class="slide" id="s29">
+      <div class="slide-header"><div class="context">FreeRTOS Module 03</div><div class="framing">Common Misconceptions</div></div>
+      <div class="content">
+        <h2>Common Misconceptions</h2>
+        
+  <p class="subtitle">These misunderstandings create many early FreeRTOS bugs.</p>
+  <div class="grid-3">
+    <div class="panel tint-amber"><h3>Delay means sleep</h3><ul><li>Better: delay means Blocked state until a tick condition is met.</li><li>The CPU can run other Ready tasks.</li><li>The delayed task is not consuming CPU time.</li></ul></div>
+    <div class="panel tint-violet"><h3>High priority always good</h3><ul><li>A high priority busy loop can starve the system.</li><li>Priority should represent urgency and blocking behavior.</li><li>Too many levels make review harder.</li></ul></div>
+    <div class="panel tint-blue"><h3>Ready means running</h3><ul><li>Ready means eligible.</li><li>Running means selected.</li><li>Multiple tasks can be Ready at once.</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">A misconception slide is useful because it names the bug before it appears in lab.</div>
+      <div class="page">29</div>
+    </section>
+    <section class="slide" id="s30">
+      <div class="slide-header"><div class="context">FreeRTOS Module 03</div><div class="framing">Design Pattern: Periodic Sensor Task</div></div>
+      <div class="content">
+        <h2>Design Pattern: Periodic Sensor Task</h2>
+        
+  <p class="subtitle">A periodic task should make its cadence explicit.</p>
+  <pre><code>void vSensorTask( void *arg )
+{
+    TickType_t last = xTaskGetTickCount();
+    const TickType_t period = pdMS_TO_TICKS( 10 );
+
+    for( ;; )
+    {
+        read_sensor_sample();
+        vTaskDelayUntil( &last, period );
+    }
+}</code></pre>
+  <div class="callout" style="margin-top:18px;">The example is about timing intent, not sensor driver details.</div>
+
+      </div>
+      <div class="takeaway">Use vTaskDelayUntil() when the loop represents a fixed-rate job.</div>
+      <div class="page">30</div>
+    </section>
+    <section class="slide" id="s31">
+      <div class="slide-header"><div class="context">FreeRTOS Module 03</div><div class="framing">Mini Case: Control, Sensor, Logger</div></div>
+      <div class="content">
+        <h2>Mini Case: Control, Sensor, Logger</h2>
+        
+  <p class="subtitle">Use the state vocabulary to explain a small system before adding queues or semaphores.</p>
+  <table class="mini-table">
+    <thead><tr><th>Task</th><th>Priority</th><th>Blocking behavior</th><th>Design reason</th></tr></thead>
+    <tbody>
+      <tr><td>ControlTask</td><td>3</td><td>vTaskDelayUntil()</td><td>Fixed control cadence</td></tr>
+      <tr><td>SensorTask</td><td>2</td><td>vTaskDelayUntil()</td><td>Regular sampling cadence</td></tr>
+      <tr><td>LoggerTask</td><td>1</td><td>Queue receive in later modules</td><td>Runs when higher urgency work is not Ready</td></tr>
+      <tr><td>IdleTask</td><td>0</td><td>Kernel managed</td><td>Evidence of spare CPU and cleanup path</td></tr>
+    </tbody>
+  </table>
+
+      </div>
+      <div class="takeaway">A good priority table also names the blocking rule.</div>
+      <div class="page">31</div>
+    </section>
+    <section class="slide" id="s32">
+      <div class="slide-header"><div class="context">FreeRTOS Module 03</div><div class="framing">Project Boundary Check</div></div>
+      <div class="content">
+        <h2>Project Boundary Check</h2>
+        
+  <p class="subtitle">Compact checkpoint for code reading or a short self lab.</p>
+  <div class="grid-3">
+    <div class="panel tint-blue"><h3>Priority Change</h3><ul><li>Change two task priority arguments.</li><li>Predict the output order first.</li><li>Run and compare with prediction.</li></ul></div>
+    <div class="panel tint-teal"><h3>Delay Change</h3><ul><li>Replace a null loop with vTaskDelay().</li><li>Mark when the task becomes Blocked.</li><li>Explain why another task can run.</li></ul></div>
+    <div class="panel tint-green"><h3>Periodic Change</h3><ul><li>Convert a loop to vTaskDelayUntil().</li><li>Record expected wake cadence.</li><li>Note where drift would appear.</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">The lab is small, but the explanation must use state and priority vocabulary.</div>
+      <div class="page">32</div>
+    </section>
+    <section class="slide" id="s33">
+      <div class="slide-header"><div class="context">FreeRTOS Module 03</div><div class="framing">Review and Board Questions</div></div>
+      <div class="content">
+        <h2>Review and Board Questions</h2>
+        
+  <p class="subtitle">Use these questions to check whether students can reason rather than recite.</p>
+  <div class="grid-2">
+    <div class="panel tint-blue"><h3>Mechanism Questions</h3><ul><li>Why can a lower priority task run after a higher priority task calls vTaskDelay()?</li><li>Why is vTaskDelay(1) not a precise one-tick sleep?</li><li>What state does taskYIELD() leave the calling task in?</li></ul></div>
+    <div class="panel tint-green"><h3>Design Questions</h3><ul><li>Which task in a sensor-control-logger system should be highest priority?</li><li>Where would vTaskDelayUntil() be more appropriate than vTaskDelay()?</li><li>What evidence would show that a task is starving others?</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">Good review questions force students to name state, priority, and timing evidence.</div>
+      <div class="page">33</div>
+    </section>
+    <section class="slide" id="s34">
+      <div class="slide-header"><div class="context">FreeRTOS Module 03</div><div class="framing">Bridge to Module 04</div></div>
+      <div class="content">
+        <h2>Bridge to Module 04</h2>
+        
+  <p class="subtitle">Module 03 built the state and priority vocabulary. Module 04 changes scheduler policy and asks how the same Ready tasks share the CPU.</p>
+  <div class="grid-3">
+    <div class="icon-card"><img src="../shared_assets/icons/preemption_handoff.png" alt=""><div><strong>Preemption</strong><span>A higher priority Ready task can take over the CPU.</span></div></div>
+    <div class="icon-card"><img src="../shared_assets/icons/time_slicing_timeline.png" alt=""><div><strong>Time slicing</strong><span>Equal-priority Ready tasks can share time on tick boundaries.</span></div></div>
+    <div class="icon-card"><img src="../shared_assets/icons/running_cpu_core.png" alt=""><div><strong>CPU-bound work</strong><span>A task that does not block changes the whole schedule.</span></div></div>
+  </div>
+
+      </div>
+      <div class="takeaway">The next module is about scheduler policy, not a new unrelated API list.</div>
+      <div class="page">34</div>
+    </section>
+    <section class="slide" id="s35">
+      <div class="slide-header"><div class="context">FreeRTOS Module 03</div><div class="framing">References and Further Reading</div></div>
+      <div class="content">
+        <h2>References and Further Reading</h2>
+        
+  <div class="grid-2">
+    <div class="panel tint-blue">
+      <h3>References Used</h3>
+      <ul class="refs">
+        <li>FreeRTOS Kernel Book, Chapter 4: Task Management, Sections 4.3, 4.5, 4.6, and 4.7.</li>
+        <li>FreeRTOS Kernel Book, Figure 4.4: tick interrupt execution sequence.</li>
+        <li>FreeRTOS Kernel Book, Figure 4.7: full task state machine.</li>
+        <li>FreeRTOS Kernel Book, Figure 4.9: execution sequence with vTaskDelay().</li>
+        <li>Lab Project FreeRTOS Tutorials 04 and 05.</li>
+      </ul>
+    </div>
+    <div class="panel tint-green">
+      <h3>Further Reading</h3>
+      <ul class="refs">
+        <li>FreeRTOS API reference: Task control APIs, especially vTaskDelay(), vTaskDelayUntil(), taskYIELD(), and eTaskGetState().</li>
+        <li>FreeRTOSConfig.h reference: configTICK_RATE_HZ, configMAX_PRIORITIES, INCLUDE_vTaskDelay, and INCLUDE_vTaskDelayUntil.</li>
+        <li>Kernel source reading: tasks.c delay list management and ready list selection path.</li>
+        <li>Optional OS review: priority scheduling, blocking, and timer interrupt concepts from an undergraduate operating systems textbook.</li>
+      </ul>
+    </div>
+  </div>
+
+      </div>
+      <div class="takeaway">References support traceability and give students a path for deeper study.</div>
+      <div class="page">35</div>
+    </section>
+  </main>
+  <script src="../shared_assets/slideshow.js"></script>
+</body>
+</html>

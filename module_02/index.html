@@ -1,0 +1,888 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FreeRTOS Module 02 &middot; Task Creation and Scheduler Start</title>
+  <style>
+    :root {
+      --indigo: #2e315b;
+      --blue: #2563a6;
+      --teal: #147d83;
+      --green: #2f7d4e;
+      --amber: #9a6a16;
+      --violet: #6d4aa2;
+      --graphite: #2b2f36;
+      --muted: #637083;
+      --line: #d8dee9;
+      --paper: #ffffff;
+      --bg: #f4f6f9;
+      --code: #eef2f7;
+      --soft-blue: #eef5fc;
+      --soft-teal: #edf8f8;
+      --soft-amber: #fff7e8;
+      --soft-green: #eef8f1;
+      --soft-violet: #f4effb;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--graphite);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Arial, sans-serif;
+      line-height: 1.46;
+    }
+
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      width: 1280px;
+      margin: 0 auto;
+      padding: 10px 16px;
+      background: rgba(244, 246, 249, 0.96);
+      border-bottom: 1px solid var(--line);
+      color: #4f5969;
+      font-size: 15px;
+    }
+
+    .nav a {
+      margin-right: 8px;
+      color: var(--blue);
+      text-decoration: none;
+      font-weight: 800;
+    }
+
+    .deck { width: 1280px; margin: 0 auto; padding: 28px 0 64px; }
+
+    .slide {
+      position: relative;
+      width: 1280px;
+      min-height: 720px;
+      margin: 0 0 32px;
+      overflow: hidden;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 40px rgba(38, 49, 91, 0.12);
+      page-break-after: always;
+    }
+
+    .slide-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      height: 54px;
+      padding: 0 34px;
+      background: var(--indigo);
+      color: #fff;
+      font-size: 18px;
+    }
+
+    .context { font-weight: 800; }
+    .framing { color: #e1e6ff; font-size: 16px; }
+    .content { padding: 30px 42px 58px; }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { margin-bottom: 14px; color: #fff; font-size: 45px; line-height: 1.08; letter-spacing: 0; }
+    h2 { margin-bottom: 10px; color: #20243d; font-size: 35px; line-height: 1.12; letter-spacing: 0; }
+    h3 { margin-bottom: 10px; color: var(--indigo); font-size: 22px; letter-spacing: 0; }
+    .subtitle { max-width: 1050px; margin-bottom: 22px; color: #4a5260; font-size: 22px; line-height: 1.36; }
+    .small { color: var(--muted); font-size: 17px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .grid-13 { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 22px; }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 17px 19px;
+      background: #fff;
+    }
+    .tint-blue { border-top: 5px solid var(--blue); }
+    .tint-teal { border-top: 5px solid var(--teal); }
+    .tint-green { border-top: 5px solid var(--green); }
+    .tint-amber { border-top: 5px solid var(--amber); }
+    .tint-violet { border-top: 5px solid var(--violet); }
+    .panel p, .panel li { font-size: 18.2px; }
+    ul, ol { margin: 0; padding-left: 22px; }
+    li + li { margin-top: 6px; }
+
+    code {
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: var(--code);
+      color: #1d3152;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 0.93em;
+    }
+
+    pre {
+      margin: 0;
+      padding: 15px 17px;
+      border-radius: 8px;
+      background: #1f2633;
+      color: #edf2ff;
+      font-size: 14.2px;
+      line-height: 1.42;
+      overflow: hidden;
+      white-space: pre-wrap;
+    }
+    pre code { padding: 0; background: transparent; color: inherit; font-size: inherit; }
+
+    .takeaway {
+      position: absolute;
+      left: 42px;
+      right: 120px;
+      bottom: 22px;
+      color: #515a6b;
+      font-size: 17px;
+      font-weight: 700;
+    }
+    .page { position: absolute; right: 36px; bottom: 22px; color: #7a8290; font-size: 16px; font-weight: 800; }
+
+    .cover {
+      color: #fff;
+      background: linear-gradient(120deg, rgba(46, 49, 91, 0.98), rgba(20, 125, 131, 0.9)), #2e315b;
+    }
+    .cover .slide-header { background: transparent; border-bottom: 1px solid rgba(255, 255, 255, 0.24); }
+    .cover .content { display: grid; grid-template-columns: 1.12fr 0.88fr; gap: 46px; align-items: center; padding-top: 54px; }
+    .cover .subtitle { color: #eef5ff; }
+    .cover .meta { margin-top: 38px; color: #dbe5ff; font-size: 20px; }
+    .cover-card { min-height: 390px; padding: 28px; border: 1px solid rgba(255, 255, 255, 0.35); border-radius: 10px; background: rgba(255, 255, 255, 0.08); }
+    .cover-card h3 { color: #fff; font-size: 25px; }
+    .cover-card li { color: #edf2ff; font-size: 20px; }
+
+    .question { padding: 16px 18px; border-left: 6px solid var(--blue); background: var(--soft-blue); font-size: 20px; }
+    .callout { padding: 16px 18px; border-left: 6px solid var(--teal); background: var(--soft-teal); font-size: 19px; }
+    .warning { padding: 16px 18px; border-left: 6px solid var(--amber); background: var(--soft-amber); font-size: 19px; }
+
+    .mini-table { width: 100%; border-collapse: collapse; font-size: 17px; }
+    .mini-table th, .mini-table td { padding: 9px 10px; border: 1px solid var(--line); vertical-align: top; }
+    .mini-table th { background: #eef2f7; color: var(--indigo); text-align: left; }
+
+    .infographic {
+      border: 1px solid #d8dee9;
+      border-radius: 10px;
+      background: #fbfcfe;
+      padding: 18px;
+      box-shadow: 0 10px 24px rgba(30, 40, 70, 0.08);
+    }
+    .flow { display: grid; grid-template-columns: 1fr 52px 1fr 52px 1fr; gap: 10px; align-items: center; }
+    .flow.three { grid-template-columns: 1fr 52px 1fr; }
+    .flowbox {
+      min-height: 100px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      text-align: center;
+      font-size: 17px;
+    }
+    .flowbox strong { display: block; margin-bottom: 8px; color: var(--indigo); font-size: 19px; }
+    .arrow { text-align: center; color: var(--blue); font-size: 34px; font-weight: 900; }
+
+    .task-card {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 16px;
+      align-items: stretch;
+    }
+    .stack {
+      display: grid;
+      gap: 8px;
+      padding: 14px;
+      border-radius: 8px;
+      background: #f6f8fb;
+      border: 1px solid var(--line);
+    }
+    .stack-row { padding: 10px 12px; border-radius: 6px; color: #fff; font-weight: 800; text-align: center; }
+    .row-code { background: var(--blue); }
+    .row-tcb { background: var(--teal); }
+    .row-stack { background: var(--green); }
+    .row-priority { background: var(--amber); }
+    .row-state { background: var(--violet); }
+
+    .memory-map { display: grid; gap: 10px; }
+    .mem-row { display: grid; grid-template-columns: 180px 1fr; gap: 10px; align-items: center; }
+    .mem-label { padding: 10px 12px; border-radius: 8px; background: #edf2ff; color: var(--indigo); font-weight: 900; text-align: center; }
+    .mem-body { padding: 12px 14px; border-left: 5px solid var(--teal); background: #fff; border-radius: 8px; border: 1px solid var(--line); font-size: 18px; }
+
+    .param-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .param { padding: 12px 13px; border: 1px solid var(--line); border-radius: 8px; background: #fff; font-size: 17px; }
+    .param strong { display: block; color: var(--indigo); margin-bottom: 5px; font-size: 18px; }
+
+    .icon-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .icon-card {
+      min-height: 150px;
+      display: grid;
+      grid-template-columns: 78px 1fr;
+      column-gap: 12px;
+      align-items: start;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 15px;
+      background: #fff;
+    }
+    .icon {
+      display: block;
+      width: 72px;
+      height: auto;
+      max-height: 72px;
+      object-fit: contain;
+      aspect-ratio: 1 / 1;
+      border-radius: 8px;
+      grid-row: 1 / span 2;
+    }
+    .icon-card strong { display: block; color: var(--indigo); font-size: 19px; margin-bottom: 4px; }
+    .icon-card p { margin: 0; font-size: 16.5px; color: #4b5566; grid-column: 2; }
+    .image-layout { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 20px; align-items: stretch; }
+    .infographic-card {
+      border: 1px solid #d8dee9;
+      border-radius: 10px;
+      background: #fff;
+      padding: 10px;
+      box-shadow: 0 12px 24px rgba(28, 34, 48, 0.08);
+    }
+    .infographic-card img { display: block; width: 100%; height: auto; object-fit: contain; border-radius: 7px; }
+
+    @media print {
+      body { background: #fff; }
+      .nav { display: none; }
+      .deck { width: 100%; padding: 0; }
+      .slide { width: 100%; min-height: 100vh; margin: 0; border: none; box-shadow: none; }
+    }
+  </style>
+  <link rel="stylesheet" href="../shared_assets/slideshow.css">
+</head>
+<body>
+  <nav class="nav" aria-label="Slide navigation">
+    <a href="#s1">01</a><a href="#s2">02</a><a href="#s3">03</a><a href="#s4">04</a><a href="#s5">05</a><a href="#s6">06</a><a href="#s7">07</a><a href="#s8">08</a><a href="#s9">09</a><a href="#s10">10</a>
+    <a href="#s11">11</a><a href="#s12">12</a><a href="#s13">13</a><a href="#s14">14</a><a href="#s15">15</a><a href="#s16">16</a><a href="#s17">17</a><a href="#s18">18</a><a href="#s19">19</a><a href="#s20">20</a>
+    <a href="#s21">21</a><a href="#s22">22</a><a href="#s23">23</a><a href="#s24">24</a><a href="#s25">25</a><a href="#s26">26</a><a href="#s27">27</a><a href="#s28">28</a><a href="#s29">29</a><a href="#s30">30</a><a href="#s31">31</a>
+    <span>FreeRTOS Module 02 &middot; Task Creation and Scheduler Start</span>
+      <button class="slideshow-toggle" type="button" data-slideshow-start>Slideshow</button>
+  </nav>
+
+  <div class="slideshow-controls" aria-label="Slideshow controls">
+    <button class="slide-control" type="button" data-slide-prev>Prev</button>
+    <span class="slide-counter" data-slide-counter>01 / 31</span>
+    <button class="slide-control" type="button" data-slide-next>Next</button>
+    <button class="slide-control" type="button" data-slide-fullscreen>Full</button>
+    <button class="slide-control" type="button" data-slide-fill aria-pressed="false">Fill</button>
+    <button class="slide-control" type="button" data-slide-exit>Exit</button>
+  </div>
+  <div class="slideshow-hint">Keys: Left/Right or PageUp/PageDown to move, Home/End to jump, S to toggle slideshow, F for fullscreen, Z for fit/fill, Esc to exit.</div>
+
+
+  <main class="deck">
+    <section class="slide cover" id="s1">
+      <div class="slide-header"><div class="context">Module 02 &middot; Task Creation</div><div class="framing">From C function to schedulable execution unit</div></div>
+      <div class="content">
+        <div>
+          <h1>Task Creation and Scheduler Start</h1>
+          <p class="subtitle">Module 01 explained how to read the FreeRTOS project boundary. Module 02 enters the first concrete kernel interaction: turning a C function into a task the scheduler can manage.</p>
+          <div class="meta">Course: FreeRTOS Lecture<br>Embedded Systems Laboratory, Pusan National University<br>Instructor: Prof. Yunju Baek</div>
+        </div>
+        <div class="cover-card">
+          <h3>Learning path</h3>
+          <ul>
+            <li>Task function, TCB, stack, priority, and task handle</li>
+            <li>Dynamic task creation with <code>xTaskCreate()</code></li>
+            <li>Static task creation with application-owned memory</li>
+            <li>Scheduler start and first task execution</li>
+          </ul>
+        </div>
+      </div>
+      <div class="takeaway">A task is not just a function pointer; it is a kernel-managed execution object.</div><div class="page">1 / 31</div>
+    </section>
+
+    <section class="slide" id="s2">
+      <div class="slide-header"><div class="context">Module 02 &middot; Learning Route</div><div class="framing">Concepts introduced before API details</div></div>
+      <div class="content">
+        <h2>Module 02 Learning Route</h2>
+        <p class="subtitle">The lecture starts with the execution model, then reads the creation APIs and tutorials. Each new term is introduced before it becomes part of the code reading.</p>
+        <div class="icon-row">
+          <div class="icon-card"><img class="icon" src="../shared_assets/icons/task_execution.png" alt=""><strong>Task object model</strong><p>Task function, TCB, stack, priority, state, and handle.</p></div>
+          <div class="icon-card"><img class="icon" src="../shared_assets/icons/heap_memory_allocation.png" alt=""><strong>Dynamic creation</strong><p><code>xTaskCreate()</code>, heap allocation, return value, and assertions.</p></div>
+          <div class="icon-card"><img class="icon" src="../shared_assets/icons/static_memory_buffer.png" alt=""><strong>Static creation</strong><p><code>xTaskCreateStatic()</code>, application buffers, and memory ownership.</p></div>
+        </div>
+        <div class="question" style="margin-top:22px;">By the end of the module, the line that creates a task should reveal the function, stack, metadata, priority, and memory ownership behind it.</div>
+      </div>
+      <div class="takeaway">Read task creation as object construction, not as a simple callback registration.</div><div class="page">2 / 31</div>
+    </section>
+
+    <section class="slide" id="s3">
+      <div class="slide-header"><div class="context">Module 02 &middot; Recap</div><div class="framing">From project boundary to execution object</div></div>
+      <div class="content">
+        <h2>Module 01 Boundary Reuse</h2>
+        <p class="subtitle">Task creation touches all boundaries from Module 01: application code calls a kernel API, the kernel stores metadata, the port layer later performs context switches, and configuration controls memory behavior.</p>
+        <div class="infographic">
+          <div class="flow">
+            <div class="flowbox"><strong>Application</strong><code>main()</code> calls task creation API</div>
+            <div class="arrow">&rarr;</div>
+            <div class="flowbox"><strong>Kernel</strong>Creates TCB, stack link, state, priority</div>
+            <div class="arrow">&rarr;</div>
+            <div class="flowbox"><strong>Scheduler</strong>Selects Ready tasks after start</div>
+          </div>
+        </div>
+        <div class="callout" style="margin-top:18px;">The application defines the task's intention, but the kernel owns the runtime bookkeeping needed to schedule it.</div>
+      </div>
+      <div class="takeaway">Task creation is the first place where project structure becomes runtime structure.</div><div class="page">3 / 31</div>
+    </section>
+
+    <section class="slide" id="s4">
+      <div class="slide-header"><div class="context">Module 02 &middot; Task Definition</div><div class="framing">A thread-like execution unit inside firmware</div></div>
+      <div class="content">
+        <h2>What Is a FreeRTOS Task?</h2>
+        <p class="subtitle">A FreeRTOS task is a schedulable execution unit. It is similar to a lightweight thread: it has its own stack and execution point, but normally shares the same address space with other tasks.</p>
+        <div class="grid-3">
+          <div class="panel tint-blue"><h3>Function body</h3><p>The C code that implements the work. A task function is where application behavior is written.</p></div>
+          <div class="panel tint-teal"><h3>Kernel metadata</h3><p>The kernel needs state, priority, stack pointer, and list links to schedule the task.</p></div>
+          <div class="panel tint-green"><h3>Runtime stack</h3><p>Each task needs its own call stack so local variables and nested calls are separate.</p></div>
+        </div>
+        <div class="warning" style="margin-top:22px;">The task analogy to a thread is useful, but do not assume desktop-process protection or virtual memory.</div>
+      </div>
+      <div class="takeaway">A task combines application code with kernel-managed runtime state.</div><div class="page">4 / 31</div>
+    </section>
+
+    <section class="slide" id="s5">
+      <div class="slide-header"><div class="context">Module 02 &middot; Task Function</div><div class="framing">The C entry point for a task</div></div>
+      <div class="content">
+        <h2>Task Function Prototype</h2>
+        <p class="subtitle">FreeRTOS task functions use a fixed prototype. The parameter is a generic pointer so the creator can pass task-specific data without changing the task function signature.</p>
+        <div class="grid-13">
+          <pre><code>void TaskFunction( void *pvParameters )
+{
+    for( ;; )
+    {
+        /* Task work goes here. */
+    }
+}</code></pre>
+          <div class="panel tint-blue">
+            <h3>Read the signature</h3>
+            <ul>
+              <li><code>void</code> return type: task should not return</li>
+              <li><code>void *</code> parameter: generic data handoff</li>
+              <li>Function name becomes the entry point stored by the kernel</li>
+              <li>Actual scheduling begins after the scheduler starts</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="takeaway">The task function is application code, but it becomes schedulable only after task creation.</div><div class="page">5 / 31</div>
+    </section>
+
+    <section class="slide" id="s6">
+      <div class="slide-header"><div class="context">Module 02 &middot; Task Loop</div><div class="framing">Why tasks usually do not return</div></div>
+      <div class="content">
+        <h2>Infinite Loop and Blocking Point</h2>
+        <p class="subtitle">Most task functions run forever, but not by busy-waiting forever. A well-behaved task does useful work and then blocks, delays, or waits so other tasks can run.</p>
+        <div class="infographic">
+          <div class="flow">
+            <div class="flowbox"><strong>Run</strong>Execute one unit of task work</div>
+            <div class="arrow">&rarr;</div>
+            <div class="flowbox"><strong>Wait</strong><code>vTaskDelay()</code>, queue receive, semaphore take</div>
+            <div class="arrow">&rarr;</div>
+            <div class="flowbox"><strong>Ready again</strong>Scheduler can select it later</div>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top:18px;">
+          <div class="panel tint-green"><h3>Good loop</h3><ul><li>Uses blocking APIs or delay</li><li>Lets scheduler run other Ready tasks</li><li>Has a clear period or event source</li></ul></div>
+          <div class="panel tint-amber"><h3>Risky loop</h3><ul><li>Busy loop without blocking</li><li>Consumes CPU continuously</li><li>Can starve equal or lower-priority tasks</li></ul></div>
+        </div>
+      </div>
+      <div class="takeaway">A task loop should usually contain a point where the task gives the scheduler another choice.</div><div class="page">6 / 31</div>
+    </section>
+
+    <section class="slide" id="s7">
+      <div class="slide-header"><div class="context">Module 02 &middot; Task Anatomy</div><div class="framing">The pieces created around a task function</div></div>
+      <div class="content">
+        <h2>Task Object Anatomy</h2>
+        <p class="subtitle">A task is easier to understand as a bundle: function code, TCB, stack, priority, state, and optional handle. The function alone is not enough for scheduling.</p>
+        <div class="image-layout">
+          <figure class="infographic-card"><img src="../shared_assets/infographics/task_creation_object_construction.png" alt="Task creation as construction of a schedulable object"></figure>
+          <div class="panel tint-blue">
+            <h3>Read the visual</h3>
+            <ul>
+              <li>Task creation starts from application behavior</li>
+              <li>The kernel adds metadata such as state and priority</li>
+              <li>Stack and TCB memory must come from a defined source</li>
+              <li>The scheduler receives a Ready task object, not a raw function</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="takeaway">The task function supplies behavior; the task object supplies schedulability.</div><div class="page">7 / 31</div>
+    </section>
+
+    <section class="slide" id="s8">
+      <div class="slide-header"><div class="context">Module 02 &middot; TCB</div><div class="framing">Kernel metadata for one task</div></div>
+      <div class="content">
+        <h2>Task Control Block</h2>
+        <p class="subtitle">A Task Control Block, or TCB, is kernel-owned metadata for a task. You normally do not edit it directly, but many runtime symptoms are explained by what the kernel stores there.</p>
+        <div class="grid-3">
+          <div class="panel tint-blue"><h3>Scheduling fields</h3><ul><li>Current state</li><li>Priority</li><li>List links used by scheduler</li></ul></div>
+          <div class="panel tint-teal"><h3>Stack fields</h3><ul><li>Saved stack pointer</li><li>Stack bounds or high-water data when enabled</li><li>Context switch bookkeeping</li></ul></div>
+          <div class="panel tint-green"><h3>Debugging fields</h3><ul><li>Task name</li><li>Task handle relation</li><li>Trace and diagnostics support</li></ul></div>
+        </div>
+        <div class="callout" style="margin-top:22px;">The exact internal structure is kernel implementation detail, but the concept is stable: the TCB is where the kernel remembers the task.</div>
+      </div>
+      <div class="takeaway">A task without a TCB cannot be managed by the scheduler.</div><div class="page">8 / 31</div>
+    </section>
+
+    <section class="slide" id="s9">
+      <div class="slide-header"><div class="context">Module 02 &middot; Stack</div><div class="framing">Each task needs its own call frames</div></div>
+      <div class="content">
+        <h2>Private Stack per Task</h2>
+        <p class="subtitle">Each task needs a stack for local variables, return addresses, saved CPU context, and nested function calls. This is why creating a task is also a memory-allocation decision.</p>
+        <div class="grid-13">
+          <div class="infographic">
+            <div class="memory-map">
+              <div class="mem-row"><div class="mem-label">Task A stack</div><div class="mem-body">Local variables and call frames for Task A</div></div>
+              <div class="mem-row"><div class="mem-label">Task B stack</div><div class="mem-body">Independent call frames for Task B</div></div>
+              <div class="mem-row"><div class="mem-label">TCB records</div><div class="mem-body">Kernel metadata points to each saved stack location</div></div>
+            </div>
+          </div>
+          <div class="panel tint-amber">
+            <h3>Common mistake</h3>
+            <ul>
+              <li>Stack depth is not a random large number</li>
+              <li>Too small: overflow or corrupted behavior</li>
+              <li>Too large: wasted RAM on small MCUs</li>
+              <li>Unit depends on FreeRTOS port conventions</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="takeaway">Stack size is a design parameter, not just an API argument.</div><div class="page">9 / 31</div>
+    </section>
+
+    <section class="slide" id="s10">
+      <div class="slide-header"><div class="context">Module 02 &middot; Priority And State</div><div class="framing">A preview before the scheduler module</div></div>
+      <div class="content">
+        <h2>Priority and Task State</h2>
+        <p class="subtitle">Module 03 will cover scheduling in detail. Module 02 only needs enough vocabulary to understand what task creation stores and why a created task does not immediately mean code is running.</p>
+        <div class="image-layout">
+          <figure class="infographic-card"><img src="../shared_assets/book_figures/figure_4_1_top_level_task_states.png" alt="FreeRTOS Kernel Book figure showing top-level task states"></figure>
+          <div class="panel tint-teal"><h3>Reading rule</h3><ul><li>Priority helps choose among Ready tasks</li><li>State says whether the task can currently run</li><li>Creation prepares a task for scheduler selection</li><li>Module 03 expands this state model in detail</li></ul></div>
+        </div>
+      </div>
+      <div class="takeaway">Task creation prepares a schedulable object; scheduler selection is the next step.</div><div class="page">10 / 31</div>
+    </section>
+
+    <section class="slide" id="s11">
+      <div class="slide-header"><div class="context">Module 02 &middot; Dynamic Creation</div><div class="framing">The first task creation API</div></div>
+      <div class="content">
+        <h2><code>xTaskCreate()</code> API Shape</h2>
+        <p class="subtitle"><code>xTaskCreate()</code> creates a task using FreeRTOS heap memory. The API receives the task behavior, metadata choices, stack depth, priority, and an optional handle output.</p>
+        <pre><code>BaseType_t xTaskCreate(
+    TaskFunction_t pxTaskCode,
+    const char * const pcName,
+    const configSTACK_DEPTH_TYPE usStackDepth,
+    void * const pvParameters,
+    UBaseType_t uxPriority,
+    TaskHandle_t * const pxCreatedTask
+);</code></pre>
+        <div class="callout" style="margin-top:20px;">The return value tells whether the kernel successfully allocated and registered the task.</div>
+      </div>
+      <div class="takeaway">Read the API as a constructor for a task object.</div><div class="page">11 / 31</div>
+    </section>
+
+    <section class="slide" id="s12">
+      <div class="slide-header"><div class="context">Module 02 &middot; Parameters I</div><div class="framing">Function, name, and parameter handoff</div></div>
+      <div class="content">
+        <h2>Task Code, Name, and Parameters</h2>
+        <p class="subtitle">The first group of parameters tells the kernel where the task starts, how to label it, and what initial data pointer should be passed to the task function.</p>
+        <div class="param-grid">
+          <div class="param"><strong><code>pxTaskCode</code></strong>Function pointer to the task function. In Tutorial 02, this is <code>prvTaskFunction</code>.</div>
+          <div class="param"><strong><code>pcName</code></strong>Human-readable task name. Useful for debugging and trace tools, not for scheduling decisions.</div>
+          <div class="param"><strong><code>pvParameters</code></strong>Generic pointer passed to the task function. Often <code>NULL</code> in simple tutorials.</div>
+        </div>
+        <div class="warning" style="margin-top:22px;">If <code>pvParameters</code> points to data, the data must remain valid after the task starts. Lifetime mistakes are common.</div>
+      </div>
+      <div class="takeaway">The parameter pointer is powerful because it is generic, and risky for the same reason.</div><div class="page">12 / 31</div>
+    </section>
+
+    <section class="slide" id="s13">
+      <div class="slide-header"><div class="context">Module 02 &middot; Parameters II</div><div class="framing">Stack depth, priority, and handle</div></div>
+      <div class="content">
+        <h2>Stack Depth, Priority, and Handle</h2>
+        <p class="subtitle">The second group of parameters affects memory use, scheduling behavior, and whether application code can refer to the created task later.</p>
+        <table class="mini-table">
+          <thead><tr><th>Parameter</th><th>Meaning</th><th>What to check</th></tr></thead>
+          <tbody>
+            <tr><td><code>usStackDepth</code></td><td>Requested stack depth for the task</td><td>Unit and minimum size depend on port and configuration</td></tr>
+            <tr><td><code>uxPriority</code></td><td>Initial task priority</td><td>Priority choice affects who runs when several tasks are Ready</td></tr>
+            <tr><td><code>pxCreatedTask</code></td><td>Optional output location for a task handle</td><td>Use <code>NULL</code> if the application does not need the handle</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="takeaway">These parameters connect task creation to memory, scheduling, and later control.</div><div class="page">13 / 31</div>
+    </section>
+
+    <section class="slide" id="s14">
+      <div class="slide-header"><div class="context">Module 02 &middot; Dynamic Memory Path</div><div class="framing">Where TCB and stack memory come from</div></div>
+      <div class="content">
+        <h2>Dynamic Task Creation Path</h2>
+        <p class="subtitle">With <code>xTaskCreate()</code>, the kernel allocates memory for the TCB and stack from the FreeRTOS heap. The task can be created only if the allocation succeeds.</p>
+        <div class="icon-row">
+          <div class="icon-card"><img class="icon" src="../shared_assets/icons/heap_memory_allocation.png" alt=""><strong>FreeRTOS heap</strong><p>The kernel allocates memory for the TCB and stack.</p></div>
+          <div class="icon-card"><img class="icon" src="../shared_assets/icons/task_control_block.png" alt=""><strong>Task metadata</strong><p>The task becomes visible to scheduler data structures.</p></div>
+          <div class="icon-card"><img class="icon" src="../shared_assets/icons/ready_task_queue.png" alt=""><strong>Ready path</strong><p>A successful task can later be selected by the scheduler.</p></div>
+        </div>
+        <div class="grid-2" style="margin-top:18px;">
+          <div class="panel tint-green"><h3>Convenience</h3><ul><li>Shorter application code</li><li>Memory request expressed by stack depth</li><li>Good for tutorials and flexible prototypes</li></ul></div>
+          <div class="panel tint-amber"><h3>Responsibility</h3><ul><li>Heap must be configured</li><li>Allocation can fail</li><li>Failure path must be checked</li></ul></div>
+        </div>
+      </div>
+      <div class="takeaway">Dynamic creation trades shorter application code for heap dependency.</div><div class="page">14 / 31</div>
+    </section>
+
+    <section class="slide" id="s15">
+      <div class="slide-header"><div class="context">Module 02 &middot; Tutorial 02</div><div class="framing">Reading the TODO as an API mapping</div></div>
+      <div class="content">
+        <h2>Tutorial 02 Source Reading</h2>
+        <p class="subtitle">Tutorial 02 asks the student to create one task using <code>xTaskCreate()</code> and then start the scheduler. The TODO list is a direct map from concept to API argument.</p>
+        <div class="grid-13">
+          <pre><code>BaseType_t xTaskCreationResult = pdFAIL;
+
+/* TODO 1 - Create a FreeRTOS task using
+ * xTaskCreate API which uses prvTaskFunction
+ * as the task function.
+ */
+
+configASSERT( xTaskCreationResult == pdPASS );
+
+/* TODO 2 - Call vTaskStartScheduler. */</code></pre>
+          <div class="panel tint-blue">
+            <h3>Read the TODO</h3>
+            <ul>
+              <li>Task function: <code>prvTaskFunction</code></li>
+              <li>Name: <code>"Task"</code></li>
+              <li>Stack: <code>configMINIMAL_STACK_SIZE</code></li>
+              <li>Priority: <code>tskIDLE_PRIORITY</code></li>
+              <li>Handle: not needed, so <code>NULL</code></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="takeaway">The TODO is less about typing code and more about identifying task object fields.</div><div class="page">15 / 31</div>
+    </section>
+
+    <section class="slide" id="s16">
+      <div class="slide-header"><div class="context">Module 02 &middot; Tutorial 02</div><div class="framing">The completed dynamic creation call</div></div>
+      <div class="content">
+        <h2>Tutorial 02 Completion Shape</h2>
+        <p class="subtitle">The call uses the task function and asks the kernel to allocate the TCB and stack. The return value is checked before scheduler start.</p>
+        <pre><code>xTaskCreationResult = xTaskCreate(
+    prvTaskFunction,
+    "Task",
+    configMINIMAL_STACK_SIZE,
+    NULL,
+    tskIDLE_PRIORITY,
+    NULL
+);
+
+configASSERT( xTaskCreationResult == pdPASS );
+
+vTaskStartScheduler();</code></pre>
+        <div class="callout" style="margin-top:20px;">The assert is not decoration. It prevents the tutorial from continuing silently when task creation failed.</div>
+      </div>
+      <div class="takeaway">A successful return means the task object has been registered with the kernel.</div><div class="page">16 / 31</div>
+    </section>
+
+    <section class="slide" id="s17">
+      <div class="slide-header"><div class="context">Module 02 &middot; Return Value</div><div class="framing">Detecting creation failure early</div></div>
+      <div class="content">
+        <h2><code>BaseType_t</code>, <code>pdPASS</code>, and <code>configASSERT()</code></h2>
+        <p class="subtitle">Dynamic creation can fail because memory allocation can fail. The return value gives application code a chance to detect that failure immediately.</p>
+        <div class="grid-3">
+          <div class="panel tint-blue"><h3><code>BaseType_t</code></h3><p>FreeRTOS integer type commonly used for success/failure returns and small status values.</p></div>
+          <div class="panel tint-green"><h3><code>pdPASS</code></h3><p>Expected success value for many FreeRTOS API calls that return a status.</p></div>
+          <div class="panel tint-amber"><h3><code>configASSERT()</code></h3><p>Debug-time check that stops execution when an assumption is violated.</p></div>
+        </div>
+        <div class="warning" style="margin-top:22px;">Ignoring the return value can hide the real problem until the scheduler starts and nothing useful runs.</div>
+      </div>
+      <div class="takeaway">The first debugging checkpoint for task creation is the API return value.</div><div class="page">17 / 31</div>
+    </section>
+
+    <section class="slide" id="s18">
+      <div class="slide-header"><div class="context">Module 02 &middot; Scheduler Start</div><div class="framing">The execution boundary in main</div></div>
+      <div class="content">
+        <h2>Before and After <code>vTaskStartScheduler()</code></h2>
+        <p class="subtitle">Before scheduler start, <code>main()</code> follows ordinary C control flow. After scheduler start, Ready tasks become the execution units selected by the scheduler.</p>
+        <div class="image-layout">
+          <figure class="infographic-card"><img src="../shared_assets/infographics/scheduler_start_boundary.png" alt="Scheduler start boundary from setup code to task scheduling"></figure>
+          <div class="panel tint-blue"><h3>Read the visual</h3><ul><li>Before the boundary, setup code creates task objects</li><li>The scheduler boundary changes the execution model</li><li>After the boundary, Ready tasks and Idle task share CPU time</li><li>The tick becomes part of timing behavior</li></ul></div>
+        </div>
+        <div class="grid-2" style="margin-top:18px;">
+          <div class="panel tint-blue"><h3>Expected path</h3><p>The scheduler starts, picks a Ready task, and the task function begins running according to scheduling rules.</p></div>
+          <div class="panel tint-amber"><h3>Failure path</h3><p>If scheduler start returns, the system usually failed to create required kernel resources, often because memory is insufficient.</p></div>
+        </div>
+      </div>
+      <div class="takeaway">Scheduler start is the boundary between setup code and task-based execution.</div><div class="page">18 / 31</div>
+    </section>
+
+    <section class="slide" id="s19">
+      <div class="slide-header"><div class="context">Module 02 &middot; Delay Preview</div><div class="framing">Why the tutorial task does not busy-loop</div></div>
+      <div class="content">
+        <h2><code>vTaskDelay()</code> and Tick Conversion</h2>
+        <p class="subtitle">Tutorial 02 prints a message and then delays. This delay moves the task out of Running state for a period, allowing other tasks or the idle task to run.</p>
+        <div class="image-layout">
+          <figure class="infographic-card"><img src="../shared_assets/book_figures/figure_4_9_vtaskdelay_execution_sequence.png" alt="FreeRTOS Kernel Book figure showing vTaskDelay execution sequence"></figure>
+          <pre><code>for( ;; )
+{
+    fprintf( stderr, "Tutorial 2 running...\\r\\n" );
+
+    vTaskDelay( pdMS_TO_TICKS( 1000 ) );
+}</code></pre>
+        </div>
+        <div class="callout" style="margin-top:16px;"><code>vTaskDelay()</code> moves the task out of Running state for a tick-based interval; <code>pdMS_TO_TICKS()</code> keeps the source readable in milliseconds.</div>
+      </div>
+      <div class="takeaway">A task loop should usually include a scheduler-visible waiting point.</div><div class="page">19 / 31</div>
+    </section>
+
+    <section class="slide" id="s20">
+      <div class="slide-header"><div class="context">Module 02 &middot; Static Creation</div><div class="framing">Avoiding heap allocation for task memory</div></div>
+      <div class="content">
+        <h2>Why Static Task Creation Exists</h2>
+        <p class="subtitle">Static creation moves TCB and stack memory ownership from the FreeRTOS heap to application-provided buffers. This can make memory use more explicit and predictable.</p>
+        <div class="grid-3">
+          <div class="panel tint-blue"><h3>Dynamic style</h3><ul><li>Application requests memory through API</li><li>Kernel allocates TCB and stack from heap</li><li>Shorter code, but allocation can fail</li></ul></div>
+          <div class="panel tint-green"><h3>Static style</h3><ul><li>Application declares TCB buffer</li><li>Application declares stack buffer</li><li>Kernel uses the provided memory</li></ul></div>
+          <div class="panel tint-amber"><h3>Design reason</h3><ul><li>Clear memory ownership</li><li>Less runtime allocation uncertainty</li><li>Common in stricter embedded styles</li></ul></div>
+        </div>
+      </div>
+      <div class="takeaway">Static creation is more verbose because memory ownership is explicit.</div><div class="page">20 / 31</div>
+    </section>
+
+    <section class="slide" id="s21">
+      <div class="slide-header"><div class="context">Module 02 &middot; Static API</div><div class="framing">The same task, different memory ownership</div></div>
+      <div class="content">
+        <h2><code>xTaskCreateStatic()</code> API Shape</h2>
+        <p class="subtitle">The static API adds two important arguments: a stack buffer and a TCB buffer supplied by the application.</p>
+        <pre><code>TaskHandle_t xTaskCreateStatic(
+    TaskFunction_t pxTaskCode,
+    const char * const pcName,
+    const uint32_t ulStackDepth,
+    void * const pvParameters,
+    UBaseType_t uxPriority,
+    StackType_t * const puxStackBuffer,
+    StaticTask_t * const pxTaskBuffer
+);</code></pre>
+        <div class="callout" style="margin-top:20px;">The return value is a task handle. A <code>NULL</code> return means the task was not created.</div>
+      </div>
+      <div class="takeaway">Static creation asks the application to bring the memory before calling the kernel.</div><div class="page">21 / 31</div>
+    </section>
+
+    <section class="slide" id="s22">
+      <div class="slide-header"><div class="context">Module 02 &middot; Static Memory Layout</div><div class="framing">Application-owned TCB and stack buffers</div></div>
+      <div class="content">
+        <h2>Static Task Memory Layout</h2>
+        <p class="subtitle">Tutorial 03 declares the TCB and stack buffers before <code>main()</code>. The kernel receives pointers to those buffers and uses them for the task object.</p>
+        <div class="infographic">
+          <div class="flow">
+            <div class="flowbox"><strong>Application storage</strong><code>StaticTask_t</code> and <code>StackType_t[]</code></div><div class="arrow">&rarr;</div>
+            <div class="flowbox"><strong>Static API</strong><code>xTaskCreateStatic(...)</code></div><div class="arrow">&rarr;</div>
+            <div class="flowbox"><strong>Kernel-managed task</strong>Uses application-owned memory</div>
+          </div>
+        </div>
+        <div class="memory-map" style="margin-top:18px;">
+          <div class="mem-row"><div class="mem-label">TCB buffer</div><div class="mem-body"><code>static StaticTask_t xTaskTcbBuffer;</code></div></div>
+          <div class="mem-row"><div class="mem-label">Stack buffer</div><div class="mem-body"><code>static StackType_t xTaskStackBuffer[ configMINIMAL_STACK_SIZE ];</code></div></div>
+        </div>
+      </div>
+      <div class="takeaway">The memory is application-owned, but the task state is still kernel-managed.</div><div class="page">22 / 31</div>
+    </section>
+
+    <section class="slide" id="s23">
+      <div class="slide-header"><div class="context">Module 02 &middot; Tutorial 03</div><div class="framing">Reading static allocation source</div></div>
+      <div class="content">
+        <h2>Tutorial 03 Source Reading</h2>
+        <p class="subtitle">Tutorial 03 shows the same basic task behavior as Tutorial 02, but the task memory is visible in application code.</p>
+        <div class="grid-13">
+          <pre><code>static StaticTask_t xTaskTcbBuffer;
+static StackType_t xTaskStackBuffer[
+    configMINIMAL_STACK_SIZE
+];
+
+TaskHandle_t xCreatedTaskHandle = NULL;
+
+/* TODO: call xTaskCreateStatic(...) */
+
+configASSERT( xCreatedTaskHandle != NULL );</code></pre>
+          <div class="panel tint-green">
+            <h3>What changed?</h3>
+            <ul>
+              <li>Return type is a task handle</li>
+              <li>TCB memory is visible in application source</li>
+              <li>Stack memory is visible in application source</li>
+              <li>Failure check is handle-based</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="takeaway">Static allocation makes the invisible memory path visible in the source file.</div><div class="page">23 / 31</div>
+    </section>
+
+    <section class="slide" id="s24">
+      <div class="slide-header"><div class="context">Module 02 &middot; Static Completion</div><div class="framing">Passing buffers to the kernel</div></div>
+      <div class="content">
+        <h2>Tutorial 03 Completion Shape</h2>
+        <p class="subtitle">The static creation call resembles the dynamic call, but the final two arguments are the stack and TCB buffers.</p>
+        <pre><code>xCreatedTaskHandle = xTaskCreateStatic(
+    prvTaskFunction,
+    "Task1",
+    configMINIMAL_STACK_SIZE,
+    NULL,
+    tskIDLE_PRIORITY,
+    &( xTaskStackBuffer[ 0 ] ),
+    &( xTaskTcbBuffer )
+);
+
+configASSERT( xCreatedTaskHandle != NULL );
+
+vTaskStartScheduler();</code></pre>
+      </div>
+      <div class="takeaway">The final two arguments state exactly where the task's memory comes from.</div><div class="page">24 / 31</div>
+    </section>
+
+    <section class="slide" id="s25">
+      <div class="slide-header"><div class="context">Module 02 &middot; Config Diff</div><div class="framing">Why Tutorial 02 and 03 build differently</div></div>
+      <div class="content">
+        <h2>Configuration Difference</h2>
+        <p class="subtitle">Tutorial 02 and 03 are not only different source examples. Their configuration must allow the allocation style used by the task creation API.</p>
+        <div class="infographic">
+          <div class="flow three">
+            <div class="flowbox"><strong>Tutorial 02</strong><code>xTaskCreate()</code><br>dynamic allocation path</div>
+            <div class="arrow">&harr;</div>
+            <div class="flowbox"><strong>Tutorial 03</strong><code>xTaskCreateStatic()</code><br>static allocation path</div>
+          </div>
+        </div>
+        <table class="mini-table" style="margin-top:18px;">
+          <thead><tr><th>Macro</th><th>Why it matters</th><th>Reading point</th></tr></thead>
+          <tbody>
+            <tr><td><code>configSUPPORT_DYNAMIC_ALLOCATION</code></td><td>Required for heap-backed task creation APIs</td><td>Used by dynamic examples</td></tr>
+            <tr><td><code>configSUPPORT_STATIC_ALLOCATION</code></td><td>Required for static creation APIs</td><td>Enabled when application supplies buffers</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="takeaway">API availability and behavior must be read together with configuration.</div><div class="page">25 / 31</div>
+    </section>
+
+    <section class="slide" id="s26">
+      <div class="slide-header"><div class="context">Module 02 &middot; Stack And Parameters</div><div class="framing">Two common beginner mistakes</div></div>
+      <div class="content">
+        <h2>Stack Depth and Parameter Lifetime</h2>
+        <p class="subtitle">Two mistakes appear early in task creation: treating stack depth as an arbitrary byte count, and passing a pointer to data that does not live long enough.</p>
+        <div class="grid-2">
+          <div class="panel tint-amber"><h3>Stack depth caveat</h3><ul><li>FreeRTOS stack depth is expressed in stack units for the port, not always raw bytes</li><li>Too small can corrupt execution</li><li>Too large wastes RAM</li><li>Use diagnostics and high-water checks when available</li></ul></div>
+          <div class="panel tint-violet"><h3>Parameter lifetime</h3><ul><li><code>pvParameters</code> is only a pointer</li><li>Do not pass a pointer to a local variable that disappears</li><li>Prefer static, global, heap, or clearly owned data</li><li>Document who owns the pointed-to data</li></ul></div>
+        </div>
+      </div>
+      <div class="takeaway">The API accepts numbers and pointers; the design must supply valid memory assumptions.</div><div class="page">26 / 31</div>
+    </section>
+
+    <section class="slide" id="s27">
+      <div class="slide-header"><div class="context">Module 02 &middot; Design Choice</div><div class="framing">Dynamic and static task creation compared</div></div>
+      <div class="content">
+        <h2>Dynamic vs Static Task Creation</h2>
+        <p class="subtitle">Neither style is universally better. The choice depends on memory ownership, failure policy, and how predictable the firmware must be.</p>
+        <table class="mini-table">
+          <thead><tr><th>Question</th><th>Dynamic creation</th><th>Static creation</th></tr></thead>
+          <tbody>
+            <tr><td>Who provides memory?</td><td>FreeRTOS heap</td><td>Application buffers</td></tr>
+            <tr><td>Code length</td><td>Shorter creation code</td><td>More setup code</td></tr>
+            <tr><td>Failure mode</td><td>Heap allocation can fail</td><td>Buffer pointer or size mistakes can fail</td></tr>
+            <tr><td>Design style</td><td>Convenient and flexible</td><td>Explicit and predictable</td></tr>
+          </tbody>
+        </table>
+        <div class="question" style="margin-top:18px;">If the system must avoid runtime heap allocation, which creation style better matches that policy?</div>
+      </div>
+      <div class="takeaway">Memory ownership is the main difference, not the task function itself.</div><div class="page">27 / 31</div>
+    </section>
+
+    <section class="slide" id="s28">
+      <div class="slide-header"><div class="context">Module 02 &middot; Debugging</div><div class="framing">Where task creation fails</div></div>
+      <div class="content">
+        <h2>Debugging Task Creation Failures</h2>
+        <p class="subtitle">When the task does not run, avoid jumping straight to the task function body. First check whether the task object was created and whether the scheduler started.</p>
+        <div class="infographic">
+          <div class="flow">
+            <div class="flowbox"><strong>Creation result</strong><code>pdPASS</code> or non-NULL handle?</div><div class="arrow">&rarr;</div>
+            <div class="flowbox"><strong>Memory source</strong>Heap or static buffers valid?</div><div class="arrow">&rarr;</div>
+            <div class="flowbox"><strong>Scheduler path</strong>Did scheduler start or return?</div>
+          </div>
+        </div>
+        <div class="grid-3" style="margin-top:18px;">
+          <div class="panel tint-blue"><h3>Dynamic failure</h3><p>Heap too small, allocation disabled, or return value ignored.</p></div>
+          <div class="panel tint-green"><h3>Static failure</h3><p>Missing buffer, wrong size, or static allocation disabled.</p></div>
+          <div class="panel tint-amber"><h3>Runtime failure</h3><p>Stack too small, bad parameter pointer, or task never blocks.</p></div>
+        </div>
+      </div>
+      <div class="takeaway">Debug task creation from object creation outward, not from the print statement inward.</div><div class="page">28 / 31</div>
+    </section>
+
+    <section class="slide" id="s29">
+      <div class="slide-header"><div class="context">Module 02 &middot; Project Boundary Check</div><div class="framing">A small verification task</div></div>
+      <div class="content">
+        <h2>Project Boundary Check</h2>
+        <p class="subtitle">Use Tutorial 02 and 03 to verify that task creation can be read as a memory and scheduler event, not only as an API call.</p>
+        <div class="grid-2">
+          <div class="panel tint-green"><h3>Source checkpoint</h3><ol><li>Find the task function prototype</li><li>Mark where <code>xTaskCreate()</code> or <code>xTaskCreateStatic()</code> is called</li><li>Identify where TCB and stack memory come from</li><li>Find the scheduler start boundary</li></ol></div>
+          <div class="panel tint-blue"><h3>Config checkpoint</h3><ul><li>Check dynamic/static allocation support macros</li><li>Record stack depth value used by the tutorial</li><li>Find the assert that catches creation failure</li><li>Note which result value is checked</li></ul></div>
+        </div>
+      </div>
+      <div class="takeaway">The checkpoint links API syntax to memory ownership and scheduler behavior.</div><div class="page">29 / 31</div>
+    </section>
+
+    <section class="slide" id="s30">
+      <div class="slide-header"><div class="context">Module 02 &middot; Review And Bridge</div><div class="framing">Preparing for priority and task state</div></div>
+      <div class="content">
+        <h2>Module 02 Review and Module 03 Bridge</h2>
+        <p class="subtitle">After this module, task creation should read as the construction of a schedulable execution object with explicit memory and priority choices.</p>
+        <div class="grid-2">
+          <div class="panel tint-blue"><h3>Check questions</h3><ul><li>Why is a task more than a C function?</li><li>What information does the TCB represent?</li><li>Where does stack memory come from in each creation style?</li><li>Why does <code>vTaskStartScheduler()</code> change program flow?</li></ul></div>
+          <div class="panel tint-green"><h3>Next module</h3><ul><li>Ready, Running, Blocked, Suspended states</li><li>Priority-based selection among Ready tasks</li><li>Tick interrupt and delay APIs</li><li>Preemption and time slicing behavior</li></ul></div>
+        </div>
+        <div class="question" style="margin-top:22px;">Next question: after multiple tasks exist, which one actually runs, and why?</div>
+      </div>
+      <div class="takeaway">Module 03 moves from creating tasks to scheduling tasks.</div><div class="page">30 / 31</div>
+    </section>
+
+    <section class="slide" id="s31">
+      <div class="slide-header"><div class="context">Module 02 &middot; References</div><div class="framing">Sources and further reading</div></div>
+      <div class="content">
+        <h2>References and Further Reading</h2>
+        <p class="subtitle">This module is based on the FreeRTOS task creation APIs, the Kernel Book task-management chapter, and Tutorial 02/03 source files.</p>
+        <div class="grid-2">
+          <div class="panel tint-blue">
+            <h3>References Used</h3>
+            <ul>
+              <li>Richard Barry, <em>Mastering the FreeRTOS Real Time Kernel</em>, Chapter 4, "Task Management".</li>
+              <li>Chapter 4, Section 4.2, "Task Functions".</li>
+              <li>Chapter 4, Section 4.4, "Task Creation", including <code>xTaskCreate()</code> and <code>xTaskCreateStatic()</code>.</li>
+              <li>Chapter 4, Section 4.8, "The Idle Task and the Idle Task Hook", for scheduler-start context.</li>
+              <li>Lab Project FreeRTOS Tutorials, Tutorial 02 and Tutorial 03 source files and README material: <code>github.com/FreeRTOS/Lab-Project-FreeRTOS-Tutorials</code>.</li>
+            </ul>
+          </div>
+          <div class="panel tint-green">
+            <h3>Further Reading</h3>
+            <ul>
+              <li>FreeRTOS API reference at <code>freertos.org/Documentation</code>: <code>xTaskCreate()</code>, <code>xTaskCreateStatic()</code>, <code>vTaskStartScheduler()</code>, <code>vTaskDelay()</code>.</li>
+              <li>FreeRTOS Kernel Book, Chapter 2, "Heap Memory Management", for dynamic allocation behavior.</li>
+              <li>FreeRTOS Kernel Book, Chapter 4, Sections 4.5-4.7, for priority and task-state transitions.</li>
+              <li>FreeRTOS configuration reference: <code>configSUPPORT_DYNAMIC_ALLOCATION</code>, <code>configSUPPORT_STATIC_ALLOCATION</code>, <code>configMINIMAL_STACK_SIZE</code>.</li>
+              <li>Kernel source reading path: <code>github.com/FreeRTOS/FreeRTOS-Kernel</code>, <code>tasks.c</code>, <code>portable/MemMang/</code>, and the selected <code>FreeRTOSConfig.h</code>.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="takeaway">References support traceability; further reading gives the next study path after the lecture.</div><div class="page">31 / 31</div>
+    </section>
+  </main>
+  <script src="../shared_assets/slideshow.js"></script>
+</body>
+</html>

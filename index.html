@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FreeRTOS Lecture HTML Slides</title>
+  <style>
+    :root { --indigo:#2e315b; --blue:#2563a6; --teal:#147d83; --line:#d8dee9; --bg:#f4f6f9; --text:#2b2f36; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans",Arial,sans-serif; }
+    main { width:min(1180px, calc(100vw - 48px)); margin:0 auto; padding:48px 0 72px; }
+    h1 { margin:0 0 10px; color:var(--indigo); font-size:42px; letter-spacing:0; }
+    p { margin:0 0 28px; color:#586274; font-size:20px; line-height:1.45; }
+    .grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:16px; }
+    .module-card { display:block; min-height:154px; padding:18px 20px; border:1px solid var(--line); border-radius:8px; background:#fff; text-decoration:none; box-shadow:0 10px 24px rgba(38,49,91,.08); }
+    .module-card span { display:block; color:var(--teal); font-weight:900; font-size:15px; text-transform:uppercase; letter-spacing:.04em; }
+    .module-card strong { display:block; margin-top:12px; color:var(--indigo); font-size:22px; line-height:1.18; }
+    .module-card em { display:block; margin-top:14px; color:#6b7483; font-style:normal; font-weight:800; }
+    @media (max-width: 900px) { .grid { grid-template-columns:1fr; } main { width:min(720px, calc(100vw - 32px)); } }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>FreeRTOS Lecture HTML Slides</h1>
+    <p>English-only module decks with expanded concept explanations, shared generated icons, generated infographics, Kernel Book figures, source notes, and references/further reading slides.</p>
+    <section class="grid">
+      <a class="module-card" href="module_00/index.html">
+        <span>Module 00</span>
+        <strong>RTOS Fundamentals and FreeRTOS Orientation</strong>
+        <em>22 slides</em>
+      </a>
+      <a class="module-card" href="module_01/index.html">
+        <span>Module 01</span>
+        <strong>RTOS Perspective and FreeRTOS Project Structure</strong>
+        <em>37 slides</em>
+      </a>
+      <a class="module-card" href="module_02/index.html">
+        <span>Module 02</span>
+        <strong>Task Creation and Scheduler Start</strong>
+        <em>31 slides</em>
+      </a>
+      <a class="module-card" href="module_03/index.html">
+        <span>Module 03</span>
+        <strong>Priority, Tick, and Task State</strong>
+        <em>35 slides</em>
+      </a>
+      <a class="module-card" href="module_04/index.html">
+        <span>Module 04</span>
+        <strong>Scheduling Policies and Execution Patterns</strong>
+        <em>40 slides</em>
+      </a>
+      <a class="module-card" href="module_05/index.html">
+        <span>Module 05</span>
+        <strong>Memory Management, Heap, and Stack</strong>
+        <em>42 slides</em>
+      </a>
+      <a class="module-card" href="module_06/index.html">
+        <span>Module 06</span>
+        <strong>Queue Model and Producer-Consumer Design</strong>
+        <em>44 slides</em>
+      </a>
+      <a class="module-card" href="module_07/index.html">
+        <span>Module 07</span>
+        <strong>Queue Extension Patterns and ISR Queues</strong>
+        <em>36 slides</em>
+      </a>
+      <a class="module-card" href="module_08/index.html">
+        <span>Module 08</span>
+        <strong>Interrupt Management and Deferred Processing</strong>
+        <em>40 slides</em>
+      </a>
+      <a class="module-card" href="module_09/index.html">
+        <span>Module 09</span>
+        <strong>Software Timers and the Daemon Task</strong>
+        <em>37 slides</em>
+      </a>
+      <a class="module-card" href="module_10/index.html">
+        <span>Module 10</span>
+        <strong>Semaphores, Mutexes, and Critical Sections</strong>
+        <em>41 slides</em>
+      </a>
+      <a class="module-card" href="module_11/index.html">
+        <span>Module 11</span>
+        <strong>Priority Inversion, Deadlock, and Gatekeeper Design</strong>
+        <em>41 slides</em>
+      </a>
+      <a class="module-card" href="module_12/index.html">
+        <span>Module 12</span>
+        <strong>Event Groups and Barrier Synchronization</strong>
+        <em>40 slides</em>
+      </a>
+      <a class="module-card" href="module_13/index.html">
+        <span>Module 13</span>
+        <strong>Task Notifications and Direct-to-Task Communication</strong>
+        <em>41 slides</em>
+      </a>
+      <a class="module-card" href="module_14/index.html">
+        <span>Module 14</span>
+        <strong>Stream Buffers and Message Buffers</strong>
+        <em>41 slides</em>
+      </a>
+      <a class="module-card" href="module_15/index.html">
+        <span>Module 15</span>
+        <strong>Diagnostics, Troubleshooting, and Integration</strong>
+        <em>41 slides</em>
+      </a>
+    </section>
+  </main>
+</body>
+</html>

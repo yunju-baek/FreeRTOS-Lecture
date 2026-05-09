@@ -1,0 +1,893 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FreeRTOS Module 06 - Queue Model and Producer-Consumer Design</title>
+  <style>
+:root {
+  --indigo:#2e315b; --blue:#2563a6; --teal:#147d83; --green:#2f7d4e;
+  --amber:#9a6a16; --violet:#6d4aa2; --graphite:#2b2f36; --muted:#637083;
+  --line:#d8dee9; --paper:#fff; --bg:#f4f6f9; --code:#eef2f7;
+  --soft-blue:#eef5fc; --soft-teal:#edf8f8; --soft-amber:#fff7e8;
+}
+* { box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { margin:0; background:var(--bg); color:var(--graphite); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans",Arial,sans-serif; line-height:1.44; }
+.nav { position:sticky; top:0; z-index:10; width:1280px; margin:0 auto; padding:10px 16px; background:rgba(244,246,249,.96); border-bottom:1px solid var(--line); color:#4f5969; font-size:15px; }
+.nav a { margin-right:8px; color:var(--blue); text-decoration:none; font-weight:800; }
+.deck { width:1280px; margin:0 auto; padding:28px 0 64px; }
+.slide { position:relative; width:1280px; min-height:720px; margin:0 0 32px; overflow:hidden; background:var(--paper); border:1px solid var(--line); box-shadow:0 18px 40px rgba(38,49,91,.12); page-break-after:always; }
+.slide-header { display:flex; justify-content:space-between; align-items:center; height:54px; padding:0 34px; background:var(--indigo); color:#fff; font-size:18px; }
+.context { font-weight:800; }
+.framing { color:#e1e6ff; font-size:16px; }
+.content { padding:30px 42px 58px; }
+h1,h2,h3,p { margin-top:0; }
+h1 { margin-bottom:14px; color:#fff; font-size:45px; line-height:1.08; letter-spacing:0; }
+h2 { margin-bottom:10px; color:#20243d; font-size:34px; line-height:1.12; letter-spacing:0; }
+h3 { margin-bottom:10px; color:var(--indigo); font-size:22px; letter-spacing:0; }
+.subtitle { max-width:1060px; margin-bottom:22px; color:#4a5260; font-size:22px; line-height:1.36; }
+.small { color:var(--muted); font-size:17px; }
+ul,ol { margin:0; padding-left:22px; }
+li { font-size:18.2px; }
+li + li { margin-top:6px; }
+code { padding:1px 5px; border-radius:4px; background:var(--code); color:#1d3152; font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace; font-size:.93em; }
+pre { margin:0; padding:15px 17px; border-radius:8px; background:#1f2633; color:#edf2ff; font-size:14.2px; line-height:1.42; overflow:hidden; white-space:pre-wrap; }
+pre code { padding:0; background:transparent; color:inherit; font-size:inherit; }
+.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+.grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
+.grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+.grid-13 { display:grid; grid-template-columns:1.12fr .88fr; gap:22px; align-items:stretch; }
+.grid-31 { display:grid; grid-template-columns:.82fr 1.18fr; gap:22px; align-items:stretch; }
+.panel { border:1px solid var(--line); border-radius:8px; padding:17px 19px; background:#fff; }
+.tint-blue { border-top:5px solid var(--blue); } .tint-teal { border-top:5px solid var(--teal); } .tint-green { border-top:5px solid var(--green); } .tint-amber { border-top:5px solid var(--amber); } .tint-violet { border-top:5px solid var(--violet); }
+.question { padding:16px 18px; border-left:6px solid var(--blue); background:var(--soft-blue); font-size:20px; }
+.callout { padding:16px 18px; border-left:6px solid var(--teal); background:var(--soft-teal); font-size:19px; }
+.warning { padding:16px 18px; border-left:6px solid var(--amber); background:var(--soft-amber); font-size:19px; }
+.takeaway { position:absolute; left:42px; right:120px; bottom:22px; color:#515a6b; font-size:17px; font-weight:700; }
+.page { position:absolute; right:36px; bottom:22px; color:#7a8290; font-size:16px; font-weight:800; }
+.cover { color:#fff; background:linear-gradient(120deg,rgba(46,49,91,.98),rgba(20,125,131,.9)),#2e315b; }
+.cover .slide-header { background:transparent; border-bottom:1px solid rgba(255,255,255,.24); }
+.cover .content { display:grid; grid-template-columns:1.08fr .92fr; gap:46px; align-items:center; padding-top:54px; }
+.cover .subtitle { color:#eef5ff; }
+.cover-card { min-height:390px; padding:28px; border:1px solid rgba(255,255,255,.35); border-radius:10px; background:rgba(255,255,255,.08); }
+.cover-card h3 { color:#fff; font-size:25px; }
+.cover-card li { color:#edf2ff; font-size:20px; }
+.icon-card { min-height:150px; display:grid; grid-template-columns:86px 1fr; gap:14px; align-items:center; border:1px solid var(--line); border-radius:8px; padding:15px; background:#fff; }
+.icon-card img { width:76px; height:76px; object-fit:contain; }
+.icon-card strong { display:block; color:var(--indigo); font-size:19px; margin-bottom:5px; }
+.icon-card span { display:block; color:#4e5969; font-size:16.5px; }
+.figure-frame { display:flex; align-items:center; justify-content:center; min-height:410px; border:1px solid var(--line); border-radius:10px; background:#fbfcfe; padding:18px; }
+.figure-frame img { max-width:100%; max-height:420px; object-fit:contain; }
+.figure-frame.tall img { max-height:505px; }
+.asset-note { margin-top:8px; color:var(--muted); font-size:15px; }
+.mini-table { width:100%; border-collapse:collapse; font-size:17px; }
+.mini-table th,.mini-table td { padding:9px 10px; border:1px solid var(--line); vertical-align:top; }
+.mini-table th { background:#eef2f7; color:var(--indigo); text-align:left; }
+.flow { display:grid; grid-template-columns:1fr 48px 1fr 48px 1fr; gap:10px; align-items:center; }
+.flowbox { min-height:112px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fff; text-align:center; font-size:17px; }
+.flowbox strong { display:block; margin-bottom:8px; color:var(--indigo); font-size:19px; }
+.arrow { text-align:center; color:var(--blue); font-size:32px; font-weight:900; }
+.timeline { display:grid; gap:12px; margin-top:10px; }
+.lane { display:grid; grid-template-columns:150px 1fr; gap:12px; align-items:center; }
+.lane-label { padding:10px 12px; border-radius:8px; background:#edf2ff; color:var(--indigo); font-weight:900; text-align:center; }
+.lane-body { display:flex; gap:6px; align-items:center; min-height:46px; padding:8px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+.bar { height:30px; border-radius:6px; color:#fff; font-size:14px; font-weight:800; display:flex; align-items:center; justify-content:center; }
+.run { background:var(--blue); } .block { background:var(--amber); } .idle { background:var(--green); } .tick { width:6px; height:36px; background:var(--teal); border-radius:4px; }
+.w80 { width:80px; } .w120 { width:120px; } .w180 { width:180px; } .w240 { width:240px; }
+.refs li { margin-top:9px; font-size:18px; }
+@media print { body{background:#fff;} .nav{display:none;} .deck{padding:0;} .slide{margin:0; box-shadow:none; border:0;} }
+
+.queue-strip { display:grid; grid-template-columns:170px 1fr 170px; gap:12px; align-items:center; margin-top:14px; }
+.endpoint { min-height:86px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fff; text-align:center; font-size:17px; }
+.endpoint strong { display:block; color:var(--indigo); font-size:20px; margin-bottom:6px; }
+.queue-box { min-height:96px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fbfcfe; }
+.slots { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; }
+.slot { min-height:48px; display:flex; align-items:center; justify-content:center; border-radius:7px; border:1px solid #cfd8e6; background:#fff; color:var(--indigo); font-weight:900; }
+.slot.fill { background:#edf8f8; border-color:#9ecfcf; color:#135f64; }
+.slot.wait { background:#fff7e8; border-color:#deb46e; color:#7d5011; }
+.api-list { display:flex; flex-wrap:wrap; gap:10px; margin-top:10px; }
+.api-list code { display:inline-block; padding:8px 10px; font-size:17px; }
+.pattern-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+.pattern { min-height:132px; padding:13px; border:1px solid var(--line); border-top:5px solid var(--blue); border-radius:8px; background:#fff; font-size:16px; }
+.pattern strong { display:block; color:var(--indigo); font-size:18px; margin-bottom:6px; }
+.timeline2 { display:grid; gap:12px; margin-top:12px; }
+.lane2 { display:grid; grid-template-columns:150px 1fr; gap:12px; align-items:center; }
+.lane2-name { padding:10px 12px; border-radius:8px; background:#edf2ff; color:var(--indigo); font-weight:900; text-align:center; }
+.lane2-body { min-height:48px; display:flex; gap:7px; align-items:center; padding:8px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+.seg { min-width:72px; height:30px; display:flex; align-items:center; justify-content:center; border-radius:6px; color:#fff; font-weight:900; font-size:14px; }
+.send { background:var(--blue); } .recv { background:var(--teal); } .blockseg { background:var(--amber); } .runseg { background:var(--green); }
+.w90 { width:90px; } .w130 { width:130px; } .w190 { width:190px; }
+</style>
+  <link rel="stylesheet" href="../shared_assets/slideshow.css">
+</head>
+<body>
+  <nav class="nav"><a href="#s1">01</a><a href="#s2">02</a><a href="#s3">03</a><a href="#s4">04</a><a href="#s5">05</a><a href="#s6">06</a><a href="#s7">07</a><a href="#s8">08</a><a href="#s9">09</a><a href="#s10">10</a><a href="#s11">11</a><a href="#s12">12</a><a href="#s13">13</a><a href="#s14">14</a><a href="#s15">15</a><a href="#s16">16</a><a href="#s17">17</a><a href="#s18">18</a><a href="#s19">19</a><a href="#s20">20</a><a href="#s21">21</a><a href="#s22">22</a><a href="#s23">23</a><a href="#s24">24</a><a href="#s25">25</a><a href="#s26">26</a><a href="#s27">27</a><a href="#s28">28</a><a href="#s29">29</a><a href="#s30">30</a><a href="#s31">31</a><a href="#s32">32</a><a href="#s33">33</a><a href="#s34">34</a><a href="#s35">35</a><a href="#s36">36</a><a href="#s37">37</a><a href="#s38">38</a><a href="#s39">39</a><a href="#s40">40</a><a href="#s41">41</a><a href="#s42">42</a><a href="#s43">43</a><a href="#s44">44</a><button class="slideshow-toggle" type="button" data-slideshow-start>Slideshow</button></nav>
+  
+  <div class="slideshow-controls" aria-label="Slideshow controls">
+    <button class="slide-control" type="button" data-slide-prev>Prev</button>
+    <span class="slide-counter" data-slide-counter>01 / 44</span>
+    <button class="slide-control" type="button" data-slide-next>Next</button>
+    <button class="slide-control" type="button" data-slide-fullscreen>Full</button>
+    <button class="slide-control" type="button" data-slide-fill aria-pressed="false">Fill</button>
+    <button class="slide-control" type="button" data-slide-exit>Exit</button>
+  </div>
+  <div class="slideshow-hint">Keys: Left/Right or PageUp/PageDown to move, Home/End to jump, S to toggle slideshow, F for fullscreen, Z for fit/fill, Esc to exit.</div>
+
+  <main class="deck">
+    
+    <section class="slide cover" id="s1">
+      <div class="slide-header"><div class="context">FreeRTOS Module 06</div><div class="framing">Queue Model and Producer-Consumer Design</div></div>
+      <div class="content">
+        <div>
+          <h1>Queue Model and Producer-Consumer Design</h1>
+          <p class="subtitle">A FreeRTOS queue is not just a container. It combines copy-by-value communication, bounded buffering, and blocking behavior that changes scheduling.</p>
+          <p class="subtitle">This module prepares students to reason about queue length, item size, timeout, ownership, and producer-consumer pressure before using advanced queue patterns.</p>
+        </div>
+        <div class="cover-card">
+          <h3>Module Contract</h3>
+          <ul><li>Define queue vocabulary before using queue APIs.</li><li>Explain fixed length, fixed item size, copy-in, and copy-out behavior.</li><li>Treat send and receive as scheduling points when queues are full or empty.</li><li>Use Tutorial 09 and Kernel Book Chapter 5 figures as source-backed evidence.</li></ul>
+        </div>
+      </div>
+      <div class="page">01</div>
+    </section>
+    <section class="slide" id="s2">
+      <div class="slide-header"><div class="context">FreeRTOS Module 06</div><div class="framing">Course Position</div></div>
+      <div class="content">
+        <h2>Course Position</h2>
+        
+  <p class="subtitle">Module 05 explained that kernel objects require storage. Module 06 focuses on one of the most important objects: the queue, a bounded communication object that also controls task blocking.</p>
+  <div class="grid-3">
+    <div class="icon-card"><img src="../shared_assets/icons/queue_transfer_generated.png" alt=""><div><strong>Communication</strong><span>A sender copies an item into the queue; a receiver copies it out.</span></div></div>
+    <div class="icon-card"><img src="../shared_assets/icons/blocked_waiting_state.png" alt=""><div><strong>Blocking</strong><span>Send can block when full; receive can block when empty.</span></div></div>
+    <div class="icon-card"><img src="../shared_assets/icons/heap_blocks_generated.png" alt=""><div><strong>Sizing</strong><span>Queue length and item size create a real memory cost.</span></div></div>
+  </div>
+
+      </div>
+      <div class="takeaway">Queue design sits at the intersection of data flow, scheduling, and memory sizing.</div>
+      <div class="page">02</div>
+    </section>
+    <section class="slide" id="s3">
+      <div class="slide-header"><div class="context">FreeRTOS Module 06</div><div class="framing">Why Shared Variables Are Not Enough</div></div>
+      <div class="content">
+        <h2>Why Shared Variables Are Not Enough</h2>
+        
+  <p class="subtitle">A shared variable can transfer data, but it does not automatically provide ownership transfer, buffering, or waiting semantics.</p>
+  <div class="grid-3">
+    <div class="panel tint-blue"><h3>Shared variable</h3><ul><li>Fast and simple for a single value.</li><li>Needs explicit protection for concurrent access.</li><li>Usually does not record missed updates.</li></ul></div>
+    <div class="panel tint-teal"><h3>Queue</h3><ul><li>Stores a bounded sequence of items.</li><li>Copies data at send and receive boundaries.</li><li>Can block tasks when the buffer is full or empty.</li></ul></div>
+    <div class="panel tint-amber"><h3>Design question</h3><ul><li>Do we need every event?</li><li>Do we need latest value only?</li><li>Do we need payload data or only a signal?</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">A queue is useful when data transfer and waiting behavior belong together.</div>
+      <div class="page">03</div>
+    </section>
+    <section class="slide" id="s4">
+      <div class="slide-header"><div class="context">FreeRTOS Module 06</div><div class="framing">Terminology Before API Calls</div></div>
+      <div class="content">
+        <h2>Terminology Before API Calls</h2>
+        
+  <p class="subtitle">Queue APIs are easier to understand when these words are already precise.</p>
+  <table class="mini-table">
+    <thead><tr><th>Term</th><th>Meaning in this module</th></tr></thead>
+    <tbody><tr><td><strong>Queue</strong></td><td>A FreeRTOS kernel object that stores a fixed number of fixed-size items.</td></tr><tr><td><strong>Queue length</strong></td><td>Maximum number of items the queue can hold.</td></tr><tr><td><strong>Item size</strong></td><td>Number of bytes copied into or out of the queue for each item.</td></tr><tr><td><strong>Sender</strong></td><td>A task or ISR context that writes an item into the queue using the correct API family.</td></tr><tr><td><strong>Receiver</strong></td><td>A task or ISR context that reads an item from the queue using the correct API family.</td></tr><tr><td><strong>Block time</strong></td><td>Maximum time a task is willing to wait when the queue operation cannot complete immediately.</td></tr></tbody>
+  </table>
+
+      </div>
+      <div class="takeaway">A queue term should tell students whether we are talking about capacity, data shape, caller context, or waiting policy.</div>
+      <div class="page">04</div>
+    </section>
+    <section class="slide" id="s5">
+      <div class="slide-header"><div class="context">FreeRTOS Module 06</div><div class="framing">Queue as a Bounded Copy Buffer</div></div>
+      <div class="content">
+        <h2>Queue as a Bounded Copy Buffer</h2>
+        
+  <p class="subtitle">FreeRTOS queues store items by copying bytes into an internal buffer. The queue does not store arbitrary object references unless the item itself is a pointer.</p>
+  <div class="queue-strip">
+    <div class="endpoint"><strong>Sender task</strong>owns a local item before send</div>
+    <div class="queue-box"><div class="slots"><div class="slot fill">Item 0</div><div class="slot fill">Item 1</div><div class="slot">empty</div><div class="slot">empty</div><div class="slot">empty</div></div></div>
+    <div class="endpoint"><strong>Receiver task</strong>gets a copied item after receive</div>
+  </div>
+  <div class="callout" style="margin-top:22px;">Copy-by-value is safer for small messages because the sender's local variable can go out of scope after the send completes.</div>
+
+      </div>
+      <div class="takeaway">The default queue mental model is copy-in and copy-out.</div>
+      <div class="page">05</div>
+    </section>
+    <section class="slide" id="s6">
+      <div class="slide-header"><div class="context">FreeRTOS Module 06</div><div class="framing">Fixed Length and Fixed Item Size</div></div>
+      <div class="content">
+        <h2>Fixed Length and Fixed Item Size</h2>
+        
+  <p class="subtitle">A queue is sized at creation. Later sends must match the item size that was chosen at creation time.</p>
+  <div class="api-list"><code>xQueueCreate( uxQueueLength, uxItemSize )</code><code>xQueueCreateStatic()</code><code>QueueHandle_t</code></div>
+  <div class="grid-3" style="margin-top:22px;">
+    <div class="panel tint-blue"><h3>Length</h3><ul><li>Controls how many items can wait.</li><li>Absorbs producer-consumer speed mismatch.</li><li>Consumes memory even when slots are empty.</li></ul></div>
+    <div class="panel tint-teal"><h3>Item size</h3><ul><li>Controls how many bytes are copied.</li><li>Should match the actual message type.</li><li>Large structs increase copy cost and memory use.</li></ul></div>
+    <div class="panel tint-amber"><h3>Handle</h3><ul><li>Represents the queue object.</li><li>Must be checked after creation.</li><li>Is passed to send and receive APIs.</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">Queue capacity is a memory decision and a behavior decision at the same time.</div>
+      <div class="page">06</div>
+    </section>
+    <section class="slide" id="s7">
+      <div class="slide-header"><div class="context">FreeRTOS Module 06</div><div class="framing">Queue Memory Sizing</div></div>
+      <div class="content">
+        <h2>Queue Memory Sizing</h2>
+        
+  <p class="subtitle">Queue creation allocates internal control storage and an item buffer sized by length and item size.</p>
+  <table class="mini-table">
+    <thead><tr><th>Design value</th><th>Effect</th><th>Failure mode if wrong</th></tr></thead>
+    <tbody>
+      <tr><td><code>uxQueueLength</code></td><td>Number of queued items</td><td>Too short: frequent full queue; too long: unnecessary RAM use</td></tr>
+      <tr><td><code>uxItemSize</code></td><td>Bytes copied per item</td><td>Wrong size: truncated data, wasted RAM, or incorrect struct interpretation</td></tr>
+      <tr><td>Allocation policy</td><td>Dynamic heap or static application buffer</td><td>Creation failure or hard-to-review storage ownership</td></tr>
+    </tbody>
+  </table>
+
+      </div>
+      <div class="takeaway">A queue should be sized from expected traffic and message shape, not from a random example.</div>
+      <div class="page">07</div>
+    </section>
+    <section class="slide" id="s8">
+      <div class="slide-header"><div class="context">FreeRTOS Module 06</div><div class="framing">Kernel Book Figure 5.1: Queue Operation</div></div>
+      <div class="content">
+        <h2>Kernel Book Figure 5.1: Queue Operation</h2>
+        
+  <div class="grid-13">
+    <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_5_1_an_example_sequence_of_writes_to_and_reads_from_a_queue.png" alt="Kernel Book Figure 5.1 queue write and read sequence"></div>
+    <div class="panel tint-blue">
+      <h3>Teaching Focus</h3>
+      <ul><li>Follow the head and tail movement conceptually.</li><li>Ask which slots are occupied after each write.</li><li>Ask what the receiver obtains after each read.</li><li>Connect the visual to fixed length and copy-by-value behavior.</li></ul>
+      <p class="asset-note">Source: FreeRTOS Kernel Book, Figure 5.1.</p>
+    </div>
+  </div>
+
+      </div>
+      <div class="takeaway">This figure is the base visual for queue storage behavior.</div>
+      <div class="page">08</div>
+    </section>
+    <section class="slide" id="s9">
+      <div class="slide-header"><div class="context">FreeRTOS Module 06</div><div class="framing">xQueueCreate()</div></div>
+      <div class="content">
+        <h2>xQueueCreate()</h2>
+        
+  <p class="subtitle"><code>xQueueCreate()</code> creates a queue dynamically. The returned handle is NULL if the queue cannot be created.</p>
+  <pre><code>QueueHandle_t xLogQueue;
+
+xLogQueue = xQueueCreate(
+    8,
+    sizeof( LogMessage_t ) );
+
+configASSERT( xLogQueue != NULL );</code></pre>
+  <div class="callout" style="margin-top:18px;">The two creation arguments should be explained as traffic capacity and message shape.</div>
+
+      </div>
+      <div class="takeaway">Queue creation is where design assumptions become memory allocation.</div>
+      <div class="page">09</div>
+    </section>
+    <section class="slide" id="s10">
+      <div class="slide-header"><div class="context">FreeRTOS Module 06</div><div class="framing">xQueueCreateStatic()</div></div>
+      <div class="content">
+        <h2>xQueueCreateStatic()</h2>
+        
+  <p class="subtitle">Static queue creation makes the queue storage visible in application source.</p>
+  <pre><code>static StaticQueue_t logQueueControl;
+static uint8_t logQueueStorage[
+    LOG_QUEUE_LENGTH * sizeof( LogMessage_t ) ];
+
+xLogQueue = xQueueCreateStatic(
+    LOG_QUEUE_LENGTH,
+    sizeof( LogMessage_t ),
+    logQueueStorage,
+    &logQueueControl );</code></pre>
+
+      </div>
+      <div class="takeaway">Static queue creation is useful when memory ownership must be explicit.</div>
+      <div class="page">10</div>
+    </section>
+    <section class="slide" id="s11">
+      <div class="slide-header"><div class="context">FreeRTOS Module 06</div><div class="framing">Send API Family</div></div>
+      <div class="content">
+        <h2>Send API Family</h2>
+        
+  <p class="subtitle">The common task-context send APIs differ mostly by insertion position and naming convention.</p>
+  <div class="api-list"><code>xQueueSend()</code><code>xQueueSendToBack()</code><code>xQueueSendToFront()</code><code>xTicksToWait</code></div>
+  <div class="grid-3" style="margin-top:22px;">
+    <div class="panel tint-blue"><h3>To back</h3><ul><li>Normal FIFO behavior.</li><li>Most common message queue use.</li><li>Preserves producer order.</li></ul></div>
+    <div class="panel tint-teal"><h3>To front</h3><ul><li>Higher urgency item can be placed ahead.</li><li>Can surprise receiver ordering.</li><li>Use with a clear policy.</li></ul></div>
+    <div class="panel tint-amber"><h3>Block time</h3><ul><li>0 means do not wait.</li><li>A finite value means wait up to that many ticks.</li><li>portMAX_DELAY may wait indefinitely if configured appropriately.</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">A send call is both a data operation and possibly a scheduling decision.</div>
+      <div class="page">11</div>
+    </section>
+    <section class="slide" id="s12">
+      <div class="slide-header"><div class="context">FreeRTOS Module 06</div><div class="framing">Receive API</div></div>
+      <div class="content">
+        <h2>Receive API</h2>
+        
+  <p class="subtitle"><code>xQueueReceive()</code> copies an item out of the queue. If the queue is empty, the calling task can block.</p>
+  <div class="api-list"><code>xQueueReceive()</code><code>pvBuffer</code><code>xTicksToWait</code><code>pdPASS</code><code>pdFALSE</code></div>
+  <div class="grid-2" style="margin-top:22px;">
+    <div class="panel tint-green"><h3>When an item exists</h3><ul><li>The item is copied into the receiver buffer.</li><li>The item is removed from the queue.</li><li>A task waiting to send may become Ready.</li></ul></div>
+    <div class="panel tint-amber"><h3>When empty</h3><ul><li>With timeout 0, receive fails immediately.</li><li>With finite timeout, the task can enter Blocked state.</li><li>With indefinite wait, the task depends on a future send.</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">Receiving from an empty queue is a controlled way to wait for data.</div>
+      <div class="page">12</div>
+    </section>
+    <section class="slide" id="s13">
+      <div class="slide-header"><div class="context">FreeRTOS Module 06</div><div class="framing">Queue Full: Sender Blocking</div></div>
+      <div class="content">
+        <h2>Queue Full: Sender Blocking</h2>
+        
+  <p class="subtitle">A full queue means there is no slot available for the copied item.</p>
+  <div class="queue-strip">
+    <div class="endpoint"><strong>Producer</strong>wants to send one more item</div>
+    <div class="queue-box"><div class="slots"><div class="slot fill">A</div><div class="slot fill">B</div><div class="slot fill">C</div><div class="slot fill">D</div><div class="slot fill">E</div></div></div>
+    <div class="endpoint"><strong>Consumer</strong>must receive before space appears</div>
+  </div>
+  <div class="timeline2">
+    <div class="lane2"><div class="lane2-name">Producer</div><div class="lane2-body"><div class="seg send w90">send</div><div class="seg blockseg w190">Blocked if willing to wait</div></div></div>
+    <div class="lane2"><div class="lane2-name">Consumer</div><div class="lane2-body"><div class="seg recv w90">receive</div><div class="seg runseg w130">space opens</div></div></div>
+  </div>
+
+      </div>
+      <div class="takeaway">A full queue converts producer pressure into blocking or data-drop policy.</div>
+      <div class="page">13</div>
+    </section>
+    <section class="slide" id="s14">
+      <div class="slide-header"><div class="context">FreeRTOS Module 06</div><div class="framing">Queue Empty: Receiver Blocking</div></div>
+      <div class="content">
+        <h2>Queue Empty: Receiver Blocking</h2>
+        
+  <p class="subtitle">An empty queue means there is no item available to copy out.</p>
+  <div class="queue-strip">
+    <div class="endpoint"><strong>Producer</strong>has not produced yet</div>
+    <div class="queue-box"><div class="slots"><div class="slot">empty</div><div class="slot">empty</div><div class="slot">empty</div><div class="slot">empty</div><div class="slot">empty</div></div></div>
+    <div class="endpoint"><strong>Consumer</strong>wants an item</div>
+  </div>
+  <div class="warning" style="margin-top:22px;">A receiver that blocks on an empty queue is not spinning. It is removed from CPU selection until data arrives or timeout expires.</div>
+
+      </div>
+      <div class="takeaway">An empty queue can be a clean synchronization point.</div>
+      <div class="page">14</div>
+    </section>
+    <section class="slide" id="s15">
+      <div class="slide-header"><div class="context">FreeRTOS Module 06</div><div class="framing">Timeout Policy</div></div>
+      <div class="content">
+        <h2>Timeout Policy</h2>
+        
+  <p class="subtitle">The timeout argument is a design policy, not just an API parameter.</p>
+  <table class="mini-table">
+    <thead><tr><th>Timeout</th><th>Behavior</th><th>Typical meaning</th></tr></thead>
+    <tbody>
+      <tr><td><code>0</code></td><td>Try once and return immediately</td><td>Drop, poll, or fail-fast policy</td></tr>
+      <tr><td>finite ticks</td><td>Wait up to a bounded time</td><td>Backpressure with deadline awareness</td></tr>
+      <tr><td><code>portMAX_DELAY</code></td><td>Wait indefinitely when indefinite blocking is enabled</td><td>Consumer task that exists only to process incoming data</td></tr>
+    </tbody>
+  </table>
+
+      </div>
+      <div class="takeaway">Timeouts define how the system behaves under pressure.</div>
+      <div class="page">15</div>
+    </section>
+    <section class="slide" id="s16">
+      <div class="slide-header"><div class="context">FreeRTOS Module 06</div><div class="framing">Producer-Consumer Pattern</div></div>
+      <div class="content">
+        <h2>Producer-Consumer Pattern</h2>
+        
+  <p class="subtitle">A producer-consumer queue decouples the rate of data production from the rate of data processing within a bounded capacity.</p>
+  <div class="grid-3">
+    <div class="panel tint-blue"><h3>Producer</h3><ul><li>Samples data.</li><li>Builds a small message.</li><li>Sends to the queue with a chosen timeout.</li></ul></div>
+    <div class="panel tint-teal"><h3>Queue</h3><ul><li>Holds a bounded backlog.</li><li>Preserves item boundaries.</li><li>Provides blocking pressure.</li></ul></div>
+    <div class="panel tint-green"><h3>Consumer</h3><ul><li>Receives and processes messages.</li><li>Can block while no data exists.</li><li>May be lower priority if processing is less urgent.</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">Producer-consumer design is about rate mismatch and ownership handoff.</div>
+      <div class="page">16</div>
+    </section>
+    <section class="slide" id="s17">
+      <div class="slide-header"><div class="context">FreeRTOS Module 06</div><div class="framing">Queue Depth as Backpressure</div></div>
+      <div class="content">
+        <h2>Queue Depth as Backpressure</h2>
+        
+  <p class="subtitle">A longer queue can absorb bursts, but it can also hide overload and increase memory use.</p>
+  <div class="pattern-grid">
+    <div class="pattern"><strong>Length 1</strong>Very small buffer. Quickly reveals producer-consumer mismatch.</div>
+    <div class="pattern"><strong>Length 3</strong>Small burst tolerance. Good for teaching timing pressure.</div>
+    <div class="pattern"><strong>Length 10</strong>Larger backlog. More memory and potentially more latency.</div>
+    <div class="pattern"><strong>Unbounded wish</strong>Not available. Embedded systems need bounded design.</div>
+  </div>
+  <div class="callout" style="margin-top:22px;">A queue that never fills during a light demo may still fail under burst load.</div>
+
+      </div>
+      <div class="takeaway">Queue length trades RAM for burst absorption and delayed overload visibility.</div>
+      <div class="page">17</div>
+    </section>
+    <section class="slide" id="s18">
+      <div class="slide-header"><div class="context">FreeRTOS Module 06</div><div class="framing">Item Shape: Scalar, Struct, or Pointer</div></div>
+      <div class="content">
+        <h2>Item Shape: Scalar, Struct, or Pointer</h2>
+        
+  <p class="subtitle">The item type determines copy cost and ownership risk.</p>
+  <table class="mini-table">
+    <thead><tr><th>Item type</th><th>Advantage</th><th>Risk</th></tr></thead>
+    <tbody>
+      <tr><td>Small scalar</td><td>Cheap copy, simple meaning</td><td>May be too limited for real messages</td></tr>
+      <tr><td>Small struct</td><td>Clear message fields, stable ownership</td><td>Copy cost grows with struct size</td></tr>
+      <tr><td>Pointer</td><td>Cheap queue item, supports large buffers</td><td>Requires explicit lifetime and ownership rules</td></tr>
+    </tbody>
+  </table>
+
+      </div>
+      <div class="takeaway">Copy-by-value is safe for small messages; pointer queues need ownership discipline.</div>
+      <div class="page">18</div>
+    </section>
+    <section class="slide" id="s19">
+      <div class="slide-header"><div class="context">FreeRTOS Module 06</div><div class="framing">Kernel Book Figure 5.4: Struct Messages</div></div>
+      <div class="content">
+        <h2>Kernel Book Figure 5.4: Struct Messages</h2>
+        
+  <div class="grid-13">
+    <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_5_4_an_example_scenario_where_structures_are_sent_on_a_queue.png" alt="Kernel Book Figure 5.4 structures sent on a queue"></div>
+    <div class="panel tint-teal">
+      <h3>Teaching Focus</h3>
+      <ul><li>A queue item can be a structured message.</li><li>The sender and receiver must agree on the item layout.</li><li>Struct fields make logs and source reading clearer.</li><li>Large structures may motivate pointer queues in Module 07.</li></ul>
+      <p class="asset-note">Source: FreeRTOS Kernel Book, Figure 5.4.</p>
+    </div>
+  </div>
+
+      </div>
+      <div class="takeaway">Structured messages are a good step between toy integers and real embedded data.</div>
+      <div class="page">19</div>
+    </section>
+    <section class="slide" id="s20">
+      <div class="slide-header"><div class="context">FreeRTOS Module 06</div><div class="framing">xQueueSend() Return Value</div></div>
+      <div class="content">
+        <h2>xQueueSend() Return Value</h2>
+        
+  <p class="subtitle">A send call can fail when the queue remains full for the chosen timeout.</p>
+  <pre><code>BaseType_t ok;
+
+ok = xQueueSend(
+    xLogQueue,
+    &message,
+    pdMS_TO_TICKS( 10 ) );
+
+if( ok != pdPASS )
+{
+    /* Drop, count, retry later, or signal overload. */
+}</code></pre>
+
+      </div>
+      <div class="takeaway">Ignoring send failure hides overload.</div>
+      <div class="page">20</div>
+    </section>
+    <section class="slide" id="s21">
+      <div class="slide-header"><div class="context">FreeRTOS Module 06</div><div class="framing">xQueueReceive() Return Value</div></div>
+      <div class="content">
+        <h2>xQueueReceive() Return Value</h2>
+        
+  <p class="subtitle">A receive call can fail when no item arrives before the timeout expires.</p>
+  <pre><code>LogMessage_t message;
+
+if( xQueueReceive(
+        xLogQueue,
+        &message,
+        portMAX_DELAY ) == pdPASS )
+{
+    process_log_message( &message );
+}</code></pre>
+
+      </div>
+      <div class="takeaway">A receive loop should make its waiting policy explicit.</div>
+      <div class="page">21</div>
+    </section>
+    <section class="slide" id="s22">
+      <div class="slide-header"><div class="context">FreeRTOS Module 06</div><div class="framing">uxQueueMessagesWaiting()</div></div>
+      <div class="content">
+        <h2>uxQueueMessagesWaiting()</h2>
+        
+  <p class="subtitle"><code>uxQueueMessagesWaiting()</code> observes queue depth, but it is a snapshot of a changing system.</p>
+  <div class="api-list"><code>uxQueueMessagesWaiting()</code><code>uxQueueSpacesAvailable()</code><code>queue registry</code><code>trace tools</code></div>
+  <div class="grid-3" style="margin-top:22px;">
+    <div class="panel tint-blue"><h3>Useful for</h3><ul><li>Debug logs</li><li>Teaching queue pressure</li><li>Health monitoring with care</li></ul></div>
+    <div class="panel tint-amber"><h3>Caution</h3><ul><li>Depth can change immediately after measurement.</li><li>Polling depth is not a replacement for blocking receive.</li><li>Instrumentation can change timing.</li></ul></div>
+    <div class="panel tint-green"><h3>Better evidence</h3><ul><li>Depth trend</li><li>Send failure count</li><li>Receive timeout count</li><li>Trace timeline</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">Queue depth is evidence, not a synchronization mechanism by itself.</div>
+      <div class="page">22</div>
+    </section>
+    <section class="slide" id="s23">
+      <div class="slide-header"><div class="context">FreeRTOS Module 06</div><div class="framing">Kernel Book Figure 5.3: Execution Sequence</div></div>
+      <div class="content">
+        <h2>Kernel Book Figure 5.3: Execution Sequence</h2>
+        
+  <div class="grid-13">
+    <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_5_3_the_sequence_of_execution_produced_by_example_5_1.png" alt="Kernel Book Figure 5.3 Example 5.1 execution sequence"></div>
+    <div class="panel tint-blue">
+      <h3>How to Read It</h3>
+      <ul><li>Mark where sends happen.</li><li>Mark where receives happen.</li><li>Identify when a task is Running versus Blocked.</li><li>Connect queue events to scheduler choices.</li></ul>
+      <p class="asset-note">Source: FreeRTOS Kernel Book, Figure 5.3.</p>
+    </div>
+  </div>
+
+      </div>
+      <div class="takeaway">Queue examples should be read as both data movement and scheduling behavior.</div>
+      <div class="page">23</div>
+    </section>
+    <section class="slide" id="s24">
+      <div class="slide-header"><div class="context">FreeRTOS Module 06</div><div class="framing">Tutorial 09 Source Reading</div></div>
+      <div class="content">
+        <h2>Tutorial 09 Source Reading</h2>
+        
+  <p class="subtitle">Tutorial 09 is the main source-reading exercise for this module.</p>
+  <div class="grid-3">
+    <div class="panel tint-blue"><h3>Creation</h3><ul><li>Find xQueueCreate().</li><li>Record queue length.</li><li>Record item size.</li><li>Check handle creation.</li></ul></div>
+    <div class="panel tint-teal"><h3>Sender tasks</h3><ul><li>Find xQueueSend().</li><li>Identify message value or struct.</li><li>Check timeout argument.</li><li>Check returned status.</li></ul></div>
+    <div class="panel tint-green"><h3>Receiver task</h3><ul><li>Find xQueueReceive().</li><li>Identify receive buffer.</li><li>Check wait policy.</li><li>Explain output order from blocking behavior.</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">Read Tutorial 09 by queue lifecycle: create, send, receive, observe.</div>
+      <div class="page">24</div>
+    </section>
+    <section class="slide" id="s25">
+      <div class="slide-header"><div class="context">FreeRTOS Module 06</div><div class="framing">Tutorial 09 Configuration Reading</div></div>
+      <div class="content">
+        <h2>Tutorial 09 Configuration Reading</h2>
+        
+  <p class="subtitle">Queue behavior also depends on the surrounding project configuration.</p>
+  <div class="api-list"><code>configTOTAL_HEAP_SIZE</code><code>configSUPPORT_STATIC_ALLOCATION</code><code>configUSE_PREEMPTION</code><code>configUSE_TIME_SLICING</code><code>configQUEUE_REGISTRY_SIZE</code></div>
+  <div class="callout" style="margin-top:22px;">Students should connect queue creation to heap size from Module 05, and connect queue blocking to scheduler behavior from Modules 03 and 04.</div>
+
+      </div>
+      <div class="takeaway">Tutorial reading should connect modules rather than isolate API calls.</div>
+      <div class="page">25</div>
+    </section>
+    <section class="slide" id="s26">
+      <div class="slide-header"><div class="context">FreeRTOS Module 06</div><div class="framing">Queue Registry for Debugging</div></div>
+      <div class="content">
+        <h2>Queue Registry for Debugging</h2>
+        
+  <p class="subtitle">The queue registry can give queues human-readable names in debugging and trace tools when configured.</p>
+  <div class="grid-2">
+    <div class="panel tint-blue"><h3>Use</h3><ul><li>Name important queues.</li><li>Improve trace readability.</li><li>Help distinguish multiple QueueHandle_t values.</li></ul></div>
+    <div class="panel tint-amber"><h3>Limit</h3><ul><li>It does not change queue behavior.</li><li>Registry size is configured.</li><li>It is a debugging aid, not a design substitute.</li></ul></div>
+  </div>
+  <div class="api-list"><code>configQUEUE_REGISTRY_SIZE</code><code>vQueueAddToRegistry()</code></div>
+
+      </div>
+      <div class="takeaway">Names make runtime evidence easier to interpret.</div>
+      <div class="page">26</div>
+    </section>
+    <section class="slide" id="s27">
+      <div class="slide-header"><div class="context">FreeRTOS Module 06</div><div class="framing">Blocking and Priority Interaction</div></div>
+      <div class="content">
+        <h2>Blocking and Priority Interaction</h2>
+        
+  <p class="subtitle">A queue operation can move a task out of Ready state, giving another task the CPU.</p>
+  <div class="timeline2">
+    <div class="lane2"><div class="lane2-name">Producer</div><div class="lane2-body"><div class="seg send w90">send</div><div class="seg runseg w130">continues</div><div class="seg blockseg w190">blocks if full</div></div></div>
+    <div class="lane2"><div class="lane2-name">Consumer</div><div class="lane2-body"><div class="seg blockseg w190">blocked if empty</div><div class="seg recv w90">receive</div><div class="seg runseg w130">process</div></div></div>
+    <div class="lane2"><div class="lane2-name">Scheduler</div><div class="lane2-body"><div class="seg runseg w190">selects highest Ready task</div><div class="seg send w130">after unblock</div></div></div>
+  </div>
+
+      </div>
+      <div class="takeaway">Queue APIs are scheduling points whenever they block or unblock tasks.</div>
+      <div class="page">27</div>
+    </section>
+    <section class="slide" id="s28">
+      <div class="slide-header"><div class="context">FreeRTOS Module 06</div><div class="framing">Producer Faster Than Consumer</div></div>
+      <div class="content">
+        <h2>Producer Faster Than Consumer</h2>
+        
+  <p class="subtitle">If the producer is consistently faster than the consumer, queue depth only delays the problem.</p>
+  <div class="grid-3">
+    <div class="panel tint-blue"><h3>Short burst</h3><ul><li>Queue absorbs temporary mismatch.</li><li>Consumer catches up later.</li><li>Depth returns to normal.</li></ul></div>
+    <div class="panel tint-amber"><h3>Sustained overload</h3><ul><li>Queue eventually fills.</li><li>Send blocks or fails.</li><li>Latency grows before failure becomes visible.</li></ul></div>
+    <div class="panel tint-green"><h3>Design responses</h3><ul><li>Reduce producer rate.</li><li>Increase consumer throughput.</li><li>Drop or compress data deliberately.</li><li>Change priority only with evidence.</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">Queue length cannot fix sustained throughput mismatch.</div>
+      <div class="page">28</div>
+    </section>
+    <section class="slide" id="s29">
+      <div class="slide-header"><div class="context">FreeRTOS Module 06</div><div class="framing">Consumer Faster Than Producer</div></div>
+      <div class="content">
+        <h2>Consumer Faster Than Producer</h2>
+        
+  <p class="subtitle">If the consumer is faster, it usually blocks on an empty queue and consumes no CPU while waiting.</p>
+  <div class="grid-2">
+    <div class="panel tint-green"><h3>Good behavior</h3><ul><li>Consumer sleeps while no data exists.</li><li>CPU is available for other Ready tasks.</li><li>Latency can be low when new data arrives.</li></ul></div>
+    <div class="panel tint-amber"><h3>Watch for</h3><ul><li>Too high consumer priority doing unnecessary work.</li><li>Polling instead of blocking.</li><li>Timeouts that create noisy logs.</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">A blocking receiver is often better than a polling loop.</div>
+      <div class="page">29</div>
+    </section>
+    <section class="slide" id="s30">
+      <div class="slide-header"><div class="context">FreeRTOS Module 06</div><div class="framing">Data Loss Policy</div></div>
+      <div class="content">
+        <h2>Data Loss Policy</h2>
+        
+  <p class="subtitle">A full queue forces the design to state what should happen to new data.</p>
+  <table class="mini-table">
+    <thead><tr><th>Policy</th><th>How it appears</th><th>When it fits</th></tr></thead>
+    <tbody>
+      <tr><td>Block producer</td><td>Send waits for space</td><td>Producer can safely wait and data must not be lost</td></tr>
+      <tr><td>Drop newest</td><td>Send timeout 0 fails and item is discarded</td><td>Fresh data is frequent and overload should be counted</td></tr>
+      <tr><td>Drop oldest</td><td>Application removes or overwrites older item</td><td>Latest data matters more than full history</td></tr>
+      <tr><td>Signal overload</td><td>Failure counter, event, or diagnostic log</td><td>System needs visibility rather than silent loss</td></tr>
+    </tbody>
+  </table>
+
+      </div>
+      <div class="takeaway">No queue is complete until its full-queue policy is explicit.</div>
+      <div class="page">30</div>
+    </section>
+    <section class="slide" id="s31">
+      <div class="slide-header"><div class="context">FreeRTOS Module 06</div><div class="framing">Copy-by-Value and Local Variables</div></div>
+      <div class="content">
+        <h2>Copy-by-Value and Local Variables</h2>
+        
+  <p class="subtitle">Because a queue copies data, sending the address of a local variable is different from sending the value of that variable.</p>
+  <div class="grid-2">
+    <div class="panel tint-green"><h3>Send value</h3><ul><li>Queue stores a copy of the bytes.</li><li>Sender local variable may go out of scope.</li><li>Receiver sees the copied message.</li></ul></div>
+    <div class="panel tint-amber"><h3>Send pointer</h3><ul><li>Queue stores the pointer value.</li><li>Pointed data must remain valid.</li><li>Ownership and lifetime must be documented.</li></ul></div>
+  </div>
+  <div class="warning" style="margin-top:22px;">Many queue bugs are actually lifetime bugs caused by pointer queue misuse.</div>
+
+      </div>
+      <div class="takeaway">A pointer in a queue is still copied by value; the pointed object is not copied.</div>
+      <div class="page">31</div>
+    </section>
+    <section class="slide" id="s32">
+      <div class="slide-header"><div class="context">FreeRTOS Module 06</div><div class="framing">Object Selection Map</div></div>
+      <div class="content">
+        <h2>Object Selection Map</h2>
+        
+  <div class="grid-13">
+    <div class="figure-frame tall"><img src="../shared_assets/infographics/object_selection_map.png" alt="FreeRTOS object selection map"></div>
+    <div class="panel tint-blue">
+      <h3>Where Queue Fits</h3>
+      <ul><li>Choose a queue when you need payload data and buffering.</li><li>Choose a semaphore when the main need is signaling or counting.</li><li>Choose a mutex when ownership of a shared resource matters.</li><li>Choose a task notification when a single receiver needs a lightweight event.</li></ul>
+      <p class="asset-note">Generated shared infographic: object_selection_map.png</p>
+    </div>
+  </div>
+
+      </div>
+      <div class="takeaway">The queue is powerful, but it should not become the answer to every synchronization problem.</div>
+      <div class="page">32</div>
+    </section>
+    <section class="slide" id="s33">
+      <div class="slide-header"><div class="context">FreeRTOS Module 06</div><div class="framing">Common Mistakes</div></div>
+      <div class="content">
+        <h2>Common Mistakes</h2>
+        
+  <p class="subtitle">These are the bugs students should learn to predict.</p>
+  <div class="grid-3">
+    <div class="panel tint-amber"><h3>Wrong item size</h3><ul><li>Using sizeof(pointer) when the queue should store a struct.</li><li>Changing struct definition without reviewing queue creation.</li><li>Assuming the queue knows the real type.</li></ul></div>
+    <div class="panel tint-blue"><h3>Ignored return</h3><ul><li>Send failure hidden during overload.</li><li>Receive timeout treated as valid data.</li><li>Creation handle not checked.</li></ul></div>
+    <div class="panel tint-violet"><h3>Bad lifetime</h3><ul><li>Queueing pointer to stack data.</li><li>Reusing a buffer before the receiver owns it.</li><li>No buffer ownership rule.</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">Queue bugs are usually design contract bugs.</div>
+      <div class="page">33</div>
+    </section>
+    <section class="slide" id="s34">
+      <div class="slide-header"><div class="context">FreeRTOS Module 06</div><div class="framing">Source Reading: queue.c</div></div>
+      <div class="content">
+        <h2>Source Reading: queue.c</h2>
+        
+  <p class="subtitle">The goal is not to read the entire file. The goal is to recognize the behavior path behind queue operations.</p>
+  <div class="grid-3">
+    <div class="panel tint-blue"><h3>Creation path</h3><ul><li>Queue control structure.</li><li>Item buffer storage.</li><li>Length and item size recorded.</li></ul></div>
+    <div class="panel tint-teal"><h3>Send path</h3><ul><li>Check space.</li><li>Copy item into queue storage.</li><li>Unblock waiting receiver if appropriate.</li></ul></div>
+    <div class="panel tint-green"><h3>Receive path</h3><ul><li>Check item count.</li><li>Copy item out.</li><li>Unblock waiting sender if space appears.</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">Read queue.c by lifecycle: create, send, receive, unblock.</div>
+      <div class="page">34</div>
+    </section>
+    <section class="slide" id="s35">
+      <div class="slide-header"><div class="context">FreeRTOS Module 06</div><div class="framing">Conceptual Send Path</div></div>
+      <div class="content">
+        <h2>Conceptual Send Path</h2>
+        
+  <p class="subtitle">A simplified source-reading path for task-context send.</p>
+  <pre><code>xQueueSend()
+  -> check queue handle and item pointer
+  -> enter critical section
+  -> if space exists, copy item into queue storage
+  -> update queue pointers and message count
+  -> unblock a task waiting to receive if needed
+  -> if no space, block sender up to timeout
+  -> return pdPASS or failure</code></pre>
+
+      </div>
+      <div class="takeaway">A conceptual path makes the real source easier to enter.</div>
+      <div class="page">35</div>
+    </section>
+    <section class="slide" id="s36">
+      <div class="slide-header"><div class="context">FreeRTOS Module 06</div><div class="framing">Conceptual Receive Path</div></div>
+      <div class="content">
+        <h2>Conceptual Receive Path</h2>
+        
+  <p class="subtitle">A simplified source-reading path for task-context receive.</p>
+  <pre><code>xQueueReceive()
+  -> check queue handle and receive buffer
+  -> enter critical section
+  -> if an item exists, copy item out
+  -> update queue pointers and message count
+  -> unblock a task waiting to send if needed
+  -> if empty, block receiver up to timeout
+  -> return pdPASS or failure</code></pre>
+
+      </div>
+      <div class="takeaway">Send and receive are symmetric around space and item availability.</div>
+      <div class="page">36</div>
+    </section>
+    <section class="slide" id="s37">
+      <div class="slide-header"><div class="context">FreeRTOS Module 06</div><div class="framing">Trace Evidence for Queue Behavior</div></div>
+      <div class="content">
+        <h2>Trace Evidence for Queue Behavior</h2>
+        
+  <p class="subtitle">A queue design should produce observable evidence during debugging.</p>
+  <div class="grid-3">
+    <div class="panel tint-blue"><h3>Data evidence</h3><ul><li>Message fields in logs.</li><li>Sequence number.</li><li>Producer timestamp.</li></ul></div>
+    <div class="panel tint-teal"><h3>Pressure evidence</h3><ul><li>Queue depth trend.</li><li>Send failure count.</li><li>Receive timeout count.</li></ul></div>
+    <div class="panel tint-green"><h3>Scheduling evidence</h3><ul><li>Task state changes.</li><li>Trace timeline.</li><li>Consumer wake-up latency.</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">Instrumentation should reveal whether the queue is healthy, overloaded, or idle.</div>
+      <div class="page">37</div>
+    </section>
+    <section class="slide" id="s38">
+      <div class="slide-header"><div class="context">FreeRTOS Module 06</div><div class="framing">Mini Design: UART Logger Queue</div></div>
+      <div class="content">
+        <h2>Mini Design: UART Logger Queue</h2>
+        
+  <p class="subtitle">A common teaching example is a queue from worker tasks to a lower-priority logger task.</p>
+  <table class="mini-table">
+    <thead><tr><th>Decision</th><th>Example choice</th><th>Reason</th></tr></thead>
+    <tbody>
+      <tr><td>Message item</td><td><code>LogMessage_t</code> struct</td><td>Timestamp, source, severity, and short payload are copied safely</td></tr>
+      <tr><td>Queue length</td><td>16</td><td>Absorbs short bursts without hiding sustained overload too long</td></tr>
+      <tr><td>Producer timeout</td><td>0 or short finite timeout</td><td>Control tasks should not block indefinitely on logging</td></tr>
+      <tr><td>Consumer priority</td><td>Lower than control work</td><td>Logging should use leftover CPU time</td></tr>
+    </tbody>
+  </table>
+
+      </div>
+      <div class="takeaway">A concrete design table turns API choices into system reasoning.</div>
+      <div class="page">38</div>
+    </section>
+    <section class="slide" id="s39">
+      <div class="slide-header"><div class="context">FreeRTOS Module 06</div><div class="framing">Mini Design: Sensor Samples</div></div>
+      <div class="content">
+        <h2>Mini Design: Sensor Samples</h2>
+        
+  <p class="subtitle">A sample queue between a periodic sensor task and a processing task must account for rate and item size.</p>
+  <div class="grid-3">
+    <div class="panel tint-blue"><h3>Sampling rate</h3><ul><li>How often does the producer send?</li><li>What burst size is possible?</li><li>Can the producer block safely?</li></ul></div>
+    <div class="panel tint-teal"><h3>Processing rate</h3><ul><li>How long does the consumer take?</li><li>Can it fall behind?</li><li>What priority should it have?</li></ul></div>
+    <div class="panel tint-amber"><h3>Data policy</h3><ul><li>Are all samples required?</li><li>Is latest value enough?</li><li>Should overload be counted or visible?</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">Sensor queue design starts from rates, not from a favorite queue length.</div>
+      <div class="page">39</div>
+    </section>
+    <section class="slide" id="s40">
+      <div class="slide-header"><div class="context">FreeRTOS Module 06</div><div class="framing">When Not to Use a Queue</div></div>
+      <div class="content">
+        <h2>When Not to Use a Queue</h2>
+        
+  <p class="subtitle">A queue is a strong default for payload-bearing communication, but it is not always the simplest object.</p>
+  <div class="grid-3">
+    <div class="panel tint-blue"><h3>Only a signal</h3><ul><li>Binary semaphore or direct task notification may be lighter.</li><li>No payload storage is required.</li><li>A single receiver simplifies the design.</li></ul></div>
+    <div class="panel tint-teal"><h3>Shared resource</h3><ul><li>A mutex expresses ownership.</li><li>A queue does not automatically protect a shared peripheral.</li><li>Gatekeeper design is a different pattern.</li></ul></div>
+    <div class="panel tint-green"><h3>Byte stream</h3><ul><li>Stream buffer may fit UART-like bytes.</li><li>Message buffer may fit framed packets.</li><li>Module 14 revisits this distinction.</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">Object choice should communicate design intent.</div>
+      <div class="page">40</div>
+    </section>
+    <section class="slide" id="s41">
+      <div class="slide-header"><div class="context">FreeRTOS Module 06</div><div class="framing">Project Boundary Check</div></div>
+      <div class="content">
+        <h2>Project Boundary Check</h2>
+        
+  <p class="subtitle">Compact self lab for this module.</p>
+  <div class="grid-3">
+    <div class="panel tint-blue"><h3>Length experiment</h3><ul><li>Run Tutorial 09 with queue length 1, 3, and 10.</li><li>Record output and queue pressure symptoms.</li><li>Explain whether latency or loss changes.</li></ul></div>
+    <div class="panel tint-teal"><h3>Timeout experiment</h3><ul><li>Change send timeout from 0 to finite wait.</li><li>Predict producer behavior when full.</li><li>Count send failures or blocking points.</li></ul></div>
+    <div class="panel tint-green"><h3>Struct experiment</h3><ul><li>Send a small struct item.</li><li>Print each field in the receiver.</li><li>Confirm item size and struct layout match.</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">The lab report should explain queue behavior with length, item size, and timeout vocabulary.</div>
+      <div class="page">41</div>
+    </section>
+    <section class="slide" id="s42">
+      <div class="slide-header"><div class="context">FreeRTOS Module 06</div><div class="framing">Review Questions</div></div>
+      <div class="content">
+        <h2>Review Questions</h2>
+        
+  <p class="subtitle">These questions check whether students can reason about queue design.</p>
+  <div class="grid-2">
+    <div class="panel tint-blue"><h3>Mechanism</h3><ul><li>Why does a queue copy data rather than just record a variable name?</li><li>What state can a task enter when receiving from an empty queue?</li><li>Why does queue length affect both memory and latency?</li></ul></div>
+    <div class="panel tint-green"><h3>Design</h3><ul><li>When should a producer drop data instead of block?</li><li>Why is queueing a pointer to a local variable dangerous?</li><li>What evidence would show that a consumer is too slow?</li></ul></div>
+  </div>
+
+      </div>
+      <div class="takeaway">A good answer names data shape, waiting policy, and failure evidence.</div>
+      <div class="page">42</div>
+    </section>
+    <section class="slide" id="s43">
+      <div class="slide-header"><div class="context">FreeRTOS Module 06</div><div class="framing">Bridge to Module 07</div></div>
+      <div class="content">
+        <h2>Bridge to Module 07</h2>
+        
+  <p class="subtitle">Module 07 keeps the queue idea but expands its use: pointer queues, mailbox behavior, queue sets, and ISR queue APIs.</p>
+  <div class="grid-3">
+    <div class="icon-card"><img src="../shared_assets/icons/queue_message_passing.png" alt=""><div><strong>Pointer queues</strong><span>Copy a pointer value, but document buffer ownership.</span></div></div>
+    <div class="icon-card"><img src="../shared_assets/icons/isr_handoff_generated.png" alt=""><div><strong>ISR queue</strong><span>Use FromISR APIs because interrupt context cannot block.</span></div></div>
+    <div class="icon-card"><img src="../shared_assets/icons/task_notification_generated.png" alt=""><div><strong>Alternatives</strong><span>Compare queue with notification, semaphore, and mailbox behavior.</span></div></div>
+  </div>
+
+      </div>
+      <div class="takeaway">Module 06 is the base model; Module 07 adds specialized patterns and caller contexts.</div>
+      <div class="page">43</div>
+    </section>
+    <section class="slide" id="s44">
+      <div class="slide-header"><div class="context">FreeRTOS Module 06</div><div class="framing">References and Further Reading</div></div>
+      <div class="content">
+        <h2>References and Further Reading</h2>
+        
+  <p class="subtitle">References used in this module are separated from optional deeper reading.</p>
+  <div class="grid-2">
+    <div class="panel tint-blue">
+      <h3>References Used</h3>
+      <ul class="refs">
+        <li>FreeRTOS Kernel Book, Chapter 5, <em>Queue Management</em>, especially basic queue behavior, blocking send/receive, and Example 5.1.</li>
+        <li>FreeRTOS Kernel Book, Chapter 5 figures: Figure 5.1, Figure 5.3, and Figure 5.4.</li>
+        <li>Lab Project FreeRTOS Tutorials, Tutorial 09, <em>Creating and using FreeRTOS queues to send messages between tasks</em>.</li>
+        <li>FreeRTOS Kernel source: <code>queue.c</code> queue creation, send, receive, and task unblocking paths.</li>
+      </ul>
+    </div>
+    <div class="panel tint-green">
+      <h3>Further Reading</h3>
+      <ul class="refs">
+        <li>FreeRTOS API reference: queue management APIs, including <code>xQueueCreate()</code>, <code>xQueueCreateStatic()</code>, <code>xQueueSend()</code>, <code>xQueueReceive()</code>, and <code>uxQueueMessagesWaiting()</code>.</li>
+        <li>FreeRTOSConfig.h reference: <code>configQUEUE_REGISTRY_SIZE</code>, <code>configSUPPORT_DYNAMIC_ALLOCATION</code>, <code>configSUPPORT_STATIC_ALLOCATION</code>, and heap sizing options.</li>
+        <li>FreeRTOS Kernel Book, Chapter 3, <em>Heap Memory Management</em>, for queue allocation cost and static queue storage context.</li>
+        <li>Module 07 preview reading: pointer queues, mailbox behavior, queue sets, and ISR queue APIs.</li>
+      </ul>
+    </div>
+  </div>
+
+      </div>
+      <div class="takeaway">References should let students trace every major queue claim to source or official documentation.</div>
+      <div class="page">44</div>
+    </section>
+  </main>
+  <script src="../shared_assets/slideshow.js"></script>
+</body>
+</html>

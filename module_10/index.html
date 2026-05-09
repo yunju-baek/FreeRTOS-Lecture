@@ -1,0 +1,793 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FreeRTOS Module 10 - Semaphores, Mutexes, and Critical Sections</title>
+  <style>
+:root {
+  --indigo:#2e315b; --blue:#2563a6; --teal:#147d83; --green:#2f7d4e;
+  --amber:#9a6a16; --violet:#6d4aa2; --graphite:#2b2f36; --muted:#637083;
+  --line:#d8dee9; --paper:#fff; --bg:#f4f6f9; --code:#eef2f7;
+  --soft-blue:#eef5fc; --soft-teal:#edf8f8; --soft-amber:#fff7e8;
+}
+* { box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { margin:0; background:var(--bg); color:var(--graphite); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans",Arial,sans-serif; line-height:1.44; }
+.nav { position:sticky; top:0; z-index:10; width:1280px; margin:0 auto; padding:10px 16px; background:rgba(244,246,249,.96); border-bottom:1px solid var(--line); color:#4f5969; font-size:15px; }
+.nav a { margin-right:8px; color:var(--blue); text-decoration:none; font-weight:800; }
+.deck { width:1280px; margin:0 auto; padding:28px 0 64px; }
+.slide { position:relative; width:1280px; min-height:720px; margin:0 0 32px; overflow:hidden; background:var(--paper); border:1px solid var(--line); box-shadow:0 18px 40px rgba(38,49,91,.12); page-break-after:always; }
+.slide-header { display:flex; justify-content:space-between; align-items:center; height:54px; padding:0 34px; background:var(--indigo); color:#fff; font-size:18px; }
+.context { font-weight:800; }
+.framing { color:#e1e6ff; font-size:16px; }
+.content { padding:30px 42px 58px; }
+h1,h2,h3,p { margin-top:0; }
+h1 { margin-bottom:14px; color:#fff; font-size:45px; line-height:1.08; letter-spacing:0; }
+h2 { margin-bottom:10px; color:#20243d; font-size:34px; line-height:1.12; letter-spacing:0; }
+h3 { margin-bottom:10px; color:var(--indigo); font-size:22px; letter-spacing:0; }
+.subtitle { max-width:1060px; margin-bottom:22px; color:#4a5260; font-size:22px; line-height:1.36; }
+.small { color:var(--muted); font-size:17px; }
+ul,ol { margin:0; padding-left:22px; }
+li { font-size:18.2px; }
+li + li { margin-top:6px; }
+code { padding:1px 5px; border-radius:4px; background:var(--code); color:#1d3152; font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace; font-size:.93em; }
+pre { margin:0; padding:15px 17px; border-radius:8px; background:#1f2633; color:#edf2ff; font-size:14.2px; line-height:1.42; overflow:hidden; white-space:pre-wrap; }
+pre code { padding:0; background:transparent; color:inherit; font-size:inherit; }
+.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+.grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
+.grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+.grid-13 { display:grid; grid-template-columns:1.12fr .88fr; gap:22px; align-items:stretch; }
+.grid-31 { display:grid; grid-template-columns:.82fr 1.18fr; gap:22px; align-items:stretch; }
+.panel { border:1px solid var(--line); border-radius:8px; padding:17px 19px; background:#fff; }
+.tint-blue { border-top:5px solid var(--blue); } .tint-teal { border-top:5px solid var(--teal); } .tint-green { border-top:5px solid var(--green); } .tint-amber { border-top:5px solid var(--amber); } .tint-violet { border-top:5px solid var(--violet); }
+.question { padding:16px 18px; border-left:6px solid var(--blue); background:var(--soft-blue); font-size:20px; }
+.callout { padding:16px 18px; border-left:6px solid var(--teal); background:var(--soft-teal); font-size:19px; }
+.warning { padding:16px 18px; border-left:6px solid var(--amber); background:var(--soft-amber); font-size:19px; }
+.takeaway { position:absolute; left:42px; right:120px; bottom:22px; color:#515a6b; font-size:17px; font-weight:700; }
+.page { position:absolute; right:36px; bottom:22px; color:#7a8290; font-size:16px; font-weight:800; }
+.cover { color:#fff; background:linear-gradient(120deg,rgba(46,49,91,.98),rgba(20,125,131,.9)),#2e315b; }
+.cover .slide-header { background:transparent; border-bottom:1px solid rgba(255,255,255,.24); }
+.cover .content { display:grid; grid-template-columns:1.08fr .92fr; gap:46px; align-items:center; padding-top:54px; }
+.cover .subtitle { color:#eef5ff; }
+.cover-card { min-height:390px; padding:28px; border:1px solid rgba(255,255,255,.35); border-radius:10px; background:rgba(255,255,255,.08); }
+.cover-card h3 { color:#fff; font-size:25px; }
+.cover-card li { color:#edf2ff; font-size:20px; }
+.icon-card { min-height:150px; display:grid; grid-template-columns:86px 1fr; gap:14px; align-items:center; border:1px solid var(--line); border-radius:8px; padding:15px; background:#fff; }
+.icon-card img { width:76px; height:76px; object-fit:contain; }
+.icon-card strong { display:block; color:var(--indigo); font-size:19px; margin-bottom:5px; }
+.icon-card span { display:block; color:#4e5969; font-size:16.5px; }
+.figure-frame { display:flex; align-items:center; justify-content:center; min-height:410px; border:1px solid var(--line); border-radius:10px; background:#fbfcfe; padding:18px; }
+.figure-frame img { max-width:100%; max-height:420px; object-fit:contain; }
+.figure-frame.tall img { max-height:505px; }
+.asset-note { margin-top:8px; color:var(--muted); font-size:15px; }
+.mini-table { width:100%; border-collapse:collapse; font-size:17px; }
+.mini-table th,.mini-table td { padding:9px 10px; border:1px solid var(--line); vertical-align:top; }
+.mini-table th { background:#eef2f7; color:var(--indigo); text-align:left; }
+.flow { display:grid; grid-template-columns:1fr 48px 1fr 48px 1fr; gap:10px; align-items:center; }
+.flowbox { min-height:112px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fff; text-align:center; font-size:17px; }
+.flowbox strong { display:block; margin-bottom:8px; color:var(--indigo); font-size:19px; }
+.arrow { text-align:center; color:var(--blue); font-size:32px; font-weight:900; }
+.timeline { display:grid; gap:12px; margin-top:10px; }
+.lane { display:grid; grid-template-columns:150px 1fr; gap:12px; align-items:center; }
+.lane-label { padding:10px 12px; border-radius:8px; background:#edf2ff; color:var(--indigo); font-weight:900; text-align:center; }
+.lane-body { display:flex; gap:6px; align-items:center; min-height:46px; padding:8px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+.bar { height:30px; border-radius:6px; color:#fff; font-size:14px; font-weight:800; display:flex; align-items:center; justify-content:center; }
+.run { background:var(--blue); } .block { background:var(--amber); } .idle { background:var(--green); } .tick { width:6px; height:36px; background:var(--teal); border-radius:4px; }
+.w80 { width:80px; } .w120 { width:120px; } .w180 { width:180px; } .w240 { width:240px; }
+.refs li { margin-top:9px; font-size:18px; }
+@media print { body{background:#fff;} .nav{display:none;} .deck{padding:0;} .slide{margin:0; box-shadow:none; border:0;} }
+
+.api-list { display:flex; flex-wrap:wrap; gap:10px; margin-top:10px; }
+.api-list code { display:inline-block; padding:8px 10px; font-size:17px; }
+.decision-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+.decision { min-height:132px; padding:13px; border:1px solid var(--line); border-top:5px solid var(--blue); border-radius:8px; background:#fff; font-size:16px; }
+.decision:nth-child(2) { border-top-color:var(--teal); }
+.decision:nth-child(3) { border-top-color:var(--amber); }
+.decision:nth-child(4) { border-top-color:var(--green); }
+.decision strong { display:block; color:var(--indigo); font-size:18px; margin-bottom:6px; }
+.lane-stack { display:grid; gap:12px; margin-top:12px; }
+.lane { display:grid; grid-template-columns:160px 1fr; gap:12px; align-items:center; }
+.lane-label { padding:10px 12px; border-radius:8px; background:#edf2ff; color:var(--indigo); font-weight:900; text-align:center; }
+.lane-body { min-height:48px; display:flex; gap:7px; align-items:center; padding:8px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+.seg { min-width:80px; height:30px; padding:0 10px; display:flex; align-items:center; justify-content:center; border-radius:6px; color:#fff; font-weight:900; font-size:14px; }
+.blue { background:var(--blue); } .teal { background:var(--teal); } .amber { background:var(--amber); } .green { background:var(--green); } .violet { background:var(--violet); }
+.w120 { width:120px; } .w180 { width:180px; } .w240 { width:240px; }
+.mini-arch { display:grid; grid-template-columns:1fr 48px 1fr 48px 1fr; gap:10px; align-items:center; }
+.arch-node { min-height:96px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fff; text-align:center; font-size:17px; }
+.arch-node strong { display:block; color:var(--indigo); font-size:19px; margin-bottom:7px; }
+.arrow { text-align:center; color:var(--blue); font-size:32px; font-weight:900; }
+.source-card { min-height:120px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fbfcfe; font-size:16.5px; }
+.source-card strong { display:block; color:var(--indigo); font-size:18px; margin-bottom:6px; }
+
+.sync-map { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:14px; }
+.sync-cell { min-height:158px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fff; font-size:16px; }
+.sync-cell strong { display:block; color:var(--indigo); font-size:18px; margin-bottom:8px; }
+.flow4 { display:grid; grid-template-columns:1fr 40px 1fr 40px 1fr 40px 1fr; gap:8px; align-items:stretch; margin-top:16px; }
+.flow-node { min-height:112px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fff; font-size:16px; }
+.flow-node strong { display:block; color:var(--indigo); font-size:18px; margin-bottom:8px; }
+.flow-arrow { display:flex; align-items:center; justify-content:center; color:var(--blue); font-size:28px; font-weight:900; }
+.do-dont { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:14px; }
+.do-dont .panel { min-height:300px; }
+.icon-strip { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:16px; }
+.icon-mini { min-height:112px; padding:12px; border:1px solid var(--line); border-radius:8px; background:#fff; text-align:center; font-size:15px; }
+.icon-mini img { width:58px; height:58px; object-fit:contain; display:block; margin:0 auto 8px; }
+.compare-rows { display:grid; gap:10px; margin-top:14px; }
+.compare-row { display:grid; grid-template-columns:170px 1fr 1fr; gap:10px; align-items:stretch; }
+.compare-head { padding:10px; border-radius:8px; background:var(--indigo); color:#fff; font-weight:900; text-align:center; }
+.compare-cell { min-height:52px; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:#fff; font-size:16px; }
+.invariant-box { padding:16px; border:1px solid var(--line); border-left:6px solid var(--amber); border-radius:8px; background:#fffaf0; font-size:18px; line-height:1.35; }
+</style>
+  <link rel="stylesheet" href="../shared_assets/slideshow.css">
+</head>
+<body>
+  <nav class="nav"><a href="#s1">01</a><a href="#s2">02</a><a href="#s3">03</a><a href="#s4">04</a><a href="#s5">05</a><a href="#s6">06</a><a href="#s7">07</a><a href="#s8">08</a><a href="#s9">09</a><a href="#s10">10</a><a href="#s11">11</a><a href="#s12">12</a><a href="#s13">13</a><a href="#s14">14</a><a href="#s15">15</a><a href="#s16">16</a><a href="#s17">17</a><a href="#s18">18</a><a href="#s19">19</a><a href="#s20">20</a><a href="#s21">21</a><a href="#s22">22</a><a href="#s23">23</a><a href="#s24">24</a><a href="#s25">25</a><a href="#s26">26</a><a href="#s27">27</a><a href="#s28">28</a><a href="#s29">29</a><a href="#s30">30</a><a href="#s31">31</a><a href="#s32">32</a><a href="#s33">33</a><a href="#s34">34</a><a href="#s35">35</a><a href="#s36">36</a><a href="#s37">37</a><a href="#s38">38</a><a href="#s39">39</a><a href="#s40">40</a><a href="#s41">41</a><button class="slideshow-toggle" type="button" data-slideshow-start>Slideshow</button></nav>
+  
+  <div class="slideshow-controls" aria-label="Slideshow controls">
+    <button class="slide-control" type="button" data-slide-prev>Prev</button>
+    <span class="slide-counter" data-slide-counter>01 / 41</span>
+    <button class="slide-control" type="button" data-slide-next>Next</button>
+    <button class="slide-control" type="button" data-slide-fullscreen>Full</button>
+    <button class="slide-control" type="button" data-slide-fill aria-pressed="false">Fill</button>
+    <button class="slide-control" type="button" data-slide-exit>Exit</button>
+  </div>
+  <div class="slideshow-hint">Keys: Left/Right or PageUp/PageDown to move, Home/End to jump, S to toggle slideshow, F for fullscreen, Z for fit/fill, Esc to exit.</div>
+
+  <main class="deck">
+    
+    <section class="slide cover" id="s1">
+      <div class="slide-header"><div class="context">FreeRTOS Module 10</div><div class="framing">Semaphores, Mutexes, and Critical Sections</div></div>
+      <div class="content">
+        <div class="cover-grid">
+          <div>
+            <h1>Semaphores, Mutexes, and Critical Sections</h1>
+            <p>Synchronization objects look similar in the API, but they encode different design meanings: event signal, event count, resource ownership, and tiny invariant protection.</p>
+            <p class="cover-meta">Course: FreeRTOS Lecture<br>Embedded Systems Laboratory, Pusan National University<br>Instructor: Prof. Yunju Baek</p>
+          </div>
+          <div class="cover-card">
+            <h2>Learning path</h2>
+            <ul>
+              <li>Binary semaphore as an event signal</li>
+              <li>Counting semaphore as event or resource count</li>
+              <li>Mutex as ownership plus priority inheritance</li>
+              <li>Critical section as very short invariant protection</li>
+              <li>Design review for wrong primitive choices</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="takeaway">First target: choose the primitive by meaning, not by similar-looking take/give calls.</div>
+      <div class="page">01</div>
+    </section>
+    <section class="slide" id="s2">
+      <div class="slide-header"><div class="context">FreeRTOS Module 10</div><div class="framing">Course Position</div></div>
+      <div class="content">
+        <h2>Course Position</h2>
+        
+      <p class="subtitle">Queues carried data and timers deferred work. Module 10 introduces primitives whose main job is coordination.</p>
+      <div class="grid-3">
+        <div class="icon-card"><img src="../shared_assets/icons/semaphore_signal.png" alt=""><div><strong>Semaphore</strong><span>A signal or count, usually without payload ownership.</span></div></div>
+        <div class="icon-card"><img src="../shared_assets/icons/mutex_ownership_generated.png" alt=""><div><strong>Mutex</strong><span>A resource ownership object with priority inheritance behavior.</span></div></div>
+        <div class="icon-card"><img src="../shared_assets/icons/config_assertion.png" alt=""><div><strong>Critical section</strong><span>A very short protected region for invariants that cannot be interrupted.</span></div></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The module is about selecting the correct coordination meaning.</div>
+      <div class="page">02</div>
+    </section>
+    <section class="slide" id="s3">
+      <div class="slide-header"><div class="context">FreeRTOS Module 10</div><div class="framing">Problem Frame</div></div>
+      <div class="content">
+        <h2>Problem Frame</h2>
+        
+      <div class="sync-map">
+        <div class="sync-cell"><strong>Event happened</strong>A task needs to wake because a condition became true. Payload may not matter.</div>
+        <div class="sync-cell"><strong>Event count matters</strong>Several identical events or resources must be counted without individual payloads.</div>
+        <div class="sync-cell"><strong>Resource has an owner</strong>A peripheral, data structure, or library section needs one task at a time.</div>
+        <div class="sync-cell"><strong>Invariant is fragile</strong>A few instructions must not be interrupted while shared state changes.</div>
+      </div>
+      <div class="callout" style="margin-top:20px;">These are four different design problems even though the API names all use take and give vocabulary.</div>
+    
+      </div>
+      <div class="takeaway">Start with the problem shape before naming the primitive.</div>
+      <div class="page">03</div>
+    </section>
+    <section class="slide" id="s4">
+      <div class="slide-header"><div class="context">FreeRTOS Module 10</div><div class="framing">Terminology Before APIs</div></div>
+      <div class="content">
+        <h2>Terminology Before APIs</h2>
+        
+      <table class="mini-table"><thead><tr><th>Term</th><th>Meaning in this module</th></tr></thead><tbody><tr><td><strong>Binary semaphore</strong></td><td>A synchronization object commonly used as a one-event signal.</td></tr><tr><td><strong>Counting semaphore</strong></td><td>A semaphore with a count that can represent available resources or accumulated events.</td></tr><tr><td><strong>Mutex</strong></td><td>A mutual exclusion object that records ownership and supports priority inheritance.</td></tr><tr><td><strong>Critical section</strong></td><td>A short region where interrupts or scheduling are constrained to protect a tiny invariant.</td></tr><tr><td><strong>Priority inheritance</strong></td><td>A temporary priority boost for a mutex owner when a higher-priority task waits for the same mutex.</td></tr><tr><td><strong>Ownership</strong></td><td>The rule that says which task currently controls a shared resource and must release it.</td></tr><tr><td><strong>Invariant</strong></td><td>A condition that must remain true before and after a small shared-state update.</td></tr></tbody></table>
+    
+      </div>
+      <div class="takeaway">New terms should be tied to the bug they prevent.</div>
+      <div class="page">04</div>
+    </section>
+    <section class="slide" id="s5">
+      <div class="slide-header"><div class="context">FreeRTOS Module 10</div><div class="framing">Primary Visual Anchor</div></div>
+      <div class="content">
+        <h2>Primary Visual Anchor</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/infographics/synchronization_choice_matrix.png" alt="Synchronization choice matrix"></div>
+        <div class="panel tint-blue"><h3>Reading Order</h3><ul><li>Ask whether payload exists.</li><li>Ask whether count, ownership, or one-bit signal matters.</li><li>Ask whether a waiting task should inherit priority through a mutex.</li><li>Ask whether a critical section is short enough to be safe.</li></ul><p class="asset-note">Shared generated infographic asset.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The matrix keeps semaphore, mutex, and critical section meanings separated.</div>
+      <div class="page">05</div>
+    </section>
+    <section class="slide" id="s6">
+      <div class="slide-header"><div class="context">FreeRTOS Module 10</div><div class="framing">Primitive Selection Map</div></div>
+      <div class="content">
+        <h2>Primitive Selection Map</h2>
+        
+      <div class="decision-grid"><div class="decision"><strong>Binary semaphore</strong>A task waits for one event signal; no owner and no payload semantics.</div><div class="decision"><strong>Counting semaphore</strong>A count represents N identical resources or accumulated events.</div><div class="decision"><strong>Mutex</strong>A task owns a shared resource and must give it back; priority inheritance can matter.</div><div class="decision"><strong>Critical section</strong>A tiny state update must be protected from interruption; it is not a long lock.</div></div>
+      <div class="icon-strip">
+        <div class="icon-mini"><img src="../shared_assets/icons/semaphore_signal.png" alt="">Signal</div>
+        <div class="icon-mini"><img src="../shared_assets/icons/queue_message_passing.png" alt="">Payload elsewhere</div>
+        <div class="icon-mini"><img src="../shared_assets/icons/mutex_lock.png" alt="">Owner</div>
+        <div class="icon-mini"><img src="../shared_assets/icons/debugging_boundary.png" alt="">Invariant</div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Correct primitive choice reduces the amount of explanation code needs.</div>
+      <div class="page">06</div>
+    </section>
+    <section class="slide" id="s7">
+      <div class="slide-header"><div class="context">FreeRTOS Module 10</div><div class="framing">API Surface Map</div></div>
+      <div class="content">
+        <h2>API Surface Map</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Semaphore APIs</h3><div class="api-list"><code>xSemaphoreCreateBinary()</code><code>xSemaphoreCreateCounting()</code><code>xSemaphoreTake()</code><code>xSemaphoreGive()</code><code>xSemaphoreGiveFromISR()</code></div></div>
+        <div class="panel tint-teal"><h3>Mutex APIs</h3><div class="api-list"><code>xSemaphoreCreateMutex()</code><code>xSemaphoreCreateRecursiveMutex()</code><code>xSemaphoreTake()</code><code>xSemaphoreGive()</code></div></div>
+        <div class="panel tint-amber"><h3>Critical APIs</h3><div class="api-list"><code>taskENTER_CRITICAL()</code><code>taskEXIT_CRITICAL()</code><code>portENTER_CRITICAL()</code><code>portEXIT_CRITICAL()</code></div></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Similar function names do not imply the same semantics.</div>
+      <div class="page">07</div>
+    </section>
+    <section class="slide" id="s8">
+      <div class="slide-header"><div class="context">FreeRTOS Module 10</div><div class="framing">Configuration and Build Switches</div></div>
+      <div class="content">
+        <h2>Configuration and Build Switches</h2>
+        
+      <div class="grid-2">
+        <div class="panel tint-blue"><h3>Macros to inspect</h3><div class="api-list"><code>configUSE_MUTEXES</code><code>configUSE_RECURSIVE_MUTEXES</code><code>configUSE_COUNTING_SEMAPHORES</code><code>configMAX_SYSCALL_INTERRUPT_PRIORITY</code><code>configASSERT()</code></div></div>
+        <div class="panel tint-green"><h3>Review questions</h3><ul><li>Is the needed primitive enabled?</li><li>Can any operation occur from ISR context?</li><li>Will assertions catch wrong interrupt priority or object misuse?</li><li>Does recursive mutex use have a real design reason?</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Configuration controls which synchronization choices are available and diagnosable.</div>
+      <div class="page">08</div>
+    </section>
+    <section class="slide" id="s9">
+      <div class="slide-header"><div class="context">FreeRTOS Module 10</div><div class="framing">Binary Semaphore as Event Signal</div></div>
+      <div class="content">
+        <h2>Binary Semaphore as Event Signal</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_7_2_using_a_binary_semaphore_to_implement_deferred_interrupt_processing.png" alt="Kernel Book Figure 7.2 binary semaphore handoff"></div>
+        <div class="panel tint-blue"><h3>Reading Focus</h3><ul><li>The semaphore does not carry payload.</li><li>The waiting task is blocked until the event signal appears.</li><li>The ISR or task gives the semaphore.</li><li>If repeated events matter, binary signal may collapse information.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Figure 7.2.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A binary semaphore is a signal, not a resource ownership object.</div>
+      <div class="page">09</div>
+    </section>
+    <section class="slide" id="s10">
+      <div class="slide-header"><div class="context">FreeRTOS Module 10</div><div class="framing">Binary Semaphore Execution Sequence</div></div>
+      <div class="content">
+        <h2>Binary Semaphore Execution Sequence</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_7_3_using_a_binary_semaphore_to_synchronize_a_task_with_an_interrupt.png" alt="Kernel Book Figure 7.3 semaphore synchronization"></div>
+        <div class="panel tint-teal"><h3>Reading Focus</h3><ul><li>Trace Blocked, Ready, and Running states.</li><li>Find the event source.</li><li>Ask whether a FromISR API is required.</li><li>Connect the sequence to scheduler behavior after the signal.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Figure 7.3.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A semaphore changes task state through a kernel object.</div>
+      <div class="page">10</div>
+    </section>
+    <section class="slide" id="s11">
+      <div class="slide-header"><div class="context">FreeRTOS Module 10</div><div class="framing">Counting Semaphore as Count</div></div>
+      <div class="content">
+        <h2>Counting Semaphore as Count</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_7_8_using_a_counting_semaphore_to_count_events.png" alt="Kernel Book Figure 7.8 counting semaphore"></div>
+        <div class="panel tint-amber"><h3>Reading Focus</h3><ul><li>The count can represent accumulated events.</li><li>The count can represent available identical resources.</li><li>No individual payload is stored.</li><li>Maximum count is part of the design.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Figure 7.8.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Counting semaphores preserve multiplicity without storing payload.</div>
+      <div class="page">11</div>
+    </section>
+    <section class="slide" id="s12">
+      <div class="slide-header"><div class="context">FreeRTOS Module 10</div><div class="framing">Counting Semaphore Versus Queue</div></div>
+      <div class="content">
+        <h2>Counting Semaphore Versus Queue</h2>
+        
+      <div class="compare-rows">
+        <div class="compare-row"><div class="compare-head">Question</div><div class="compare-head">Counting semaphore</div><div class="compare-head">Queue</div></div>
+        <div class="compare-row"><div class="compare-cell">What is stored?</div><div class="compare-cell">A count of available events or resources.</div><div class="compare-cell">Copied item values or pointers.</div></div>
+        <div class="compare-row"><div class="compare-cell">When to choose?</div><div class="compare-cell">Events are identical or resources are interchangeable.</div><div class="compare-cell">Each event has payload or identity.</div></div>
+        <div class="compare-row"><div class="compare-cell">Failure pressure</div><div class="compare-cell">Count reaches maximum or zero.</div><div class="compare-cell">Queue becomes full or empty.</div></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Use a queue when the individual message matters.</div>
+      <div class="page">12</div>
+    </section>
+    <section class="slide" id="s13">
+      <div class="slide-header"><div class="context">FreeRTOS Module 10</div><div class="framing">Mutex as Ownership</div></div>
+      <div class="content">
+        <h2>Mutex as Ownership</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_8_1_mutual_exclusion_implemented_using_a_mutex.png" alt="Kernel Book Figure 8.1 mutual exclusion"></div>
+        <div class="panel tint-blue"><h3>Reading Focus</h3><ul><li>A mutex has an owner.</li><li>Only the owner should give it back.</li><li>The protected resource should be named explicitly.</li><li>Priority inheritance depends on mutex semantics.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Figure 8.1.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Mutex vocabulary is ownership vocabulary.</div>
+      <div class="page">13</div>
+    </section>
+    <section class="slide" id="s14">
+      <div class="slide-header"><div class="context">FreeRTOS Module 10</div><div class="framing">Mutex Execution Sequence</div></div>
+      <div class="content">
+        <h2>Mutex Execution Sequence</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_8_3_a_possible_sequence_of_execution_for_example_8_1.png" alt="Kernel Book Figure 8.3 mutex execution sequence"></div>
+        <div class="panel tint-teal"><h3>Reading Focus</h3><ul><li>Mark every take and give.</li><li>Identify the current owner at each point.</li><li>Identify which task waits and why.</li><li>Measure or estimate lock hold time.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Figure 8.3.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A mutex timeline should always expose the owner.</div>
+      <div class="page">14</div>
+    </section>
+    <section class="slide" id="s15">
+      <div class="slide-header"><div class="context">FreeRTOS Module 10</div><div class="framing">Why Binary Semaphore Is Not a Mutex</div></div>
+      <div class="content">
+        <h2>Why Binary Semaphore Is Not a Mutex</h2>
+        
+      <div class="do-dont">
+        <div class="panel tint-green"><h3>Mutex semantics</h3><ul><li>Represents ownership of a resource.</li><li>Owner gives the mutex back.</li><li>Priority inheritance can reduce priority inversion.</li><li>Review focuses on hold time and owner behavior.</li><li>Not intended for ISR give/take patterns.</li></ul></div>
+        <div class="panel tint-amber"><h3>Binary semaphore semantics</h3><ul><li>Represents an event signal.</li><li>No ownership relationship is recorded.</li><li>No priority inheritance as a mutex feature.</li><li>Review focuses on event loss or repeated signal behavior.</li><li>Can be used with FromISR give variants when appropriate.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Replacing a mutex with a binary semaphore can silently remove priority inheritance.</div>
+      <div class="page">15</div>
+    </section>
+    <section class="slide" id="s16">
+      <div class="slide-header"><div class="context">FreeRTOS Module 10</div><div class="framing">Priority Inversion Preview</div></div>
+      <div class="content">
+        <h2>Priority Inversion Preview</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_8_4_a_worst_case_priority_inversion_scenario.png" alt="Kernel Book Figure 8.4 priority inversion"></div>
+        <div class="panel tint-amber"><h3>Reading Focus</h3><ul><li>A high-priority task can wait for a low-priority owner.</li><li>A medium-priority task can extend the delay.</li><li>The mutex owner is the key actor.</li><li>Module 11 will expand this into deadlock and gatekeeper design.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Figure 8.4.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Priority inversion begins as a resource ownership story.</div>
+      <div class="page">16</div>
+    </section>
+    <section class="slide" id="s17">
+      <div class="slide-header"><div class="context">FreeRTOS Module 10</div><div class="framing">Priority Inheritance Preview</div></div>
+      <div class="content">
+        <h2>Priority Inheritance Preview</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_8_5_priority_inheritance_minimizing_the_effect_of_priority_inversion.png" alt="Kernel Book Figure 8.5 priority inheritance"></div>
+        <div class="panel tint-green"><h3>Reading Focus</h3><ul><li>The mutex owner may temporarily inherit a higher priority.</li><li>The boost ends when the mutex is released.</li><li>Inheritance minimizes inversion but does not justify long hold times.</li><li>Only mutex semantics provide this behavior.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Figure 8.5.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Priority inheritance is a reason to choose mutex for resource ownership.</div>
+      <div class="page">17</div>
+    </section>
+    <section class="slide" id="s18">
+      <div class="slide-header"><div class="context">FreeRTOS Module 10</div><div class="framing">Same-Priority Mutex Sequence</div></div>
+      <div class="content">
+        <h2>Same-Priority Mutex Sequence</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_8_6_a_possible_sequence_of_execution_when_tasks_that_have_the_same_priority.png" alt="Kernel Book Figure 8.6 same-priority mutex sequence"></div>
+        <div class="panel tint-blue"><h3>Reading Focus</h3><ul><li>Equal-priority tasks can still serialize on a mutex.</li><li>Time slicing and blocking shape the observed order.</li><li>Mutex correctness is separate from fairness intuition.</li><li>Hold time remains the practical review target.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Figure 8.6.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Mutual exclusion still matters when priorities are equal.</div>
+      <div class="page">18</div>
+    </section>
+    <section class="slide" id="s19">
+      <div class="slide-header"><div class="context">FreeRTOS Module 10</div><div class="framing">Critical Section as Tiny Invariant Protection</div></div>
+      <div class="content">
+        <h2>Critical Section as Tiny Invariant Protection</h2>
+        
+      <div class="grid-2">
+        <div class="invariant-box"><strong>Invariant example:</strong><br>A linked-list head pointer and count variable must agree before and after a short update.</div>
+        <div class="panel tint-amber"><h3>Critical section rule</h3><ul><li>Protect only a few instructions.</li><li>Do not perform I/O, parsing, allocation, or waiting.</li><li>Understand interrupt latency impact.</li><li>Prefer mutex when a task-owned resource is being used for longer work.</li></ul></div>
+      </div>
+      <pre><code>taskENTER_CRITICAL();
+/* update tiny shared invariant */
+taskEXIT_CRITICAL();</code></pre>
+    
+      </div>
+      <div class="takeaway">A critical section is not a general-purpose lock.</div>
+      <div class="page">19</div>
+    </section>
+    <section class="slide" id="s20">
+      <div class="slide-header"><div class="context">FreeRTOS Module 10</div><div class="framing">Critical Section Versus Mutex</div></div>
+      <div class="content">
+        <h2>Critical Section Versus Mutex</h2>
+        
+      <div class="compare-rows">
+        <div class="compare-row"><div class="compare-head">Aspect</div><div class="compare-head">Critical section</div><div class="compare-head">Mutex</div></div>
+        <div class="compare-row"><div class="compare-cell">Best scope</div><div class="compare-cell">Tiny invariant update.</div><div class="compare-cell">Resource use that may take longer.</div></div>
+        <div class="compare-row"><div class="compare-cell">Waiting behavior</div><div class="compare-cell">No waiting inside the protected region.</div><div class="compare-cell">Tasks can block while waiting for ownership.</div></div>
+        <div class="compare-row"><div class="compare-cell">Timing impact</div><div class="compare-cell">Interrupt or scheduling latency.</div><div class="compare-cell">Priority inversion and hold-time risk.</div></div>
+        <div class="compare-row"><div class="compare-cell">Review evidence</div><div class="compare-cell">Instruction count and latency budget.</div><div class="compare-cell">Owner, hold time, timeout, release path.</div></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Choose based on protected scope and timing cost.</div>
+      <div class="page">20</div>
+    </section>
+    <section class="slide" id="s21">
+      <div class="slide-header"><div class="context">FreeRTOS Module 10</div><div class="framing">Caller Context Rules</div></div>
+      <div class="content">
+        <h2>Caller Context Rules</h2>
+        
+      <table class="mini-table">
+        <thead><tr><th>Primitive</th><th>Task context</th><th>ISR context</th><th>Main review point</th></tr></thead>
+        <tbody>
+          <tr><td>Binary semaphore</td><td>Take or give with block policy</td><td>Give through FromISR variant when documented</td><td>Event loss and wake-up behavior</td></tr>
+          <tr><td>Counting semaphore</td><td>Take or give count</td><td>Give through FromISR variant when documented</td><td>Maximum count and pressure path</td></tr>
+          <tr><td>Mutex</td><td>Take and give as owner</td><td>Not an ISR ownership primitive</td><td>Hold time and priority inheritance</td></tr>
+          <tr><td>Critical section</td><td>Enter and exit around tiny invariant</td><td>Use port-specific ISR-safe protection only when appropriate</td><td>Latency and scope</td></tr>
+        </tbody>
+      </table>
+    
+      </div>
+      <div class="takeaway">Caller context changes what a primitive can legally mean.</div>
+      <div class="page">21</div>
+    </section>
+    <section class="slide" id="s22">
+      <div class="slide-header"><div class="context">FreeRTOS Module 10</div><div class="framing">Tutorial 12 Reading Path</div></div>
+      <div class="content">
+        <h2>Tutorial 12 Reading Path</h2>
+        
+      <div class="flow4">
+        <div class="flow-node"><strong>Create</strong>Find binary semaphore creation and initial state.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Wait</strong>Find the task that blocks on the event signal.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Signal</strong>Find the give path and whether it is ISR or task context.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Explain</strong>Describe which task becomes Ready and why.</div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Tutorial 12 should be read as an event-signal state transition.</div>
+      <div class="page">22</div>
+    </section>
+    <section class="slide" id="s23">
+      <div class="slide-header"><div class="context">FreeRTOS Module 10</div><div class="framing">Tutorial 13 Reading Path</div></div>
+      <div class="content">
+        <h2>Tutorial 13 Reading Path</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Object intent</h3><ul><li>Identify whether the example uses semaphore or mutex semantics.</li><li>Name the protected resource or event.</li><li>Check creation API.</li></ul></div>
+        <div class="panel tint-teal"><h3>Take and give</h3><ul><li>Mark every take call.</li><li>Mark every give call.</li><li>Check timeout and failure behavior.</li></ul></div>
+        <div class="panel tint-green"><h3>Behavior evidence</h3><ul><li>Predict output order.</li><li>Record which task blocks.</li><li>Explain how priority affects execution.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A tutorial trace should identify semantics before output.</div>
+      <div class="page">23</div>
+    </section>
+    <section class="slide" id="s24">
+      <div class="slide-header"><div class="context">FreeRTOS Module 10</div><div class="framing">Tutorial 21 Reading Path</div></div>
+      <div class="content">
+        <h2>Tutorial 21 Reading Path</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Critical region</h3><ul><li>Find the protected shared state.</li><li>Measure how much code is inside.</li><li>Check for function calls that do too much.</li></ul></div>
+        <div class="panel tint-amber"><h3>Latency concern</h3><ul><li>Interrupts or scheduling can be constrained.</li><li>Long work increases response time.</li><li>Move slow code outside the protected region.</li></ul></div>
+        <div class="panel tint-green"><h3>Alternative</h3><ul><li>Use mutex for resource ownership.</li><li>Use queue or gatekeeper for serialized service.</li><li>Use atomic operation if available and appropriate.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Critical-section examples should be judged by scope, not only correctness.</div>
+      <div class="page">24</div>
+    </section>
+    <section class="slide" id="s25">
+      <div class="slide-header"><div class="context">FreeRTOS Module 10</div><div class="framing">Mini Case: Shared UART Output</div></div>
+      <div class="content">
+        <h2>Mini Case: Shared UART Output</h2>
+        
+      <div class="flow4">
+        <div class="flow-node"><strong>Multiple clients</strong>Several tasks want to write formatted output.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Mutex option</strong>Protect UART driver access with ownership and short hold time.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Gatekeeper option</strong>Send print requests to one UART owner task.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Review</strong>Compare blocking, queue pressure, output order, and priority impact.</div>
+      </div>
+    
+      </div>
+      <div class="takeaway">UART output is a resource ownership design, not a semaphore signal.</div>
+      <div class="page">25</div>
+    </section>
+    <section class="slide" id="s26">
+      <div class="slide-header"><div class="context">FreeRTOS Module 10</div><div class="framing">Mini Case: Buffer Pool</div></div>
+      <div class="content">
+        <h2>Mini Case: Buffer Pool</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Counting semaphore fit</h3><ul><li>N identical buffers available.</li><li>Taking a buffer decrements availability.</li><li>Returning a buffer gives the count back.</li></ul></div>
+        <div class="panel tint-teal"><h3>Queue fit</h3><ul><li>Specific buffer pointers must be passed.</li><li>Receiver needs identity or metadata.</li><li>A queue can hold descriptors.</li></ul></div>
+        <div class="panel tint-amber"><h3>Review evidence</h3><ul><li>Free buffer count.</li><li>Allocation failure count.</li><li>Owner of each checked-out buffer.</li><li>Return path coverage.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A resource count and a resource identity are different facts.</div>
+      <div class="page">26</div>
+    </section>
+    <section class="slide" id="s27">
+      <div class="slide-header"><div class="context">FreeRTOS Module 10</div><div class="framing">Mini Case: ISR Event Signal</div></div>
+      <div class="content">
+        <h2>Mini Case: ISR Event Signal</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Binary signal</h3><ul><li>One event wakes one processing task.</li><li>No payload needed.</li><li>Repeated events may collapse.</li></ul></div>
+        <div class="panel tint-teal"><h3>Counting signal</h3><ul><li>Repeated events must be counted.</li><li>No distinct payload per event.</li><li>Maximum count protects memory.</li></ul></div>
+        <div class="panel tint-green"><h3>Queue signal</h3><ul><li>Each event has data.</li><li>Timestamps or descriptors matter.</li><li>Queue depth and overflow must be reviewed.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">ISR synchronization choice follows the event shape.</div>
+      <div class="page">27</div>
+    </section>
+    <section class="slide" id="s28">
+      <div class="slide-header"><div class="context">FreeRTOS Module 10</div><div class="framing">Failure Modes Worth Naming Early</div></div>
+      <div class="content">
+        <h2>Failure Modes Worth Naming Early</h2>
+        
+      <div class="grid-3"><div class="panel tint-blue"><h3>Wrong primitive</h3><ul><li>Binary semaphore used as a mutex.</li><li>Priority inheritance silently absent.</li><li>Fix by selecting primitive by semantics.</li></ul></div><div class="panel tint-teal"><h3>Long critical section</h3><ul><li>Interrupt latency rises.</li><li>System responsiveness becomes fragile.</li><li>Fix by shrinking the protected invariant.</li></ul></div><div class="panel tint-amber"><h3>Unpaired ownership</h3><ul><li>Mutex taken but not released on error path.</li><li>Other tasks wait forever or time out.</li><li>Fix by reviewing every return path.</li></ul></div></div>
+    
+      </div>
+      <div class="takeaway">Synchronization bugs are often naming errors before they are code errors.</div>
+      <div class="page">28</div>
+    </section>
+    <section class="slide" id="s29">
+      <div class="slide-header"><div class="context">FreeRTOS Module 10</div><div class="framing">Diagnostic Evidence</div></div>
+      <div class="content">
+        <h2>Diagnostic Evidence</h2>
+        
+      <div class="icon-strip">
+        <div class="icon-mini"><img src="../shared_assets/icons/trace_diagnostics.png" alt="">Trace history</div>
+        <div class="icon-mini"><img src="../shared_assets/icons/mutex_lock.png" alt="">Owner log</div>
+        <div class="icon-mini"><img src="../shared_assets/icons/timing_deadline.png" alt="">Hold time</div>
+        <div class="icon-mini"><img src="../shared_assets/icons/config_assertion.png" alt="">Assert</div>
+      </div>
+      <div class="grid-3" style="margin-top:18px;">
+        <div class="panel tint-blue"><h3>Semaphore evidence</h3><ul><li>Take timeout count.</li><li>Give count or event count.</li><li>Lost event suspicion under bursts.</li></ul></div>
+        <div class="panel tint-teal"><h3>Mutex evidence</h3><ul><li>Current owner.</li><li>Maximum hold time.</li><li>Priority inversion timeline.</li></ul></div>
+        <div class="panel tint-amber"><h3>Critical evidence</h3><ul><li>Protected code length.</li><li>Interrupt latency measurement.</li><li>Nested critical-section review.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Collect evidence specific to the primitive&#x27;s meaning.</div>
+      <div class="page">29</div>
+    </section>
+    <section class="slide" id="s30">
+      <div class="slide-header"><div class="context">FreeRTOS Module 10</div><div class="framing">Source Reading: semphr.h and queue.c</div></div>
+      <div class="content">
+        <h2>Source Reading: semphr.h and queue.c</h2>
+        
+      <div class="grid-2">
+        <div class="panel tint-blue"><h3>semphr.h</h3><ul><li>Read the wrapper macros and type aliases.</li><li>Notice semaphore and mutex APIs are layered on queue mechanisms.</li><li>Do not confuse implementation reuse with identical semantics.</li></ul></div>
+        <div class="panel tint-teal"><h3>queue.c</h3><ul><li>Find semaphore and mutex paths.</li><li>Look for priority inheritance handling.</li><li>Trace blocking and unblocking behavior.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Implementation reuse is real, but design semantics still differ.</div>
+      <div class="page">30</div>
+    </section>
+    <section class="slide" id="s31">
+      <div class="slide-header"><div class="context">FreeRTOS Module 10</div><div class="framing">Source Reading: tasks.c and port Layer</div></div>
+      <div class="content">
+        <h2>Source Reading: tasks.c and port Layer</h2>
+        
+      <div class="grid-2">
+        <div class="panel tint-blue"><h3>tasks.c</h3><ul><li>Ready and Blocked transitions.</li><li>Priority inheritance interactions.</li><li>Timeout behavior when taking objects.</li></ul></div>
+        <div class="panel tint-amber"><h3>port layer</h3><ul><li>Critical section implementation.</li><li>Interrupt mask behavior.</li><li>Port-specific ISR boundary rules.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Synchronization behavior is scheduler behavior plus object semantics.</div>
+      <div class="page">31</div>
+    </section>
+    <section class="slide" id="s32">
+      <div class="slide-header"><div class="context">FreeRTOS Module 10</div><div class="framing">Design Decision Table</div></div>
+      <div class="content">
+        <h2>Design Decision Table</h2>
+        
+      <table class="mini-table">
+        <thead><tr><th>Decision</th><th>Question</th><th>Evidence</th></tr></thead>
+        <tbody>
+          <tr><td>Signal</td><td>Is one event enough, or must repeated events be counted?</td><td>Binary or counting semaphore behavior under bursts</td></tr>
+          <tr><td>Ownership</td><td>Who owns the resource and releases it?</td><td>Mutex owner timeline and hold-time measurement</td></tr>
+          <tr><td>Invariant</td><td>How many instructions truly need interruption protection?</td><td>Critical-section scope and latency budget</td></tr>
+          <tr><td>Caller context</td><td>Can this caller block, and is it ISR-safe?</td><td>API family, FromISR availability, priority rules</td></tr>
+          <tr><td>Failure path</td><td>What happens on timeout, count limit, or missed release?</td><td>Return-value check, assert, counter, or recovery path</td></tr>
+        </tbody>
+      </table>
+    
+      </div>
+      <div class="takeaway">The decision table forces semantics and evidence into the same review.</div>
+      <div class="page">32</div>
+    </section>
+    <section class="slide" id="s33">
+      <div class="slide-header"><div class="context">FreeRTOS Module 10</div><div class="framing">Testing Checklist</div></div>
+      <div class="content">
+        <h2>Testing Checklist</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Nominal path</h3><ul><li>Event wakes expected task.</li><li>Mutex protects expected resource.</li><li>Critical section preserves invariant.</li></ul></div>
+        <div class="panel tint-teal"><h3>Pressure path</h3><ul><li>Repeated event burst.</li><li>Higher-priority task waits for mutex.</li><li>Interrupt load during protected update.</li></ul></div>
+        <div class="panel tint-green"><h3>Failure path</h3><ul><li>Timeout return path checked.</li><li>Mutex release on error path verified.</li><li>Critical section kept short.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A synchronization lab should include at least one failure path.</div>
+      <div class="page">33</div>
+    </section>
+    <section class="slide" id="s34">
+      <div class="slide-header"><div class="context">FreeRTOS Module 10</div><div class="framing">Code Review Checklist</div></div>
+      <div class="content">
+        <h2>Code Review Checklist</h2>
+        
+      <div class="grid-2">
+        <div class="panel tint-blue"><h3>Mechanism review</h3><ul><li>Is the primitive enabled in FreeRTOSConfig.h?</li><li>Are handles and return values checked?</li><li>Is caller context legal?</li><li>Is timeout policy explicit?</li></ul></div>
+        <div class="panel tint-green"><h3>Design review</h3><ul><li>Does primitive semantics match the problem?</li><li>Is ownership documented?</li><li>Is hold time bounded?</li><li>Is overload or event loss visible?</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Review by meaning, then by API syntax.</div>
+      <div class="page">34</div>
+    </section>
+    <section class="slide" id="s35">
+      <div class="slide-header"><div class="context">FreeRTOS Module 10</div><div class="framing">Object Choice and Alternatives</div></div>
+      <div class="content">
+        <h2>Object Choice and Alternatives</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/infographics/object_selection_map.png" alt="Object selection map"></div>
+        <div class="panel tint-blue"><h3>Alternative Questions</h3><ul><li>Do we need payload data?</li><li>Is this only a signal?</li><li>Does resource ownership require priority inheritance?</li><li>Would a queue or gatekeeper remove shared ownership?</li><li>Is a critical section actually short enough?</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Choosing not to use a semaphore or mutex can be the best design decision.</div>
+      <div class="page">35</div>
+    </section>
+    <section class="slide" id="s36">
+      <div class="slide-header"><div class="context">FreeRTOS Module 10</div><div class="framing">Project Boundary Check</div></div>
+      <div class="content">
+        <h2>Project Boundary Check</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Build</h3><ul><li>Use binary semaphore for one event.</li><li>Use mutex for a shared UART-like resource.</li><li>Use critical section for a tiny shared counter invariant.</li></ul></div>
+        <div class="panel tint-teal"><h3>Modify</h3><ul><li>Replace mutex with binary semaphore and explain the lost feature.</li><li>Create event bursts for semaphore count behavior.</li><li>Move slow code out of a critical section.</li></ul></div>
+        <div class="panel tint-green"><h3>Explain</h3><ul><li>Name the primitive semantics.</li><li>Draw the wait or ownership path.</li><li>Record diagnostics for failure behavior.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The lab output should be a short synchronization design review.</div>
+      <div class="page">36</div>
+    </section>
+    <section class="slide" id="s37">
+      <div class="slide-header"><div class="context">FreeRTOS Module 10</div><div class="framing">Classroom Board Questions</div></div>
+      <div class="content">
+        <h2>Classroom Board Questions</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>What is being coordinated?</h3><ul><li>Event signal.</li><li>Event count.</li><li>Resource ownership.</li><li>Tiny invariant.</li></ul></div>
+        <div class="panel tint-teal"><h3>Who can wait?</h3><ul><li>A task with timeout.</li><li>An ISR cannot block.</li><li>A daemon/service path should stay short.</li></ul></div>
+        <div class="panel tint-amber"><h3>What failure is visible?</h3><ul><li>Lost event.</li><li>Count limit.</li><li>Timeout.</li><li>Priority inversion.</li><li>Interrupt latency.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">These questions expose primitive misuse quickly.</div>
+      <div class="page">37</div>
+    </section>
+    <section class="slide" id="s38">
+      <div class="slide-header"><div class="context">FreeRTOS Module 10</div><div class="framing">Review Questions</div></div>
+      <div class="content">
+        <h2>Review Questions</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Question 1</h3><p>What feature is lost when a mutex is replaced by a binary semaphore for resource ownership?</p></div>
+        <div class="panel tint-teal"><h3>Question 2</h3><p>When is a counting semaphore clearer than a queue, and when is it not enough?</p></div>
+        <div class="panel tint-amber"><h3>Question 3</h3><p>Why should a critical section protect only a tiny invariant rather than a long driver operation?</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A strong answer names semantics, caller context, and timing evidence.</div>
+      <div class="page">38</div>
+    </section>
+    <section class="slide" id="s39">
+      <div class="slide-header"><div class="context">FreeRTOS Module 10</div><div class="framing">One-Slide Summary</div></div>
+      <div class="content">
+        <h2>One-Slide Summary</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Semaphore</h3><ul><li>Binary: one event signal.</li><li>Counting: N events or resources.</li><li>No resource ownership semantics.</li></ul></div>
+        <div class="panel tint-teal"><h3>Mutex</h3><ul><li>Resource ownership.</li><li>Priority inheritance behavior.</li><li>Hold time and release path are central.</li></ul></div>
+        <div class="panel tint-green"><h3>Critical section</h3><ul><li>Tiny invariant protection.</li><li>Latency cost.</li><li>Not a general lock substitute.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The primitive should communicate the design intent.</div>
+      <div class="page">39</div>
+    </section>
+    <section class="slide" id="s40">
+      <div class="slide-header"><div class="context">FreeRTOS Module 10</div><div class="framing">Bridge to Module 11</div></div>
+      <div class="content">
+        <h2>Bridge to Module 11</h2>
+        
+      <p class="subtitle">Module 11 continues resource ownership into priority inversion, deadlock, and gatekeeper design.</p>
+      <div class="grid-3">
+        <div class="icon-card"><img src="../shared_assets/icons/mutex_lock.png" alt=""><div><strong>Mutex owner</strong><span>Ownership becomes a scheduling concern.</span></div></div>
+        <div class="icon-card"><img src="../shared_assets/icons/priority_ladder_generated.png" alt=""><div><strong>Priority inversion</strong><span>Waiting across priorities needs careful analysis.</span></div></div>
+        <div class="icon-card"><img src="../shared_assets/icons/queue_message_passing.png" alt=""><div><strong>Gatekeeper</strong><span>Serialized request handling can remove direct lock sharing.</span></div></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The next module turns mutex use into a concurrency design review.</div>
+      <div class="page">40</div>
+    </section>
+    <section class="slide" id="s41">
+      <div class="slide-header"><div class="context">FreeRTOS Module 10</div><div class="framing">References and Further Reading</div></div>
+      <div class="content">
+        <h2>References and Further Reading</h2>
+        
+      <p class="subtitle">References used in this module are separated from optional deeper reading.</p>
+      <div class="grid-2">
+        <div class="panel tint-blue">
+          <h3>References Used</h3>
+          <ul class="refs">
+            <li>FreeRTOS Kernel Book, Chapter 7, Interrupt Management, semaphore signaling examples.</li>
+            <li>FreeRTOS Kernel Book, Chapter 8, Resource Management.</li>
+            <li>FreeRTOS Kernel Book, Figures 7.2, 7.3, 7.8, 8.1, 8.3, 8.4, 8.5, and 8.6.</li>
+            <li>Lab Project FreeRTOS Tutorials, Tutorials 12, 13, and 21.</li>
+            <li>FreeRTOS Kernel source: semphr.h, queue.c, tasks.c, and port critical-section code.</li>
+          </ul>
+        </div>
+        <div class="panel tint-green">
+          <h3>Further Reading</h3>
+          <ul class="refs">
+            <li>FreeRTOS API reference: semaphores, mutexes, recursive mutexes, and critical sections.</li>
+            <li>FreeRTOSConfig.h reference: configUSE_MUTEXES, configUSE_RECURSIVE_MUTEXES, and configUSE_COUNTING_SEMAPHORES.</li>
+            <li>Operating systems text reading on mutual exclusion, critical sections, and priority inversion.</li>
+            <li>Module 11 materials on priority inversion, deadlock, and gatekeeper design.</li>
+          </ul>
+        </div>
+      </div>
+    
+      </div>
+      <div class="takeaway">References should support traceability and direct further study.</div>
+      <div class="page">41</div>
+    </section>
+  </main>
+  <script src="../shared_assets/slideshow.js"></script>
+</body>
+</html>

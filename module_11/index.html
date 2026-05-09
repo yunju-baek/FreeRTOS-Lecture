@@ -1,0 +1,808 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FreeRTOS Module 11 - Priority Inversion, Deadlock, and Gatekeeper Design</title>
+  <style>
+:root {
+  --indigo:#2e315b; --blue:#2563a6; --teal:#147d83; --green:#2f7d4e;
+  --amber:#9a6a16; --violet:#6d4aa2; --graphite:#2b2f36; --muted:#637083;
+  --line:#d8dee9; --paper:#fff; --bg:#f4f6f9; --code:#eef2f7;
+  --soft-blue:#eef5fc; --soft-teal:#edf8f8; --soft-amber:#fff7e8;
+}
+* { box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { margin:0; background:var(--bg); color:var(--graphite); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans",Arial,sans-serif; line-height:1.44; }
+.nav { position:sticky; top:0; z-index:10; width:1280px; margin:0 auto; padding:10px 16px; background:rgba(244,246,249,.96); border-bottom:1px solid var(--line); color:#4f5969; font-size:15px; }
+.nav a { margin-right:8px; color:var(--blue); text-decoration:none; font-weight:800; }
+.deck { width:1280px; margin:0 auto; padding:28px 0 64px; }
+.slide { position:relative; width:1280px; min-height:720px; margin:0 0 32px; overflow:hidden; background:var(--paper); border:1px solid var(--line); box-shadow:0 18px 40px rgba(38,49,91,.12); page-break-after:always; }
+.slide-header { display:flex; justify-content:space-between; align-items:center; height:54px; padding:0 34px; background:var(--indigo); color:#fff; font-size:18px; }
+.context { font-weight:800; }
+.framing { color:#e1e6ff; font-size:16px; }
+.content { padding:30px 42px 58px; }
+h1,h2,h3,p { margin-top:0; }
+h1 { margin-bottom:14px; color:#fff; font-size:45px; line-height:1.08; letter-spacing:0; }
+h2 { margin-bottom:10px; color:#20243d; font-size:34px; line-height:1.12; letter-spacing:0; }
+h3 { margin-bottom:10px; color:var(--indigo); font-size:22px; letter-spacing:0; }
+.subtitle { max-width:1060px; margin-bottom:22px; color:#4a5260; font-size:22px; line-height:1.36; }
+.small { color:var(--muted); font-size:17px; }
+ul,ol { margin:0; padding-left:22px; }
+li { font-size:18.2px; }
+li + li { margin-top:6px; }
+code { padding:1px 5px; border-radius:4px; background:var(--code); color:#1d3152; font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace; font-size:.93em; }
+pre { margin:0; padding:15px 17px; border-radius:8px; background:#1f2633; color:#edf2ff; font-size:14.2px; line-height:1.42; overflow:hidden; white-space:pre-wrap; }
+pre code { padding:0; background:transparent; color:inherit; font-size:inherit; }
+.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+.grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
+.grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+.grid-13 { display:grid; grid-template-columns:1.12fr .88fr; gap:22px; align-items:stretch; }
+.grid-31 { display:grid; grid-template-columns:.82fr 1.18fr; gap:22px; align-items:stretch; }
+.panel { border:1px solid var(--line); border-radius:8px; padding:17px 19px; background:#fff; }
+.tint-blue { border-top:5px solid var(--blue); } .tint-teal { border-top:5px solid var(--teal); } .tint-green { border-top:5px solid var(--green); } .tint-amber { border-top:5px solid var(--amber); } .tint-violet { border-top:5px solid var(--violet); }
+.question { padding:16px 18px; border-left:6px solid var(--blue); background:var(--soft-blue); font-size:20px; }
+.callout { padding:16px 18px; border-left:6px solid var(--teal); background:var(--soft-teal); font-size:19px; }
+.warning { padding:16px 18px; border-left:6px solid var(--amber); background:var(--soft-amber); font-size:19px; }
+.takeaway { position:absolute; left:42px; right:120px; bottom:22px; color:#515a6b; font-size:17px; font-weight:700; }
+.page { position:absolute; right:36px; bottom:22px; color:#7a8290; font-size:16px; font-weight:800; }
+.cover { color:#fff; background:linear-gradient(120deg,rgba(46,49,91,.98),rgba(20,125,131,.9)),#2e315b; }
+.cover .slide-header { background:transparent; border-bottom:1px solid rgba(255,255,255,.24); }
+.cover .content { display:grid; grid-template-columns:1.08fr .92fr; gap:46px; align-items:center; padding-top:54px; }
+.cover .subtitle { color:#eef5ff; }
+.cover-card { min-height:390px; padding:28px; border:1px solid rgba(255,255,255,.35); border-radius:10px; background:rgba(255,255,255,.08); }
+.cover-card h3 { color:#fff; font-size:25px; }
+.cover-card li { color:#edf2ff; font-size:20px; }
+.icon-card { min-height:150px; display:grid; grid-template-columns:86px 1fr; gap:14px; align-items:center; border:1px solid var(--line); border-radius:8px; padding:15px; background:#fff; }
+.icon-card img { width:76px; height:76px; object-fit:contain; }
+.icon-card strong { display:block; color:var(--indigo); font-size:19px; margin-bottom:5px; }
+.icon-card span { display:block; color:#4e5969; font-size:16.5px; }
+.figure-frame { display:flex; align-items:center; justify-content:center; min-height:410px; border:1px solid var(--line); border-radius:10px; background:#fbfcfe; padding:18px; }
+.figure-frame img { max-width:100%; max-height:420px; object-fit:contain; }
+.figure-frame.tall img { max-height:505px; }
+.asset-note { margin-top:8px; color:var(--muted); font-size:15px; }
+.mini-table { width:100%; border-collapse:collapse; font-size:17px; }
+.mini-table th,.mini-table td { padding:9px 10px; border:1px solid var(--line); vertical-align:top; }
+.mini-table th { background:#eef2f7; color:var(--indigo); text-align:left; }
+.flow { display:grid; grid-template-columns:1fr 48px 1fr 48px 1fr; gap:10px; align-items:center; }
+.flowbox { min-height:112px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fff; text-align:center; font-size:17px; }
+.flowbox strong { display:block; margin-bottom:8px; color:var(--indigo); font-size:19px; }
+.arrow { text-align:center; color:var(--blue); font-size:32px; font-weight:900; }
+.timeline { display:grid; gap:12px; margin-top:10px; }
+.lane { display:grid; grid-template-columns:150px 1fr; gap:12px; align-items:center; }
+.lane-label { padding:10px 12px; border-radius:8px; background:#edf2ff; color:var(--indigo); font-weight:900; text-align:center; }
+.lane-body { display:flex; gap:6px; align-items:center; min-height:46px; padding:8px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+.bar { height:30px; border-radius:6px; color:#fff; font-size:14px; font-weight:800; display:flex; align-items:center; justify-content:center; }
+.run { background:var(--blue); } .block { background:var(--amber); } .idle { background:var(--green); } .tick { width:6px; height:36px; background:var(--teal); border-radius:4px; }
+.w80 { width:80px; } .w120 { width:120px; } .w180 { width:180px; } .w240 { width:240px; }
+.refs li { margin-top:9px; font-size:18px; }
+@media print { body{background:#fff;} .nav{display:none;} .deck{padding:0;} .slide{margin:0; box-shadow:none; border:0;} }
+
+.api-list { display:flex; flex-wrap:wrap; gap:10px; margin-top:10px; }
+.api-list code { display:inline-block; padding:8px 10px; font-size:17px; }
+.decision-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+.decision { min-height:132px; padding:13px; border:1px solid var(--line); border-top:5px solid var(--blue); border-radius:8px; background:#fff; font-size:16px; }
+.decision:nth-child(2) { border-top-color:var(--teal); }
+.decision:nth-child(3) { border-top-color:var(--amber); }
+.decision:nth-child(4) { border-top-color:var(--green); }
+.decision strong { display:block; color:var(--indigo); font-size:18px; margin-bottom:6px; }
+.lane-stack { display:grid; gap:12px; margin-top:12px; }
+.lane { display:grid; grid-template-columns:160px 1fr; gap:12px; align-items:center; }
+.lane-label { padding:10px 12px; border-radius:8px; background:#edf2ff; color:var(--indigo); font-weight:900; text-align:center; }
+.lane-body { min-height:48px; display:flex; gap:7px; align-items:center; padding:8px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+.seg { min-width:80px; height:30px; padding:0 10px; display:flex; align-items:center; justify-content:center; border-radius:6px; color:#fff; font-weight:900; font-size:14px; }
+.blue { background:var(--blue); } .teal { background:var(--teal); } .amber { background:var(--amber); } .green { background:var(--green); } .violet { background:var(--violet); }
+.w120 { width:120px; } .w180 { width:180px; } .w240 { width:240px; }
+.mini-arch { display:grid; grid-template-columns:1fr 48px 1fr 48px 1fr; gap:10px; align-items:center; }
+.arch-node { min-height:96px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fff; text-align:center; font-size:17px; }
+.arch-node strong { display:block; color:var(--indigo); font-size:19px; margin-bottom:7px; }
+.arrow { text-align:center; color:var(--blue); font-size:32px; font-weight:900; }
+.source-card { min-height:120px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fbfcfe; font-size:16.5px; }
+.source-card strong { display:block; color:var(--indigo); font-size:18px; margin-bottom:6px; }
+
+.risk-map { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:14px; }
+.risk-cell { min-height:162px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fff; font-size:16px; }
+.risk-cell strong { display:block; color:var(--indigo); font-size:18px; margin-bottom:8px; }
+.flow4 { display:grid; grid-template-columns:1fr 40px 1fr 40px 1fr 40px 1fr; gap:8px; align-items:stretch; margin-top:16px; }
+.flow-node { min-height:116px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fff; font-size:16px; }
+.flow-node strong { display:block; color:var(--indigo); font-size:18px; margin-bottom:8px; }
+.flow-arrow { display:flex; align-items:center; justify-content:center; color:var(--blue); font-size:28px; font-weight:900; }
+.deadlock-ring { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:16px; }
+.ring-step { min-height:146px; padding:14px; border:1px solid var(--line); border-top:5px solid var(--amber); border-radius:8px; background:#fff; font-size:16px; }
+.ring-step strong { display:block; color:var(--indigo); font-size:18px; margin-bottom:8px; }
+.icon-strip { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:16px; }
+.icon-mini { min-height:112px; padding:12px; border:1px solid var(--line); border-radius:8px; background:#fff; text-align:center; font-size:15px; }
+.icon-mini img { width:58px; height:58px; object-fit:contain; display:block; margin:0 auto 8px; }
+.compare-rows { display:grid; gap:10px; margin-top:14px; }
+.compare-row { display:grid; grid-template-columns:170px 1fr 1fr; gap:10px; align-items:stretch; }
+.compare-head { padding:10px; border-radius:8px; background:var(--indigo); color:#fff; font-weight:900; text-align:center; }
+.compare-cell { min-height:52px; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:#fff; font-size:16px; }
+.lock-order { display:grid; grid-template-columns:120px 1fr; gap:10px; margin-top:14px; }
+.lock-label { padding:10px; border-radius:8px; background:#edf2ff; color:var(--indigo); font-weight:900; text-align:center; }
+.lock-line { min-height:48px; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:#fff; font-size:16px; }
+</style>
+  <link rel="stylesheet" href="../shared_assets/slideshow.css">
+</head>
+<body>
+  <nav class="nav"><a href="#s1">01</a><a href="#s2">02</a><a href="#s3">03</a><a href="#s4">04</a><a href="#s5">05</a><a href="#s6">06</a><a href="#s7">07</a><a href="#s8">08</a><a href="#s9">09</a><a href="#s10">10</a><a href="#s11">11</a><a href="#s12">12</a><a href="#s13">13</a><a href="#s14">14</a><a href="#s15">15</a><a href="#s16">16</a><a href="#s17">17</a><a href="#s18">18</a><a href="#s19">19</a><a href="#s20">20</a><a href="#s21">21</a><a href="#s22">22</a><a href="#s23">23</a><a href="#s24">24</a><a href="#s25">25</a><a href="#s26">26</a><a href="#s27">27</a><a href="#s28">28</a><a href="#s29">29</a><a href="#s30">30</a><a href="#s31">31</a><a href="#s32">32</a><a href="#s33">33</a><a href="#s34">34</a><a href="#s35">35</a><a href="#s36">36</a><a href="#s37">37</a><a href="#s38">38</a><a href="#s39">39</a><a href="#s40">40</a><a href="#s41">41</a><button class="slideshow-toggle" type="button" data-slideshow-start>Slideshow</button></nav>
+  
+  <div class="slideshow-controls" aria-label="Slideshow controls">
+    <button class="slide-control" type="button" data-slide-prev>Prev</button>
+    <span class="slide-counter" data-slide-counter>01 / 41</span>
+    <button class="slide-control" type="button" data-slide-next>Next</button>
+    <button class="slide-control" type="button" data-slide-fullscreen>Full</button>
+    <button class="slide-control" type="button" data-slide-fill aria-pressed="false">Fill</button>
+    <button class="slide-control" type="button" data-slide-exit>Exit</button>
+  </div>
+  <div class="slideshow-hint">Keys: Left/Right or PageUp/PageDown to move, Home/End to jump, S to toggle slideshow, F for fullscreen, Z for fit/fill, Esc to exit.</div>
+
+  <main class="deck">
+    
+    <section class="slide cover" id="s1">
+      <div class="slide-header"><div class="context">FreeRTOS Module 11</div><div class="framing">Priority Inversion, Deadlock, and Gatekeeper Design</div></div>
+      <div class="content">
+        <div class="cover-grid">
+          <div>
+            <h1>Priority Inversion, Deadlock, and Gatekeeper Design</h1>
+            <p>Mutexes make shared resources usable, but they also create ownership, waiting, inversion, and deadlock risks that must be designed and reviewed explicitly.</p>
+            <p class="cover-meta">Course: FreeRTOS Lecture<br>Embedded Systems Laboratory, Pusan National University<br>Instructor: Prof. Yunju Baek</p>
+          </div>
+          <div class="cover-card">
+            <h2>Learning path</h2>
+            <ul>
+              <li>Resource ownership timeline</li>
+              <li>Priority inversion and priority inheritance</li>
+              <li>Deadlock conditions and lock ordering</li>
+              <li>Recursive mutex and reentrancy risk</li>
+              <li>Gatekeeper task as ownership redesign</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="takeaway">First target: a lock is a scheduling decision, not just a protection wrapper.</div>
+      <div class="page">01</div>
+    </section>
+    <section class="slide" id="s2">
+      <div class="slide-header"><div class="context">FreeRTOS Module 11</div><div class="framing">Course Position</div></div>
+      <div class="content">
+        <h2>Course Position</h2>
+        
+      <p class="subtitle">Module 10 separated signal, count, ownership, and critical-section semantics. Module 11 focuses on the risks created by ownership.</p>
+      <div class="grid-3">
+        <div class="icon-card"><img src="../shared_assets/icons/mutex_lock.png" alt=""><div><strong>Mutex ownership</strong><span>A mutex creates an owner and waiters.</span></div></div>
+        <div class="icon-card"><img src="../shared_assets/icons/priority_ladder_generated.png" alt=""><div><strong>Priority risk</strong><span>A high-priority task can wait behind lower-priority ownership.</span></div></div>
+        <div class="icon-card"><img src="../shared_assets/icons/queue_message_passing.png" alt=""><div><strong>Gatekeeper</strong><span>A queue can move ownership into one service task.</span></div></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The module extends mutex use into concurrency design review.</div>
+      <div class="page">02</div>
+    </section>
+    <section class="slide" id="s3">
+      <div class="slide-header"><div class="context">FreeRTOS Module 11</div><div class="framing">Problem Frame</div></div>
+      <div class="content">
+        <h2>Problem Frame</h2>
+        
+      <div class="risk-map">
+        <div class="risk-cell"><strong>Priority inversion</strong>A high-priority task waits for a resource owned by a lower-priority task, and medium-priority work can extend the delay.</div>
+        <div class="risk-cell"><strong>Deadlock</strong>Tasks hold resources while waiting for each other, creating a cycle with no progress.</div>
+        <div class="risk-cell"><strong>Unbounded hold time</strong>The owner blocks, prints, allocates, or waits while holding the mutex.</div>
+        <div class="risk-cell"><strong>Scattered ownership</strong>Many tasks touch the same resource directly, making ordering and recovery hard to reason about.</div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Every lock should come with a risk story and evidence plan.</div>
+      <div class="page">03</div>
+    </section>
+    <section class="slide" id="s4">
+      <div class="slide-header"><div class="context">FreeRTOS Module 11</div><div class="framing">Terminology Before Patterns</div></div>
+      <div class="content">
+        <h2>Terminology Before Patterns</h2>
+        
+      <table class="mini-table"><thead><tr><th>Term</th><th>Meaning in this module</th></tr></thead><tbody><tr><td><strong>Priority inversion</strong></td><td>A high-priority task is delayed by a lower-priority task that owns a needed resource.</td></tr><tr><td><strong>Priority inheritance</strong></td><td>A mutex owner temporarily inherits the priority of a higher-priority task waiting for that mutex.</td></tr><tr><td><strong>Deadlock</strong></td><td>A cycle of waiting in which no task can make progress without external recovery.</td></tr><tr><td><strong>Hold time</strong></td><td>The time between taking a mutex and releasing it.</td></tr><tr><td><strong>Lock ordering</strong></td><td>A global rule that says which resource must be acquired first when more than one lock is needed.</td></tr><tr><td><strong>Recursive mutex</strong></td><td>A mutex that the same task can take multiple times, requiring matched gives.</td></tr><tr><td><strong>Gatekeeper task</strong></td><td>A task that exclusively owns a resource and receives serialized requests through a queue.</td></tr></tbody></table>
+    
+      </div>
+      <div class="takeaway">The vocabulary turns vague lock concerns into reviewable failure modes.</div>
+      <div class="page">04</div>
+    </section>
+    <section class="slide" id="s5">
+      <div class="slide-header"><div class="context">FreeRTOS Module 11</div><div class="framing">Primary Visual Anchor</div></div>
+      <div class="content">
+        <h2>Primary Visual Anchor</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_8_4_a_worst_case_priority_inversion_scenario.png" alt="Kernel Book Figure 8.4 priority inversion"></div>
+        <div class="panel tint-blue"><h3>Reading Order</h3><ul><li>Identify the low-priority mutex owner.</li><li>Identify the high-priority waiter.</li><li>Identify the medium-priority task that extends the wait.</li><li>Connect the timeline to hold time and inheritance.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Figure 8.4.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Priority inversion is easiest to learn as a timeline.</div>
+      <div class="page">05</div>
+    </section>
+    <section class="slide" id="s6">
+      <div class="slide-header"><div class="context">FreeRTOS Module 11</div><div class="framing">Mutex Ownership Refresher</div></div>
+      <div class="content">
+        <h2>Mutex Ownership Refresher</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_8_1_mutual_exclusion_implemented_using_a_mutex.png" alt="Kernel Book Figure 8.1 mutual exclusion"></div>
+        <div class="panel tint-teal"><h3>Reading Focus</h3><ul><li>Only one task owns the resource at a time.</li><li>The owner must release the mutex.</li><li>The protected resource should be named.</li><li>Ownership is the root of later priority and deadlock issues.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Figure 8.1.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Inversion and deadlock begin with ownership, not with API spelling.</div>
+      <div class="page">06</div>
+    </section>
+    <section class="slide" id="s7">
+      <div class="slide-header"><div class="context">FreeRTOS Module 11</div><div class="framing">Ownership Timeline Reading</div></div>
+      <div class="content">
+        <h2>Ownership Timeline Reading</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_8_3_a_possible_sequence_of_execution_for_example_8_1.png" alt="Kernel Book Figure 8.3 mutex sequence"></div>
+        <div class="panel tint-blue"><h3>Reading Focus</h3><ul><li>Mark take and give points.</li><li>Write the owner above each interval.</li><li>Write every waiter below the interval.</li><li>Measure the longest hold time.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Figure 8.3.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A useful mutex diagram always shows owner, waiter, and hold time.</div>
+      <div class="page">07</div>
+    </section>
+    <section class="slide" id="s8">
+      <div class="slide-header"><div class="context">FreeRTOS Module 11</div><div class="framing">API Surface and Configuration</div></div>
+      <div class="content">
+        <h2>API Surface and Configuration</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Mutex APIs</h3><div class="api-list"><code>xSemaphoreCreateMutex()</code><code>xSemaphoreTake()</code><code>xSemaphoreGive()</code><code>xSemaphoreGetMutexHolder()</code></div></div>
+        <div class="panel tint-teal"><h3>Recursive APIs</h3><div class="api-list"><code>xSemaphoreCreateRecursiveMutex()</code><code>xSemaphoreTakeRecursive()</code><code>xSemaphoreGiveRecursive()</code></div></div>
+        <div class="panel tint-amber"><h3>Config</h3><div class="api-list"><code>configUSE_MUTEXES</code><code>configUSE_RECURSIVE_MUTEXES</code><code>configMAX_PRIORITIES</code><code>configASSERT()</code></div></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The API surface is small; the design consequences are not.</div>
+      <div class="page">08</div>
+    </section>
+    <section class="slide" id="s9">
+      <div class="slide-header"><div class="context">FreeRTOS Module 11</div><div class="framing">Priority Inversion Timeline</div></div>
+      <div class="content">
+        <h2>Priority Inversion Timeline</h2>
+        
+      <div class="flow4">
+        <div class="flow-node"><strong>Low priority</strong>Task L takes the mutex and starts using the resource.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>High priority</strong>Task H becomes Ready and tries to take the same mutex.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Medium priority</strong>Task M runs because L remains lower priority while H is blocked.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Observed delay</strong>Task H waits longer than the actual resource use time.</div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Inversion is a scheduling delay created by ownership.</div>
+      <div class="page">09</div>
+    </section>
+    <section class="slide" id="s10">
+      <div class="slide-header"><div class="context">FreeRTOS Module 11</div><div class="framing">Kernel Book Figure 8.5: Priority Inheritance</div></div>
+      <div class="content">
+        <h2>Kernel Book Figure 8.5: Priority Inheritance</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_8_5_priority_inheritance_minimizing_the_effect_of_priority_inversion.png" alt="Kernel Book Figure 8.5 priority inheritance"></div>
+        <div class="panel tint-green"><h3>Reading Focus</h3><ul><li>The mutex owner temporarily inherits a higher priority.</li><li>The boost reduces interference from medium-priority work.</li><li>The boost ends when the owner releases the mutex.</li><li>Inheritance minimizes inversion but does not fix long hold times.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Figure 8.5.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Priority inheritance is mitigation, not permission to hold locks casually.</div>
+      <div class="page">10</div>
+    </section>
+    <section class="slide" id="s11">
+      <div class="slide-header"><div class="context">FreeRTOS Module 11</div><div class="framing">Inheritance Limits</div></div>
+      <div class="content">
+        <h2>Inheritance Limits</h2>
+        
+      <div class="compare-rows">
+        <div class="compare-row"><div class="compare-head">Question</div><div class="compare-head">Inheritance helps</div><div class="compare-head">Inheritance does not solve</div></div>
+        <div class="compare-row"><div class="compare-cell">Medium-priority interference</div><div class="compare-cell">Owner can run sooner to release the mutex.</div><div class="compare-cell">The owner still must finish the protected work.</div></div>
+        <div class="compare-row"><div class="compare-cell">Long hold time</div><div class="compare-cell">Makes the owner more likely to run.</div><div class="compare-cell">Printing, blocking, allocation, or waiting while holding the mutex still hurts.</div></div>
+        <div class="compare-row"><div class="compare-cell">Deadlock</div><div class="compare-cell">No meaningful help for cyclic waiting.</div><div class="compare-cell">Lock order and ownership redesign are required.</div></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Do not teach priority inheritance as a cure-all.</div>
+      <div class="page">11</div>
+    </section>
+    <section class="slide" id="s12">
+      <div class="slide-header"><div class="context">FreeRTOS Module 11</div><div class="framing">Same-Priority Ownership Effects</div></div>
+      <div class="content">
+        <h2>Same-Priority Ownership Effects</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_8_6_a_possible_sequence_of_execution_when_tasks_that_have_the_same_priority.png" alt="Kernel Book Figure 8.6 same-priority mutex sequence"></div>
+        <div class="panel tint-blue"><h3>Reading Focus</h3><ul><li>Equal priority does not remove ownership waiting.</li><li>Blocking and time slicing determine observed order.</li><li>Hold time still affects responsiveness.</li><li>Fairness intuition can be misleading.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Figure 8.6.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Mutex review is still required when priorities match.</div>
+      <div class="page">12</div>
+    </section>
+    <section class="slide" id="s13">
+      <div class="slide-header"><div class="context">FreeRTOS Module 11</div><div class="framing">Deadlock Conditions</div></div>
+      <div class="content">
+        <h2>Deadlock Conditions</h2>
+        
+      <div class="deadlock-ring">
+        <div class="ring-step"><strong>Mutual exclusion</strong>At least one resource can be owned by only one task at a time.</div>
+        <div class="ring-step"><strong>Hold and wait</strong>A task holds one resource while waiting for another.</div>
+        <div class="ring-step"><strong>No preemption</strong>The resource is released only by its owner.</div>
+        <div class="ring-step"><strong>Circular wait</strong>A cycle exists: A waits for B while B waits for A.</div>
+      </div>
+      <div class="callout" style="margin-top:20px;">Breaking any one condition can prevent deadlock, but embedded designs often prefer lock ordering or ownership redesign.</div>
+    
+      </div>
+      <div class="takeaway">Deadlock is structural; timeouts only make it visible.</div>
+      <div class="page">13</div>
+    </section>
+    <section class="slide" id="s14">
+      <div class="slide-header"><div class="context">FreeRTOS Module 11</div><div class="framing">Two-Lock Deadlock Scenario</div></div>
+      <div class="content">
+        <h2>Two-Lock Deadlock Scenario</h2>
+        
+      <div class="flow4">
+        <div class="flow-node"><strong>Task A</strong>Takes UART mutex, then waits for SPI mutex.</div>
+        <div class="flow-arrow">&harr;</div>
+        <div class="flow-node"><strong>Task B</strong>Takes SPI mutex, then waits for UART mutex.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Cycle</strong>Neither owner can proceed because each waits for the other resource.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Evidence</strong>Both tasks blocked; timeout logs repeat without resource release.</div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Deadlock should be drawn as a resource-wait graph.</div>
+      <div class="page">14</div>
+    </section>
+    <section class="slide" id="s15">
+      <div class="slide-header"><div class="context">FreeRTOS Module 11</div><div class="framing">Lock Ordering Rule</div></div>
+      <div class="content">
+        <h2>Lock Ordering Rule</h2>
+        
+      <p class="subtitle">A global lock order avoids circular wait by forcing every task to acquire resources in the same sequence.</p>
+      <div class="lock-order">
+        <div class="lock-label">Order 1</div><div class="lock-line">Take system-state mutex before peripheral-driver mutex.</div>
+        <div class="lock-label">Order 2</div><div class="lock-line">Take UART mutex before log-buffer mutex only if both are required.</div>
+        <div class="lock-label">Order 3</div><div class="lock-line">Release in reverse order and avoid blocking operations while holding either lock.</div>
+      </div>
+      <div class="warning" style="margin-top:20px;">A lock order that lives only in one developer's memory is not a design rule.</div>
+    
+      </div>
+      <div class="takeaway">Lock ordering turns deadlock prevention into code-review evidence.</div>
+      <div class="page">15</div>
+    </section>
+    <section class="slide" id="s16">
+      <div class="slide-header"><div class="context">FreeRTOS Module 11</div><div class="framing">Timeouts and Recovery</div></div>
+      <div class="content">
+        <h2>Timeouts and Recovery</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Timeout value</h3><ul><li>A timed take can reveal unexpected waiting.</li><li>Timeout value should match system requirements.</li><li>A timeout is not automatically recovery.</li></ul></div>
+        <div class="panel tint-teal"><h3>Recovery policy</h3><ul><li>Log owner and resource state.</li><li>Abort or retry only if resource state remains consistent.</li><li>Escalate to reset only with clear system policy.</li></ul></div>
+        <div class="panel tint-amber"><h3>Review warning</h3><ul><li>Infinite waits hide failures.</li><li>Tiny timeouts can create noise.</li><li>Retry loops can worsen load.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Timeouts make stuck ownership observable; they do not automatically repair design.</div>
+      <div class="page">16</div>
+    </section>
+    <section class="slide" id="s17">
+      <div class="slide-header"><div class="context">FreeRTOS Module 11</div><div class="framing">Recursive Mutex as a Narrow Tool</div></div>
+      <div class="content">
+        <h2>Recursive Mutex as a Narrow Tool</h2>
+        
+      <div class="grid-2">
+        <div class="panel tint-blue"><h3>Valid pressure</h3><ul><li>A task re-enters a resource wrapper through controlled call nesting.</li><li>The same owner must take and give recursively.</li><li>Every take must have a matching give.</li></ul></div>
+        <div class="panel tint-amber"><h3>Design smell</h3><ul><li>Recursive mutex used to avoid understanding ownership.</li><li>Deep call tree hides lock state.</li><li>Multiple resources still need lock ordering.</li></ul></div>
+      </div>
+      <div class="callout" style="margin-top:20px;">Recursive mutexes reduce one reentrancy problem but can hide architecture problems.</div>
+    
+      </div>
+      <div class="takeaway">Use recursive mutex only when reentrant ownership is intentional.</div>
+      <div class="page">17</div>
+    </section>
+    <section class="slide" id="s18">
+      <div class="slide-header"><div class="context">FreeRTOS Module 11</div><div class="framing">Kernel Book Figure 8.7: Reentrancy Risk</div></div>
+      <div class="content">
+        <h2>Kernel Book Figure 8.7: Reentrancy Risk</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_8_7_a_sequence_of_execution_that_could_occur_if_two_instances_of_the_task_sh.png" alt="Kernel Book Figure 8.7 reentrancy risk"></div>
+        <div class="panel tint-teal"><h3>Reading Focus</h3><ul><li>Multiple task instances can enter similar code paths.</li><li>Shared resource access must be protected or redesigned.</li><li>Output examples can hide ownership problems.</li><li>Gatekeeper or mutex design should be explicit.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Figure 8.7.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Reentrancy risk is a resource ownership review trigger.</div>
+      <div class="page">18</div>
+    </section>
+    <section class="slide" id="s19">
+      <div class="slide-header"><div class="context">FreeRTOS Module 11</div><div class="framing">Gatekeeper Task Pattern</div></div>
+      <div class="content">
+        <h2>Gatekeeper Task Pattern</h2>
+        
+      <div class="flow4">
+        <div class="flow-node"><strong>Client task A</strong>Builds a request and sends it to a queue.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Request queue</strong>Serializes access requests and creates backpressure.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Gatekeeper task</strong>Exclusively owns UART, display, storage, or another shared service.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Resource</strong>No client task directly touches the resource.</div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Gatekeeper design replaces shared locking with explicit ownership transfer.</div>
+      <div class="page">19</div>
+    </section>
+    <section class="slide" id="s20">
+      <div class="slide-header"><div class="context">FreeRTOS Module 11</div><div class="framing">Gatekeeper Versus Direct Mutex</div></div>
+      <div class="content">
+        <h2>Gatekeeper Versus Direct Mutex</h2>
+        
+      <div class="compare-rows">
+        <div class="compare-row"><div class="compare-head">Aspect</div><div class="compare-head">Direct mutex</div><div class="compare-head">Gatekeeper task</div></div>
+        <div class="compare-row"><div class="compare-cell">Ownership</div><div class="compare-cell">Moves among client tasks.</div><div class="compare-cell">Stays in one service task.</div></div>
+        <div class="compare-row"><div class="compare-cell">Backpressure</div><div class="compare-cell">Tasks block on mutex.</div><div class="compare-cell">Queue depth and send failures expose pressure.</div></div>
+        <div class="compare-row"><div class="compare-cell">Timing risk</div><div class="compare-cell">Priority inversion and hold-time risk.</div><div class="compare-cell">Service task priority and queue capacity risk.</div></div>
+        <div class="compare-row"><div class="compare-cell">Best fit</div><div class="compare-cell">Short, simple resource use.</div><div class="compare-cell">Serialized service with clear request format.</div></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Gatekeeper is not always simpler, but it makes ownership explicit.</div>
+      <div class="page">20</div>
+    </section>
+    <section class="slide" id="s21">
+      <div class="slide-header"><div class="context">FreeRTOS Module 11</div><div class="framing">Shared UART Gatekeeper Case</div></div>
+      <div class="content">
+        <h2>Shared UART Gatekeeper Case</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Problem</h3><ul><li>Several tasks print status.</li><li>Formatting can take variable time.</li><li>UART driver should have one owner.</li></ul></div>
+        <div class="panel tint-teal"><h3>Design</h3><ul><li>Clients send text or structured log records.</li><li>Gatekeeper owns UART writes.</li><li>Queue depth gives pressure evidence.</li></ul></div>
+        <div class="panel tint-green"><h3>Review</h3><ul><li>Bound message size.</li><li>Decide drop or block policy.</li><li>Set gatekeeper priority deliberately.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A UART gatekeeper is often clearer than a print mutex scattered across tasks.</div>
+      <div class="page">21</div>
+    </section>
+    <section class="slide" id="s22">
+      <div class="slide-header"><div class="context">FreeRTOS Module 11</div><div class="framing">File or Flash Service Case</div></div>
+      <div class="content">
+        <h2>File or Flash Service Case</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Direct lock risk</h3><ul><li>File or flash operations can be long.</li><li>Client tasks may hold locks while waiting.</li><li>Power-fail and error recovery complicate ownership.</li></ul></div>
+        <div class="panel tint-teal"><h3>Gatekeeper fit</h3><ul><li>Single service task owns the storage driver.</li><li>Requests are serialized.</li><li>State machine and recovery stay in one place.</li></ul></div>
+        <div class="panel tint-amber"><h3>Evidence</h3><ul><li>Request queue depth.</li><li>Service latency.</li><li>Dropped or rejected request count.</li><li>Recovery log.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Long services often prefer serialized ownership over shared locks.</div>
+      <div class="page">22</div>
+    </section>
+    <section class="slide" id="s23">
+      <div class="slide-header"><div class="context">FreeRTOS Module 11</div><div class="framing">Priority Assignment for Gatekeepers</div></div>
+      <div class="content">
+        <h2>Priority Assignment for Gatekeepers</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Too low</h3><ul><li>Requests wait too long.</li><li>Queue depth grows.</li><li>Clients may block or drop records.</li></ul></div>
+        <div class="panel tint-teal"><h3>Too high</h3><ul><li>Service task can steal CPU from application work.</li><li>Long service operations become latency problems.</li><li>Backpressure may be hidden until late.</li></ul></div>
+        <div class="panel tint-green"><h3>Balanced</h3><ul><li>Priority based on service deadline.</li><li>Queue size based on burst analysis.</li><li>Trace confirms response time.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Gatekeeper priority is a design decision, not a default checkbox.</div>
+      <div class="page">23</div>
+    </section>
+    <section class="slide" id="s24">
+      <div class="slide-header"><div class="context">FreeRTOS Module 11</div><div class="framing">Caller Context Rules</div></div>
+      <div class="content">
+        <h2>Caller Context Rules</h2>
+        
+      <table class="mini-table">
+        <thead><tr><th>Action</th><th>Allowed context</th><th>Review question</th></tr></thead>
+        <tbody>
+          <tr><td>Take mutex</td><td>Task context</td><td>Can the task wait, and what is the timeout policy?</td></tr>
+          <tr><td>Give mutex</td><td>Mutex owner in task context</td><td>Is every error path paired with release?</td></tr>
+          <tr><td>Send gatekeeper request</td><td>Task context, or FromISR queue API if designed</td><td>What happens when request queue is full?</td></tr>
+          <tr><td>Use recursive mutex</td><td>Same owning task with matched recursive gives</td><td>Is reentrancy intentional or hiding bad ownership?</td></tr>
+        </tbody>
+      </table>
+    
+      </div>
+      <div class="takeaway">Caller context is part of ownership correctness.</div>
+      <div class="page">24</div>
+    </section>
+    <section class="slide" id="s25">
+      <div class="slide-header"><div class="context">FreeRTOS Module 11</div><div class="framing">Tutorial 14 Reading Path</div></div>
+      <div class="content">
+        <h2>Tutorial 14 Reading Path</h2>
+        
+      <div class="flow4">
+        <div class="flow-node"><strong>Roles</strong>Identify low, medium, and high priority tasks.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Mutex</strong>Mark who owns the mutex and who waits.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Timeline</strong>Predict execution before and after inheritance.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Evidence</strong>Compare output, trace, or log timing with the prediction.</div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Tutorial 14 should be read as a priority-inversion experiment.</div>
+      <div class="page">25</div>
+    </section>
+    <section class="slide" id="s26">
+      <div class="slide-header"><div class="context">FreeRTOS Module 11</div><div class="framing">Tutorial 21 Reading Path</div></div>
+      <div class="content">
+        <h2>Tutorial 21 Reading Path</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Protected resource</h3><ul><li>Name the shared object.</li><li>Identify every direct user.</li><li>Ask whether ownership is scattered.</li></ul></div>
+        <div class="panel tint-teal"><h3>Design comparison</h3><ul><li>Direct mutex access.</li><li>Gatekeeper queue access.</li><li>Critical section only for tiny invariants.</li></ul></div>
+        <div class="panel tint-green"><h3>Variation</h3><ul><li>Increase request burst.</li><li>Change gatekeeper priority.</li><li>Add timeout and log failure path.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Tutorial 21 should produce a resource-ownership design note.</div>
+      <div class="page">26</div>
+    </section>
+    <section class="slide" id="s27">
+      <div class="slide-header"><div class="context">FreeRTOS Module 11</div><div class="framing">Failure Modes Worth Naming Early</div></div>
+      <div class="content">
+        <h2>Failure Modes Worth Naming Early</h2>
+        
+      <div class="grid-3"><div class="panel tint-blue"><h3>Unbounded hold time</h3><ul><li>Owner blocks or prints while holding a mutex.</li><li>Higher-priority waiters suffer long delays.</li><li>Fix by moving slow work outside the protected region.</li></ul></div><div class="panel tint-teal"><h3>Circular wait</h3><ul><li>Task A holds X and waits for Y.</li><li>Task B holds Y and waits for X.</li><li>Fix by lock ordering or gatekeeper ownership.</li></ul></div><div class="panel tint-amber"><h3>Fake ownership</h3><ul><li>Binary semaphore used as a mutex.</li><li>Priority inheritance is absent.</li><li>Fix by using mutex for resource ownership.</li></ul></div></div>
+    
+      </div>
+      <div class="takeaway">The failure mode should be predictable from the design diagram.</div>
+      <div class="page">27</div>
+    </section>
+    <section class="slide" id="s28">
+      <div class="slide-header"><div class="context">FreeRTOS Module 11</div><div class="framing">Diagnostic Evidence</div></div>
+      <div class="content">
+        <h2>Diagnostic Evidence</h2>
+        
+      <div class="icon-strip">
+        <div class="icon-mini"><img src="../shared_assets/icons/mutex_lock.png" alt="">Owner</div>
+        <div class="icon-mini"><img src="../shared_assets/icons/timing_deadline.png" alt="">Hold time</div>
+        <div class="icon-mini"><img src="../shared_assets/icons/trace_diagnostics.png" alt="">Trace</div>
+        <div class="icon-mini"><img src="../shared_assets/icons/queue_message_passing.png" alt="">Queue depth</div>
+      </div>
+      <div class="grid-3" style="margin-top:18px;">
+        <div class="panel tint-blue"><h3>Lock evidence</h3><ul><li>Current owner.</li><li>Longest hold time.</li><li>Timeout count per mutex.</li></ul></div>
+        <div class="panel tint-teal"><h3>Priority evidence</h3><ul><li>Ready/Running timeline.</li><li>Inheritance interval.</li><li>High-priority wait duration.</li></ul></div>
+        <div class="panel tint-amber"><h3>Gatekeeper evidence</h3><ul><li>Request queue depth.</li><li>Service latency.</li><li>Dropped or rejected request count.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Evidence should distinguish lock problem, priority problem, and service-capacity problem.</div>
+      <div class="page">28</div>
+    </section>
+    <section class="slide" id="s29">
+      <div class="slide-header"><div class="context">FreeRTOS Module 11</div><div class="framing">Trace Views for Resource Problems</div></div>
+      <div class="content">
+        <h2>Trace Views for Resource Problems</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_12_6_figure_12_6_freertos_trace_kernel_object_history_view_one_of_more_than_2.png" alt="Kernel object history trace view"></div>
+        <div class="panel tint-blue"><h3>Reading Focus</h3><ul><li>Find mutex take and give events.</li><li>Find queue send and receive events for gatekeepers.</li><li>Match object history with task timeline.</li><li>Use trace as evidence before changing priorities.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Chapter 12 trace figure.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Resource bugs deserve timeline evidence.</div>
+      <div class="page">29</div>
+    </section>
+    <section class="slide" id="s30">
+      <div class="slide-header"><div class="context">FreeRTOS Module 11</div><div class="framing">Source Reading: semphr.h and queue.c</div></div>
+      <div class="content">
+        <h2>Source Reading: semphr.h and queue.c</h2>
+        
+      <div class="grid-2">
+        <div class="panel tint-blue"><h3>semphr.h</h3><ul><li>Read mutex and recursive mutex wrapper definitions.</li><li>Notice API similarities with semaphore names.</li><li>Keep semantic differences explicit.</li></ul></div>
+        <div class="panel tint-teal"><h3>queue.c</h3><ul><li>Find mutex take and give paths.</li><li>Look for priority inheritance handling.</li><li>Trace queue behavior used by gatekeeper request queues.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Implementation reuse should not erase design vocabulary.</div>
+      <div class="page">30</div>
+    </section>
+    <section class="slide" id="s31">
+      <div class="slide-header"><div class="context">FreeRTOS Module 11</div><div class="framing">Source Reading: tasks.c</div></div>
+      <div class="content">
+        <h2>Source Reading: tasks.c</h2>
+        
+      <div class="grid-3">
+        <div class="source-card"><strong>Ready lists</strong>Find how task priority affects scheduling after blocking and unblocking.</div>
+        <div class="source-card"><strong>Priority inheritance</strong>Read the owner boost and disinherit paths around mutex behavior.</div>
+        <div class="source-card"><strong>Timeout behavior</strong>Connect timed waits with blocked-list and wake-up behavior.</div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Priority inversion is visible in scheduler state.</div>
+      <div class="page">31</div>
+    </section>
+    <section class="slide" id="s32">
+      <div class="slide-header"><div class="context">FreeRTOS Module 11</div><div class="framing">Design Decision Table</div></div>
+      <div class="content">
+        <h2>Design Decision Table</h2>
+        
+      <table class="mini-table">
+        <thead><tr><th>Decision</th><th>Question</th><th>Evidence</th></tr></thead>
+        <tbody>
+          <tr><td>Direct mutex</td><td>Is protected work short and ownership simple?</td><td>Hold-time bound and release path</td></tr>
+          <tr><td>Lock ordering</td><td>Can any task acquire more than one mutex?</td><td>Global order table and code-review checklist</td></tr>
+          <tr><td>Timeout policy</td><td>What happens when ownership is unexpectedly delayed?</td><td>Timed wait, log, recovery, and system policy</td></tr>
+          <tr><td>Gatekeeper</td><td>Would one owner task simplify the resource story?</td><td>Request queue depth and service latency</td></tr>
+          <tr><td>Recursive mutex</td><td>Is reentrant ownership deliberate?</td><td>Matched recursive take/give and call-graph review</td></tr>
+        </tbody>
+      </table>
+    
+      </div>
+      <div class="takeaway">Resource design should be reviewed before code grows around it.</div>
+      <div class="page">32</div>
+    </section>
+    <section class="slide" id="s33">
+      <div class="slide-header"><div class="context">FreeRTOS Module 11</div><div class="framing">Testing Checklist</div></div>
+      <div class="content">
+        <h2>Testing Checklist</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Nominal path</h3><ul><li>Resource used by one task at a time.</li><li>Mutex released on every path.</li><li>Gatekeeper handles ordinary request load.</li></ul></div>
+        <div class="panel tint-teal"><h3>Pressure path</h3><ul><li>High-priority task waits for low-priority owner.</li><li>Two resources requested in different orders.</li><li>Gatekeeper request burst fills queue.</li></ul></div>
+        <div class="panel tint-green"><h3>Failure path</h3><ul><li>Timeout behavior logged.</li><li>Owner and resource state recorded.</li><li>Recovery policy documented.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A resource-management lab should intentionally create pressure.</div>
+      <div class="page">33</div>
+    </section>
+    <section class="slide" id="s34">
+      <div class="slide-header"><div class="context">FreeRTOS Module 11</div><div class="framing">Code Review Checklist</div></div>
+      <div class="content">
+        <h2>Code Review Checklist</h2>
+        
+      <div class="grid-2">
+        <div class="panel tint-blue"><h3>Lock review</h3><ul><li>Is the protected resource named?</li><li>Is hold time bounded?</li><li>Are all return paths paired with give?</li><li>Is lock order documented?</li></ul></div>
+        <div class="panel tint-green"><h3>Architecture review</h3><ul><li>Should a gatekeeper own the resource?</li><li>Is priority inheritance required?</li><li>Is timeout policy meaningful?</li><li>Is trace evidence available?</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The review should find design risk, not only syntax errors.</div>
+      <div class="page">34</div>
+    </section>
+    <section class="slide" id="s35">
+      <div class="slide-header"><div class="context">FreeRTOS Module 11</div><div class="framing">Object Choice and Alternatives</div></div>
+      <div class="content">
+        <h2>Object Choice and Alternatives</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/infographics/object_selection_map.png" alt="Object selection map"></div>
+        <div class="panel tint-blue"><h3>Alternative Questions</h3><ul><li>Can message passing avoid shared ownership?</li><li>Can a gatekeeper serialize all requests?</li><li>Can lock scope be reduced?</li><li>Can a resource be partitioned per task?</li><li>Can priority inversion be measured?</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The best mutex design may be no direct shared mutex at all.</div>
+      <div class="page">35</div>
+    </section>
+    <section class="slide" id="s36">
+      <div class="slide-header"><div class="context">FreeRTOS Module 11</div><div class="framing">Project Boundary Check</div></div>
+      <div class="content">
+        <h2>Project Boundary Check</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Build</h3><ul><li>Create a three-task priority inversion scenario.</li><li>Add logging for take, owner, wait, and give.</li><li>Record observed wait time.</li></ul></div>
+        <div class="panel tint-teal"><h3>Modify</h3><ul><li>Shorten hold time.</li><li>Add lock ordering.</li><li>Replace shared UART mutex with gatekeeper queue.</li></ul></div>
+        <div class="panel tint-green"><h3>Explain</h3><ul><li>Draw owner/waiter timeline.</li><li>State inheritance effect.</li><li>Compare direct mutex and gatekeeper evidence.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The lab output should be an ownership timeline plus a design decision.</div>
+      <div class="page">36</div>
+    </section>
+    <section class="slide" id="s37">
+      <div class="slide-header"><div class="context">FreeRTOS Module 11</div><div class="framing">Classroom Board Questions</div></div>
+      <div class="content">
+        <h2>Classroom Board Questions</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Who owns?</h3><ul><li>Current mutex owner.</li><li>Resource owner task.</li><li>Gatekeeper owner.</li></ul></div>
+        <div class="panel tint-teal"><h3>Who waits?</h3><ul><li>Priority of each waiter.</li><li>Timeout policy.</li><li>Blocked reason.</li></ul></div>
+        <div class="panel tint-amber"><h3>What breaks?</h3><ul><li>Inversion.</li><li>Deadlock.</li><li>Queue overflow.</li><li>Unbounded hold time.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The whiteboard should expose ownership before API details.</div>
+      <div class="page">37</div>
+    </section>
+    <section class="slide" id="s38">
+      <div class="slide-header"><div class="context">FreeRTOS Module 11</div><div class="framing">Review Questions</div></div>
+      <div class="content">
+        <h2>Review Questions</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Question 1</h3><p>How does a medium-priority task extend a priority inversion scenario?</p></div>
+        <div class="panel tint-teal"><h3>Question 2</h3><p>Why does priority inheritance reduce inversion but not solve deadlock?</p></div>
+        <div class="panel tint-amber"><h3>Question 3</h3><p>When is a gatekeeper task clearer than a mutex around a shared peripheral?</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A strong answer names owner, waiter, scheduler effect, and evidence.</div>
+      <div class="page">38</div>
+    </section>
+    <section class="slide" id="s39">
+      <div class="slide-header"><div class="context">FreeRTOS Module 11</div><div class="framing">One-Slide Summary</div></div>
+      <div class="content">
+        <h2>One-Slide Summary</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Inversion</h3><ul><li>High priority can wait behind low-priority ownership.</li><li>Inheritance mitigates medium-priority interference.</li><li>Hold time still matters.</li></ul></div>
+        <div class="panel tint-teal"><h3>Deadlock</h3><ul><li>Cyclic waiting is structural.</li><li>Timeouts reveal but do not automatically repair.</li><li>Lock order or redesign prevents cycles.</li></ul></div>
+        <div class="panel tint-green"><h3>Gatekeeper</h3><ul><li>One task owns the resource.</li><li>Requests are serialized through a queue.</li><li>Queue depth becomes evidence.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Resource management is ownership, scheduling, and evidence together.</div>
+      <div class="page">39</div>
+    </section>
+    <section class="slide" id="s40">
+      <div class="slide-header"><div class="context">FreeRTOS Module 11</div><div class="framing">Bridge to Module 12</div></div>
+      <div class="content">
+        <h2>Bridge to Module 12</h2>
+        
+      <p class="subtitle">Module 12 moves from resource ownership to bit-based condition synchronization with event groups.</p>
+      <div class="grid-3">
+        <div class="icon-card"><img src="../shared_assets/icons/mutex_lock.png" alt=""><div><strong>Ownership</strong><span>Module 11 focused on exclusive resource ownership.</span></div></div>
+        <div class="icon-card"><img src="../shared_assets/icons/event_bits_generated.png" alt=""><div><strong>Event bits</strong><span>Module 12 combines multiple boolean conditions.</span></div></div>
+        <div class="icon-card"><img src="../shared_assets/icons/blocked_waiting_state.png" alt=""><div><strong>Wait conditions</strong><span>Tasks can wait for any or all required bits.</span></div></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The next module changes the synchronization shape from ownership to condition bits.</div>
+      <div class="page">40</div>
+    </section>
+    <section class="slide" id="s41">
+      <div class="slide-header"><div class="context">FreeRTOS Module 11</div><div class="framing">References and Further Reading</div></div>
+      <div class="content">
+        <h2>References and Further Reading</h2>
+        
+      <p class="subtitle">References used in this module are separated from optional deeper reading.</p>
+      <div class="grid-2">
+        <div class="panel tint-blue">
+          <h3>References Used</h3>
+          <ul class="refs">
+            <li>FreeRTOS Kernel Book, Chapter 8, Resource Management.</li>
+            <li>FreeRTOS Kernel Book, Figures 8.1, 8.3, 8.4, 8.5, 8.6, and 8.7.</li>
+            <li>FreeRTOS Kernel Book, Chapter 12 trace figures for kernel object history and timing evidence.</li>
+            <li>Lab Project FreeRTOS Tutorials, Tutorial 14 and Tutorial 21.</li>
+            <li>FreeRTOS Kernel source: semphr.h, queue.c, tasks.c, and mutex priority inheritance paths.</li>
+          </ul>
+        </div>
+        <div class="panel tint-green">
+          <h3>Further Reading</h3>
+          <ul class="refs">
+            <li>FreeRTOS API reference: mutexes, recursive mutexes, queues, and task priority APIs.</li>
+            <li>Operating systems text reading on priority inversion, deadlock conditions, and resource allocation graphs.</li>
+            <li>Design pattern reading: active object, monitor task, or gatekeeper task for serialized resource ownership.</li>
+            <li>Tracealyzer or FreeRTOS trace documentation for mutex ownership and queue-service latency analysis.</li>
+          </ul>
+        </div>
+      </div>
+    
+      </div>
+      <div class="takeaway">References should support traceability and direct further study.</div>
+      <div class="page">41</div>
+    </section>
+  </main>
+  <script src="../shared_assets/slideshow.js"></script>
+</body>
+</html>

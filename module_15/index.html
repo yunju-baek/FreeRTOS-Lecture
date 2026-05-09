@@ -1,0 +1,863 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FreeRTOS Module 15 - Diagnostics, Troubleshooting, and Integration</title>
+  <style>
+:root {
+  --indigo:#2e315b; --blue:#2563a6; --teal:#147d83; --green:#2f7d4e;
+  --amber:#9a6a16; --violet:#6d4aa2; --graphite:#2b2f36; --muted:#637083;
+  --line:#d8dee9; --paper:#fff; --bg:#f4f6f9; --code:#eef2f7;
+  --soft-blue:#eef5fc; --soft-teal:#edf8f8; --soft-amber:#fff7e8;
+}
+* { box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { margin:0; background:var(--bg); color:var(--graphite); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans",Arial,sans-serif; line-height:1.44; }
+.nav { position:sticky; top:0; z-index:10; width:1280px; margin:0 auto; padding:10px 16px; background:rgba(244,246,249,.96); border-bottom:1px solid var(--line); color:#4f5969; font-size:15px; }
+.nav a { margin-right:8px; color:var(--blue); text-decoration:none; font-weight:800; }
+.deck { width:1280px; margin:0 auto; padding:28px 0 64px; }
+.slide { position:relative; width:1280px; min-height:720px; margin:0 0 32px; overflow:hidden; background:var(--paper); border:1px solid var(--line); box-shadow:0 18px 40px rgba(38,49,91,.12); page-break-after:always; }
+.slide-header { display:flex; justify-content:space-between; align-items:center; height:54px; padding:0 34px; background:var(--indigo); color:#fff; font-size:18px; }
+.context { font-weight:800; }
+.framing { color:#e1e6ff; font-size:16px; }
+.content { padding:30px 42px 58px; }
+h1,h2,h3,p { margin-top:0; }
+h1 { margin-bottom:14px; color:#fff; font-size:45px; line-height:1.08; letter-spacing:0; }
+h2 { margin-bottom:10px; color:#20243d; font-size:34px; line-height:1.12; letter-spacing:0; }
+h3 { margin-bottom:10px; color:var(--indigo); font-size:22px; letter-spacing:0; }
+.subtitle { max-width:1060px; margin-bottom:22px; color:#4a5260; font-size:22px; line-height:1.36; }
+.small { color:var(--muted); font-size:17px; }
+ul,ol { margin:0; padding-left:22px; }
+li { font-size:18.2px; }
+li + li { margin-top:6px; }
+code { padding:1px 5px; border-radius:4px; background:var(--code); color:#1d3152; font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace; font-size:.93em; }
+pre { margin:0; padding:15px 17px; border-radius:8px; background:#1f2633; color:#edf2ff; font-size:14.2px; line-height:1.42; overflow:hidden; white-space:pre-wrap; }
+pre code { padding:0; background:transparent; color:inherit; font-size:inherit; }
+.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+.grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
+.grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+.grid-13 { display:grid; grid-template-columns:1.12fr .88fr; gap:22px; align-items:stretch; }
+.grid-31 { display:grid; grid-template-columns:.82fr 1.18fr; gap:22px; align-items:stretch; }
+.panel { border:1px solid var(--line); border-radius:8px; padding:17px 19px; background:#fff; }
+.tint-blue { border-top:5px solid var(--blue); } .tint-teal { border-top:5px solid var(--teal); } .tint-green { border-top:5px solid var(--green); } .tint-amber { border-top:5px solid var(--amber); } .tint-violet { border-top:5px solid var(--violet); }
+.question { padding:16px 18px; border-left:6px solid var(--blue); background:var(--soft-blue); font-size:20px; }
+.callout { padding:16px 18px; border-left:6px solid var(--teal); background:var(--soft-teal); font-size:19px; }
+.warning { padding:16px 18px; border-left:6px solid var(--amber); background:var(--soft-amber); font-size:19px; }
+.takeaway { position:absolute; left:42px; right:120px; bottom:22px; color:#515a6b; font-size:17px; font-weight:700; }
+.page { position:absolute; right:36px; bottom:22px; color:#7a8290; font-size:16px; font-weight:800; }
+.cover { color:#fff; background:linear-gradient(120deg,rgba(46,49,91,.98),rgba(20,125,131,.9)),#2e315b; }
+.cover .slide-header { background:transparent; border-bottom:1px solid rgba(255,255,255,.24); }
+.cover .content { display:grid; grid-template-columns:1.08fr .92fr; gap:46px; align-items:center; padding-top:54px; }
+.cover .subtitle { color:#eef5ff; }
+.cover-card { min-height:390px; padding:28px; border:1px solid rgba(255,255,255,.35); border-radius:10px; background:rgba(255,255,255,.08); }
+.cover-card h3 { color:#fff; font-size:25px; }
+.cover-card li { color:#edf2ff; font-size:20px; }
+.icon-card { min-height:150px; display:grid; grid-template-columns:86px 1fr; gap:14px; align-items:center; border:1px solid var(--line); border-radius:8px; padding:15px; background:#fff; }
+.icon-card img { width:76px; height:76px; object-fit:contain; }
+.icon-card strong { display:block; color:var(--indigo); font-size:19px; margin-bottom:5px; }
+.icon-card span { display:block; color:#4e5969; font-size:16.5px; }
+.figure-frame { display:flex; align-items:center; justify-content:center; min-height:410px; border:1px solid var(--line); border-radius:10px; background:#fbfcfe; padding:18px; }
+.figure-frame img { max-width:100%; max-height:420px; object-fit:contain; }
+.figure-frame.tall img { max-height:505px; }
+.asset-note { margin-top:8px; color:var(--muted); font-size:15px; }
+.mini-table { width:100%; border-collapse:collapse; font-size:17px; }
+.mini-table th,.mini-table td { padding:9px 10px; border:1px solid var(--line); vertical-align:top; }
+.mini-table th { background:#eef2f7; color:var(--indigo); text-align:left; }
+.flow { display:grid; grid-template-columns:1fr 48px 1fr 48px 1fr; gap:10px; align-items:center; }
+.flowbox { min-height:112px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fff; text-align:center; font-size:17px; }
+.flowbox strong { display:block; margin-bottom:8px; color:var(--indigo); font-size:19px; }
+.arrow { text-align:center; color:var(--blue); font-size:32px; font-weight:900; }
+.timeline { display:grid; gap:12px; margin-top:10px; }
+.lane { display:grid; grid-template-columns:150px 1fr; gap:12px; align-items:center; }
+.lane-label { padding:10px 12px; border-radius:8px; background:#edf2ff; color:var(--indigo); font-weight:900; text-align:center; }
+.lane-body { display:flex; gap:6px; align-items:center; min-height:46px; padding:8px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+.bar { height:30px; border-radius:6px; color:#fff; font-size:14px; font-weight:800; display:flex; align-items:center; justify-content:center; }
+.run { background:var(--blue); } .block { background:var(--amber); } .idle { background:var(--green); } .tick { width:6px; height:36px; background:var(--teal); border-radius:4px; }
+.w80 { width:80px; } .w120 { width:120px; } .w180 { width:180px; } .w240 { width:240px; }
+.refs li { margin-top:9px; font-size:18px; }
+@media print { body{background:#fff;} .nav{display:none;} .deck{padding:0;} .slide{margin:0; box-shadow:none; border:0;} }
+
+.api-list { display:flex; flex-wrap:wrap; gap:10px; margin-top:10px; }
+.api-list code { display:inline-block; padding:8px 10px; font-size:17px; }
+.decision-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+.decision { min-height:132px; padding:13px; border:1px solid var(--line); border-top:5px solid var(--blue); border-radius:8px; background:#fff; font-size:16px; }
+.decision:nth-child(2) { border-top-color:var(--teal); }
+.decision:nth-child(3) { border-top-color:var(--amber); }
+.decision:nth-child(4) { border-top-color:var(--green); }
+.decision strong { display:block; color:var(--indigo); font-size:18px; margin-bottom:6px; }
+.lane-stack { display:grid; gap:12px; margin-top:12px; }
+.lane { display:grid; grid-template-columns:160px 1fr; gap:12px; align-items:center; }
+.lane-label { padding:10px 12px; border-radius:8px; background:#edf2ff; color:var(--indigo); font-weight:900; text-align:center; }
+.lane-body { min-height:48px; display:flex; gap:7px; align-items:center; padding:8px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+.seg { min-width:80px; height:30px; padding:0 10px; display:flex; align-items:center; justify-content:center; border-radius:6px; color:#fff; font-weight:900; font-size:14px; }
+.blue { background:var(--blue); } .teal { background:var(--teal); } .amber { background:var(--amber); } .green { background:var(--green); } .violet { background:var(--violet); }
+.w120 { width:120px; } .w180 { width:180px; } .w240 { width:240px; }
+.mini-arch { display:grid; grid-template-columns:1fr 48px 1fr 48px 1fr; gap:10px; align-items:center; }
+.arch-node { min-height:96px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fff; text-align:center; font-size:17px; }
+.arch-node strong { display:block; color:var(--indigo); font-size:19px; margin-bottom:7px; }
+.arrow { text-align:center; color:var(--blue); font-size:32px; font-weight:900; }
+.source-card { min-height:120px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fbfcfe; font-size:16.5px; }
+.source-card strong { display:block; color:var(--indigo); font-size:18px; margin-bottom:6px; }
+
+.flow4 { display:grid; grid-template-columns:1fr 40px 1fr 40px 1fr 40px 1fr; gap:8px; align-items:stretch; margin-top:16px; }
+.flow-node { min-height:116px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fff; font-size:16px; }
+.flow-node strong { display:block; color:var(--indigo); font-size:18px; margin-bottom:8px; }
+.flow-arrow { display:flex; align-items:center; justify-content:center; color:var(--blue); font-size:28px; font-weight:900; }
+.evidence-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:14px; }
+.evidence { min-height:156px; padding:14px; border:1px solid var(--line); border-top:5px solid var(--blue); border-radius:8px; background:#fff; font-size:16px; }
+.evidence:nth-child(2){border-top-color:var(--teal);} .evidence:nth-child(3){border-top-color:var(--amber);} .evidence:nth-child(4){border-top-color:var(--green);}
+.evidence strong { display:block; color:var(--indigo); font-size:18px; margin-bottom:8px; }
+.compare-rows { display:grid; gap:10px; margin-top:14px; }
+.compare-row { display:grid; grid-template-columns:170px 1fr 1fr; gap:10px; align-items:stretch; }
+.compare-head { padding:10px; border-radius:8px; background:var(--indigo); color:#fff; font-weight:900; text-align:center; }
+.compare-cell { min-height:52px; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:#fff; font-size:16px; }
+.icon-strip { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:16px; }
+.icon-mini { min-height:112px; padding:12px; border:1px solid var(--line); border-radius:8px; background:#fff; text-align:center; font-size:15px; }
+.icon-mini img { width:58px; height:58px; object-fit:contain; display:block; margin:0 auto 8px; }
+.checklist { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-top:14px; }
+.check { min-height:110px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fff; font-size:16px; }
+.check strong { display:block; color:var(--indigo); font-size:18px; margin-bottom:8px; }
+.trace-lens-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:16px; }
+.trace-lens { min-height:176px; padding:16px; border:1px solid var(--line); border-radius:8px; background:#fff; position:relative; overflow:hidden; }
+.trace-lens:before { content:""; position:absolute; left:0; right:0; top:0; height:6px; background:var(--blue); }
+.trace-lens:nth-child(2):before { background:var(--teal); }
+.trace-lens:nth-child(3):before { background:var(--amber); }
+.trace-lens:nth-child(4):before { background:var(--green); }
+.trace-lens:nth-child(5):before { background:#5b5fb0; }
+.trace-lens:nth-child(6):before { background:#a65375; }
+.trace-lens strong { display:block; color:var(--indigo); font-size:19px; margin-bottom:8px; }
+.trace-lens span { display:block; color:var(--muted); font-size:15px; line-height:1.35; }
+.trace-lens code { display:inline-block; margin-top:10px; font-size:15px; background:#eef3fb; color:var(--indigo); }
+.lane-chart { display:grid; gap:12px; margin-top:16px; }
+.lane { display:grid; grid-template-columns:130px 1fr; gap:12px; align-items:center; }
+.lane-name { font-weight:900; color:var(--indigo); font-size:17px; }
+.lane-track { height:38px; border:1px solid var(--line); border-radius:8px; background:linear-gradient(90deg,#f7f9fc,#eef3f7); position:relative; overflow:hidden; }
+.run { position:absolute; top:7px; height:22px; border-radius:6px; background:var(--blue); box-shadow:0 0 0 1px rgba(0,0,0,.08) inset; }
+.run.teal { background:var(--teal); }
+.run.amber { background:var(--amber); }
+.run.green { background:var(--green); }
+.run.red { background:#a65375; }
+.timeline-axis { display:flex; justify-content:space-between; color:var(--muted); font-size:14px; margin-left:142px; margin-top:8px; }
+.cpu-visual { display:grid; grid-template-columns:1.15fr .85fr; gap:18px; margin-top:16px; align-items:stretch; }
+.cpu-bars { padding:18px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+.bar-row { display:grid; grid-template-columns:120px 1fr 52px; gap:10px; align-items:center; margin:14px 0; font-size:16px; }
+.bar-shell { height:24px; border-radius:999px; background:#eef2f7; overflow:hidden; }
+.bar-fill { height:100%; border-radius:999px; background:var(--blue); }
+.bar-fill.teal { background:var(--teal); }
+.bar-fill.amber { background:var(--amber); }
+.bar-fill.green { background:var(--green); }
+.response-board { display:grid; grid-template-columns:1.2fr .8fr; gap:18px; margin-top:16px; align-items:stretch; }
+.response-plot { padding:18px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+.latency-row { display:grid; grid-template-columns:120px 1fr 82px; gap:10px; align-items:center; margin:16px 0; font-size:16px; }
+.latency-track { height:30px; border-radius:8px; background:linear-gradient(90deg,#dff4ee 0 45%,#fff4d8 45% 75%,#f8d7da 75% 100%); position:relative; border:1px solid var(--line); }
+.marker { position:absolute; top:4px; width:22px; height:22px; border-radius:50%; background:var(--indigo); box-shadow:0 0 0 3px rgba(255,255,255,.85); }
+.event-flow { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-top:18px; align-items:stretch; }
+.event-node { min-height:140px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fff; font-size:16px; position:relative; }
+.event-node:after { content:""; position:absolute; top:50%; right:-11px; width:20px; height:2px; background:var(--blue); }
+.event-node:last-child:after { display:none; }
+.event-node strong { display:block; color:var(--indigo); font-size:18px; margin-bottom:8px; }
+.event-stamp { display:inline-block; margin-top:10px; padding:5px 8px; border-radius:999px; background:#eef3fb; color:var(--blue); font-size:14px; font-weight:900; }
+.object-history-board { display:grid; grid-template-columns:1.15fr .85fr; gap:18px; margin-top:16px; align-items:stretch; }
+.object-lanes { padding:18px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+.object-row { display:grid; grid-template-columns:100px 1fr; gap:10px; align-items:center; margin:16px 0; font-size:16px; }
+.object-track { height:32px; border-radius:8px; background:#eef2f7; border:1px solid var(--line); position:relative; overflow:hidden; }
+.object-pulse { position:absolute; top:5px; height:20px; border-radius:6px; background:var(--teal); }
+.object-pulse.amber { background:var(--amber); }
+.object-pulse.green { background:var(--green); }
+.object-pulse.blue { background:var(--blue); }
+</style>
+  <link rel="stylesheet" href="../shared_assets/slideshow.css">
+</head>
+<body>
+  <nav class="nav"><a href="#s1">01</a><a href="#s2">02</a><a href="#s3">03</a><a href="#s4">04</a><a href="#s5">05</a><a href="#s6">06</a><a href="#s7">07</a><a href="#s8">08</a><a href="#s9">09</a><a href="#s10">10</a><a href="#s11">11</a><a href="#s12">12</a><a href="#s13">13</a><a href="#s14">14</a><a href="#s15">15</a><a href="#s16">16</a><a href="#s17">17</a><a href="#s18">18</a><a href="#s19">19</a><a href="#s20">20</a><a href="#s21">21</a><a href="#s22">22</a><a href="#s23">23</a><a href="#s24">24</a><a href="#s25">25</a><a href="#s26">26</a><a href="#s27">27</a><a href="#s28">28</a><a href="#s29">29</a><a href="#s30">30</a><a href="#s31">31</a><a href="#s32">32</a><a href="#s33">33</a><a href="#s34">34</a><a href="#s35">35</a><a href="#s36">36</a><a href="#s37">37</a><a href="#s38">38</a><a href="#s39">39</a><a href="#s40">40</a><a href="#s41">41</a><button class="slideshow-toggle" type="button" data-slideshow-start>Slideshow</button></nav>
+  
+  <div class="slideshow-controls" aria-label="Slideshow controls">
+    <button class="slide-control" type="button" data-slide-prev>Prev</button>
+    <span class="slide-counter" data-slide-counter>01 / 41</span>
+    <button class="slide-control" type="button" data-slide-next>Next</button>
+    <button class="slide-control" type="button" data-slide-fullscreen>Full</button>
+    <button class="slide-control" type="button" data-slide-fill aria-pressed="false">Fill</button>
+    <button class="slide-control" type="button" data-slide-exit>Exit</button>
+  </div>
+  <div class="slideshow-hint">Keys: Left/Right or PageUp/PageDown to move, Home/End to jump, S to toggle slideshow, F for fullscreen, Z for fit/fill, Esc to exit.</div>
+
+  <main class="deck">
+    
+    <section class="slide cover" id="s1">
+      <div class="slide-header"><div class="context">FreeRTOS Module 15</div><div class="framing">Diagnostics, Troubleshooting, and Integration</div></div>
+      <div class="content">
+        <div class="cover-grid">
+          <div>
+            <h1>Diagnostics, Troubleshooting, and Integration</h1>
+            <p>The final module turns FreeRTOS mechanisms into an engineering workflow: classify the symptom, collect the right evidence, test one hypothesis, and make the smallest justified change.</p>
+            <p class="cover-meta">Course: FreeRTOS Lecture<br>Embedded Systems Laboratory, Pusan National University<br>Instructor: Prof. Yunju Baek</p>
+          </div>
+          <div class="cover-card">
+            <h2>Learning path</h2>
+            <ul>
+              <li>Symptom classification before fixes</li>
+              <li>Stack, heap, task list, and runtime statistics</li>
+              <li>Trace views for timing and kernel object history</li>
+              <li>Assertions, hooks, watchdogs, and health monitoring</li>
+              <li>Integration review across tasks, interrupts, memory, and communication objects</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="takeaway">First target: do not tune FreeRTOS by guesswork.</div>
+      <div class="page">01</div>
+    </section>
+    <section class="slide" id="s2">
+      <div class="slide-header"><div class="context">FreeRTOS Module 15</div><div class="framing">Course Position</div></div>
+      <div class="content">
+        <h2>Course Position</h2>
+        
+      <p class="subtitle">Modules 03-14 introduced execution, memory, communication, synchronization, and interrupt mechanisms. Module 15 teaches how to debug their interactions.</p>
+      <div class="grid-3">
+        <div class="icon-card"><img src="../shared_assets/icons/trace_diagnostics.png" alt=""><div><strong>Trace</strong><span>Runtime behavior needs time-based evidence.</span></div></div>
+        <div class="icon-card"><img src="../shared_assets/icons/debugging_boundary.png" alt=""><div><strong>Failure class</strong><span>Symptoms should be classified before changing code.</span></div></div>
+        <div class="icon-card"><img src="../shared_assets/icons/watchdog_timer.png" alt=""><div><strong>Integration</strong><span>Health monitoring connects tasks, queues, timers, interrupts, and memory.</span></div></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The final module turns mechanisms into evidence-driven engineering.</div>
+      <div class="page">02</div>
+    </section>
+    <section class="slide" id="s3">
+      <div class="slide-header"><div class="context">FreeRTOS Module 15</div><div class="framing">Problem Frame</div></div>
+      <div class="content">
+        <h2>Problem Frame</h2>
+        
+      <div class="evidence-grid">
+        <div class="evidence"><strong>Intermittent timing</strong>Race, starvation, inversion, ISR latency, and queue pressure rarely reproduce on command.</div>
+        <div class="evidence"><strong>Wrong fix pressure</strong>Raising priority, increasing heap, or changing timeout can hide the true failure.</div>
+        <div class="evidence"><strong>Limited visibility</strong>Plain logs can distort timing and miss kernel object history.</div>
+        <div class="evidence"><strong>Integration risk</strong>Final systems combine memory, scheduler, interrupt, and communication failures.</div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A good diagnosis starts by naming the failure class.</div>
+      <div class="page">03</div>
+    </section>
+    <section class="slide" id="s4">
+      <div class="slide-header"><div class="context">FreeRTOS Module 15</div><div class="framing">Terminology Before Tools</div></div>
+      <div class="content">
+        <h2>Terminology Before Tools</h2>
+        
+      <table class="mini-table"><thead><tr><th>Term</th><th>Meaning in this module</th></tr></thead><tbody><tr><td><strong>Stack high-water mark</strong></td><td>Minimum remaining stack margin observed for a task.</td></tr><tr><td><strong>Minimum-ever free heap</strong></td><td>Lowest free heap level observed since startup.</td></tr><tr><td><strong>Runtime stats</strong></td><td>Per-task CPU time statistics collected through a configured timer source.</td></tr><tr><td><strong>Task list</strong></td><td>Snapshot of task state, priority, and stack margin information.</td></tr><tr><td><strong>Trace</strong></td><td>Time-ordered record of kernel and application events.</td></tr><tr><td><strong>Object history</strong></td><td>Timeline of queue, semaphore, mutex, timer, event group, or buffer activity.</td></tr><tr><td><strong>configASSERT()</strong></td><td>Assertion macro used to catch invalid assumptions near their source.</td></tr><tr><td><strong>Health monitor</strong></td><td>A task or service that records liveness, counters, and margins under real workload.</td></tr></tbody></table>
+    
+      </div>
+      <div class="takeaway">The terms describe evidence, not decorations.</div>
+      <div class="page">04</div>
+    </section>
+    <section class="slide" id="s5">
+      <div class="slide-header"><div class="context">FreeRTOS Module 15</div><div class="framing">Diagnostic Workflow</div></div>
+      <div class="content">
+        <h2>Diagnostic Workflow</h2>
+        
+      <div class="flow4">
+        <div class="flow-node"><strong>Classify symptom</strong>Memory, scheduling, communication, synchronization, interrupt, or integration boundary.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Choose evidence</strong>Stack mark, heap mark, trace, runtime stats, queue depth, assert, or counter.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Test one hypothesis</strong>Change one variable and predict the evidence movement.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Record decision</strong>Keep the fix tied to observed evidence and design intent.</div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The workflow protects students from random tuning.</div>
+      <div class="page">05</div>
+    </section>
+    <section class="slide" id="s6">
+      <div class="slide-header"><div class="context">FreeRTOS Module 15</div><div class="framing">Primary Visual Anchor</div></div>
+      <div class="content">
+        <h2>Primary Visual Anchor</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/infographics/memory_reliability_map.png" alt="Memory reliability map"></div>
+        <div class="panel tint-blue"><h3>Reading Order</h3><ul><li>Start with stack and heap margins.</li><li>Connect creation failures to allocation policy.</li><li>Connect runtime symptoms to object pressure.</li><li>Treat diagnostics as part of the design, not afterthoughts.</li></ul><p class="asset-note">Shared generated infographic asset.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Memory evidence remains the fastest way to rule in or rule out several failure classes.</div>
+      <div class="page">06</div>
+    </section>
+    <section class="slide" id="s7">
+      <div class="slide-header"><div class="context">FreeRTOS Module 15</div><div class="framing">API Surface Map</div></div>
+      <div class="content">
+        <h2>API Surface Map</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Task diagnostics</h3><div class="api-list"><code>uxTaskGetStackHighWaterMark()</code><code>vTaskList()</code><code>uxTaskGetSystemState()</code><code>vTaskGetRunTimeStats()</code></div></div>
+        <div class="panel tint-teal"><h3>Heap and hooks</h3><div class="api-list"><code>xPortGetFreeHeapSize()</code><code>xPortGetMinimumEverFreeHeapSize()</code><code>vApplicationMallocFailedHook()</code><code>vApplicationStackOverflowHook()</code></div></div>
+        <div class="panel tint-amber"><h3>Assertions and trace</h3><div class="api-list"><code>configASSERT()</code><code>traceTASK_SWITCHED_IN</code><code>traceQUEUE_SEND</code><code>traceQUEUE_RECEIVE</code><code>FreeRTOS+Trace</code></div></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Choose an API because it answers a question.</div>
+      <div class="page">07</div>
+    </section>
+    <section class="slide" id="s8">
+      <div class="slide-header"><div class="context">FreeRTOS Module 15</div><div class="framing">Configuration for Diagnostics</div></div>
+      <div class="content">
+        <h2>Configuration for Diagnostics</h2>
+        
+      <div class="grid-2">
+        <div class="panel tint-blue"><h3>Configuration macros</h3><div class="api-list"><code>configUSE_TRACE_FACILITY</code><code>configGENERATE_RUN_TIME_STATS</code><code>configCHECK_FOR_STACK_OVERFLOW</code><code>configUSE_MALLOC_FAILED_HOOK</code><code>configASSERT()</code><code>INCLUDE_uxTaskGetStackHighWaterMark</code></div></div>
+        <div class="panel tint-green"><h3>Review questions</h3><ul><li>Which diagnostics are enabled in debug builds?</li><li>Which remain available in production builds?</li><li>What timer source backs runtime stats?</li><li>Where are hook failures recorded before reset?</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Diagnostics require configuration before the bug appears.</div>
+      <div class="page">08</div>
+    </section>
+    <section class="slide" id="s9">
+      <div class="slide-header"><div class="context">FreeRTOS Module 15</div><div class="framing">Trace Evidence Has Different Lenses</div></div>
+      <div class="content">
+        <h2>Trace Evidence Has Different Lenses</h2>
+        
+      <p class="subtitle">Trace is useful only when each view answers a different question. Start by choosing the evidence lens, then inspect the trace.</p>
+      <div class="trace-lens-grid">
+        <div class="trace-lens"><strong>Timeline</strong><span>Which task actually ran, and when did the scheduler switch away?</span><code>task switches</code></div>
+        <div class="trace-lens"><strong>CPU Load</strong><span>Which task consumes execution time, and is idle time still available?</span><code>runtime share</code></div>
+        <div class="trace-lens"><strong>Response Time</strong><span>How long did an event wait before useful task work began?</span><code>latency</code></div>
+        <div class="trace-lens"><strong>User Events</strong><span>Where does application meaning enter the kernel timeline?</span><code>markers</code></div>
+        <div class="trace-lens"><strong>Object History</strong><span>Did queue, mutex, event group, or buffer behavior match the design story?</span><code>kernel object</code></div>
+        <div class="trace-lens"><strong>Snapshot APIs</strong><span>What can be checked without a full trace recorder?</span><code>task list</code></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Do not show a trace screenshot until the diagnostic question is clear.</div>
+      <div class="page">09</div>
+    </section>
+    <section class="slide" id="s10">
+      <div class="slide-header"><div class="context">FreeRTOS Module 15</div><div class="framing">Execution Timeline: Who Ran When?</div></div>
+      <div class="content">
+        <h2>Execution Timeline: Who Ran When?</h2>
+        
+      <p class="subtitle">The first trace question is not whether a task exists, but whether it actually reached Running state at the expected time.</p>
+      <div class="lane-chart">
+        <div class="lane"><div class="lane-name">ISR</div><div class="lane-track"><span class="run red" style="left:8%;width:5%"></span><span class="run red" style="left:58%;width:5%"></span></div></div>
+        <div class="lane"><div class="lane-name">Logger</div><div class="lane-track"><span class="run amber" style="left:14%;width:20%"></span><span class="run amber" style="left:66%;width:16%"></span></div></div>
+        <div class="lane"><div class="lane-name">Worker</div><div class="lane-track"><span class="run teal" style="left:38%;width:16%"></span><span class="run teal" style="left:84%;width:10%"></span></div></div>
+        <div class="lane"><div class="lane-name">Idle</div><div class="lane-track"><span class="run green" style="left:0%;width:8%"></span><span class="run green" style="left:34%;width:4%"></span><span class="run green" style="left:54%;width:4%"></span></div></div>
+      </div>
+      <div class="timeline-axis"><span>event</span><span>handoff</span><span>work</span><span>deadline</span></div>
+    
+      </div>
+      <div class="takeaway">A timeline makes priority, blocking, and ISR handoff visible.</div>
+      <div class="page">10</div>
+    </section>
+    <section class="slide" id="s11">
+      <div class="slide-header"><div class="context">FreeRTOS Module 15</div><div class="framing">CPU Load: Is the System Saturated?</div></div>
+      <div class="content">
+        <h2>CPU Load: Is the System Saturated?</h2>
+        
+      <p class="subtitle">CPU load separates two common hypotheses: there is not enough processor time, or the task is waiting for a kernel object.</p>
+      <div class="cpu-visual">
+        <div class="cpu-bars">
+          <div class="bar-row"><strong>Control</strong><div class="bar-shell"><div class="bar-fill" style="width:18%"></div></div><span>18%</span></div>
+          <div class="bar-row"><strong>Parser</strong><div class="bar-shell"><div class="bar-fill teal" style="width:24%"></div></div><span>24%</span></div>
+          <div class="bar-row"><strong>Logger</strong><div class="bar-shell"><div class="bar-fill amber" style="width:41%"></div></div><span>41%</span></div>
+          <div class="bar-row"><strong>Idle</strong><div class="bar-shell"><div class="bar-fill green" style="width:17%"></div></div><span>17%</span></div>
+        </div>
+        <div class="panel tint-blue"><h3>Reading Focus</h3><ul><li>High CPU load suggests execution pressure.</li><li>High idle time suggests blocking, handoff, or object pressure.</li><li>Compare before and after a priority change.</li><li>Runtime stats need a configured timer source.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">CPU load evidence prevents blind priority inflation.</div>
+      <div class="page">11</div>
+    </section>
+    <section class="slide" id="s12">
+      <div class="slide-header"><div class="context">FreeRTOS Module 15</div><div class="framing">Response Time: Did the Event Meet Its Deadline?</div></div>
+      <div class="content">
+        <h2>Response Time: Did the Event Meet Its Deadline?</h2>
+        
+      <p class="subtitle">A deadline claim needs event-to-work evidence. Measure from the external event or ISR marker to the task action that completes useful work.</p>
+      <div class="response-board">
+        <div class="response-plot">
+          <div class="latency-row"><strong>Nominal</strong><div class="latency-track"><span class="marker" style="left:28%"></span></div><span>1.8 ms</span></div>
+          <div class="latency-row"><strong>Burst</strong><div class="latency-track"><span class="marker" style="left:63%"></span></div><span>4.7 ms</span></div>
+          <div class="latency-row"><strong>Failure</strong><div class="latency-track"><span class="marker" style="left:86%"></span></div><span>7.9 ms</span></div>
+        </div>
+        <div class="panel tint-amber"><h3>Reading Focus</h3><ul><li>Separate average latency from worst-case latency.</li><li>Check whether the delay is before wake-up or during task execution.</li><li>Correlate deadline misses with queue depth and CPU load.</li><li>Use the same workload when comparing fixes.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Response time evidence belongs next to deadline claims.</div>
+      <div class="page">12</div>
+    </section>
+    <section class="slide" id="s13">
+      <div class="slide-header"><div class="context">FreeRTOS Module 15</div><div class="framing">User Events: Add Meaning to the Trace</div></div>
+      <div class="content">
+        <h2>User Events: Add Meaning to the Trace</h2>
+        
+      <p class="subtitle">Kernel events explain scheduling. User events explain why the application cared about that scheduling moment.</p>
+      <div class="event-flow">
+        <div class="event-node"><strong>Sensor IRQ</strong>Hardware says a sample is ready.<span class="event-stamp">EVT_SAMPLE</span></div>
+        <div class="event-node"><strong>Queue Send</strong>ISR or driver posts work to the parser.<span class="event-stamp">Q_SEND</span></div>
+        <div class="event-node"><strong>Parser Start</strong>Task begins useful application work.<span class="event-stamp">PARSE_IN</span></div>
+        <div class="event-node"><strong>Output Commit</strong>Control value or message is produced.<span class="event-stamp">COMMIT</span></div>
+        <div class="event-node"><strong>Deadline Check</strong>Application result is evaluated.<span class="event-stamp">OK / LATE</span></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">User events connect application meaning to kernel timing.</div>
+      <div class="page">13</div>
+    </section>
+    <section class="slide" id="s14">
+      <div class="slide-header"><div class="context">FreeRTOS Module 15</div><div class="framing">Object History: Did the Kernel Object Behave?</div></div>
+      <div class="content">
+        <h2>Object History: Did the Kernel Object Behave?</h2>
+        
+      <p class="subtitle">Object history is the trace view for design contracts: ownership, backpressure, signaling, and wait policy.</p>
+      <div class="object-history-board">
+        <div class="object-lanes">
+          <div class="object-row"><strong>Queue</strong><div class="object-track"><span class="object-pulse blue" style="left:5%;width:18%"></span><span class="object-pulse blue" style="left:32%;width:34%"></span><span class="object-pulse blue" style="left:74%;width:16%"></span></div></div>
+          <div class="object-row"><strong>Mutex</strong><div class="object-track"><span class="object-pulse amber" style="left:12%;width:28%"></span><span class="object-pulse amber" style="left:55%;width:35%"></span></div></div>
+          <div class="object-row"><strong>Event bits</strong><div class="object-track"><span class="object-pulse green" style="left:20%;width:12%"></span><span class="object-pulse green" style="left:48%;width:11%"></span><span class="object-pulse green" style="left:68%;width:18%"></span></div></div>
+          <div class="object-row"><strong>Buffer</strong><div class="object-track"><span class="object-pulse" style="left:8%;width:22%"></span><span class="object-pulse" style="left:40%;width:44%"></span></div></div>
+        </div>
+        <div class="panel tint-blue"><h3>Reading Focus</h3><ul><li>Queue history exposes producer/consumer pressure.</li><li>Mutex history exposes owner and hold time.</li><li>Event bits expose set, clear, and wait policy.</li><li>Buffer history exposes burst and parser backlog.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Object history tells whether the kernel object matches the design story.</div>
+      <div class="page">14</div>
+    </section>
+    <section class="slide" id="s15">
+      <div class="slide-header"><div class="context">FreeRTOS Module 15</div><div class="framing">Kernel Book Figure 12.7: vTaskList Output</div></div>
+      <div class="content">
+        <h2>Kernel Book Figure 12.7: vTaskList Output</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_12_7_example_output_generated_by_vtasklisttasks.png" alt="Kernel Book Figure 12.7 vTaskList output"></div>
+        <div class="panel tint-teal"><h3>Reading Focus</h3><ul><li>Read task state and priority together.</li><li>Check stack high-water mark columns carefully.</li><li>Use snapshots under known workload.</li><li>Do not treat one snapshot as a complete trace.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Figure 12.7.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Task lists are snapshots that guide deeper tracing.</div>
+      <div class="page">15</div>
+    </section>
+    <section class="slide" id="s16">
+      <div class="slide-header"><div class="context">FreeRTOS Module 15</div><div class="framing">Kernel Book Figure 12.8: Runtime Stats Output</div></div>
+      <div class="content">
+        <h2>Kernel Book Figure 12.8: Runtime Stats Output</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_12_8_example_output_generated_by_vtaskgetruntimestatistics.png" alt="Kernel Book Figure 12.8 runtime stats output"></div>
+        <div class="panel tint-blue"><h3>Reading Focus</h3><ul><li>Identify CPU-heavy tasks.</li><li>Compare with intended architecture.</li><li>Check runtime stats timer configuration.</li><li>Use numbers to validate or reject scheduling hypotheses.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Figure 12.8.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Runtime stats are CPU evidence, not a full timing model.</div>
+      <div class="page">16</div>
+    </section>
+    <section class="slide" id="s17">
+      <div class="slide-header"><div class="context">FreeRTOS Module 15</div><div class="framing">Stack and Heap Evidence</div></div>
+      <div class="content">
+        <h2>Stack and Heap Evidence</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Stack evidence</h3><ul><li>High-water mark under worst expected call path.</li><li>Stack overflow hook enabled in debug builds.</li><li>Large local arrays reviewed.</li></ul></div>
+        <div class="panel tint-teal"><h3>Heap evidence</h3><ul><li>Free heap and minimum-ever free heap.</li><li>Creation failure and malloc failed hook.</li><li>Fragmentation risk if allocation continues at runtime.</li></ul></div>
+        <div class="panel tint-amber"><h3>Wrong fix warning</h3><ul><li>Increasing heap does not fix stack overflow.</li><li>Increasing stack does not fix object leak.</li><li>Measure before changing memory sizes.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Stack and heap failures need different evidence.</div>
+      <div class="page">17</div>
+    </section>
+    <section class="slide" id="s18">
+      <div class="slide-header"><div class="context">FreeRTOS Module 15</div><div class="framing">Assertions and Hooks</div></div>
+      <div class="content">
+        <h2>Assertions and Hooks</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>configASSERT()</h3><ul><li>Catches illegal assumptions close to the source.</li><li>Useful for interrupt priority checks.</li><li>Should record enough location evidence.</li></ul></div>
+        <div class="panel tint-teal"><h3>Stack overflow hook</h3><ul><li>Detects configured stack overflow checks.</li><li>Records task identity if possible.</li><li>Often triggers late unless margins are monitored.</li></ul></div>
+        <div class="panel tint-amber"><h3>Malloc failed hook</h3><ul><li>Records allocation failure.</li><li>Connects to heap policy.</li><li>Should not attempt complex recovery blindly.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Hooks and assertions should leave usable evidence before the system resets.</div>
+      <div class="page">18</div>
+    </section>
+    <section class="slide" id="s19">
+      <div class="slide-header"><div class="context">FreeRTOS Module 15</div><div class="framing">Communication Object Evidence</div></div>
+      <div class="content">
+        <h2>Communication Object Evidence</h2>
+        
+      <div class="evidence-grid">
+        <div class="evidence"><strong>Queue</strong>Depth, send failure, receive timeout, item size, and producer/consumer rate.</div>
+        <div class="evidence"><strong>Semaphore</strong>Timeout count, give count, expected count, and lost-event suspicion.</div>
+        <div class="evidence"><strong>Mutex</strong>Owner, waiter, hold time, priority inheritance interval, and timeout path.</div>
+        <div class="evidence"><strong>Buffer</strong>Bytes available, spaces available, trigger level, failed send, and parser backlog.</div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Each object has its own best evidence.</div>
+      <div class="page">19</div>
+    </section>
+    <section class="slide" id="s20">
+      <div class="slide-header"><div class="context">FreeRTOS Module 15</div><div class="framing">Interrupt and Deferred Work Evidence</div></div>
+      <div class="content">
+        <h2>Interrupt and Deferred Work Evidence</h2>
+        
+      <div class="flow4">
+        <div class="flow-node"><strong>ISR entry</strong>Timestamp, source flag, priority, and clear operation.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Handoff</strong>FromISR API return value and xHigherPriorityTaskWoken path.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Worker wake</strong>Task Ready and Running timestamp after ISR exit.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Work completion</strong>Latency, backlog, drop count, and deadline result.</div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Interrupt debugging should show the whole deferred path.</div>
+      <div class="page">20</div>
+    </section>
+    <section class="slide" id="s21">
+      <div class="slide-header"><div class="context">FreeRTOS Module 15</div><div class="framing">Health Monitor Task Pattern</div></div>
+      <div class="content">
+        <h2>Health Monitor Task Pattern</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Collect</h3><ul><li>Task stack margins.</li><li>Minimum-ever heap.</li><li>Queue/buffer pressure counters.</li><li>Watchdog feed conditions.</li></ul></div>
+        <div class="panel tint-teal"><h3>Publish</h3><ul><li>Compact status snapshot.</li><li>Periodic UART or telemetry record.</li><li>Fault code stored before reset.</li></ul></div>
+        <div class="panel tint-green"><h3>Protect</h3><ul><li>Avoid heavy work in monitor.</li><li>Do not mask failures by feeding watchdog unconditionally.</li><li>Keep counters cheap and deterministic.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A health monitor should reveal failures, not hide them.</div>
+      <div class="page">21</div>
+    </section>
+    <section class="slide" id="s22">
+      <div class="slide-header"><div class="context">FreeRTOS Module 15</div><div class="framing">Watchdog Integration</div></div>
+      <div class="content">
+        <h2>Watchdog Integration</h2>
+        
+      <div class="compare-rows">
+        <div class="compare-row"><div class="compare-head">Approach</div><div class="compare-head">Useful behavior</div><div class="compare-head">Risk</div></div>
+        <div class="compare-row"><div class="compare-cell">Single feed task</div><div class="compare-cell">Centralized watchdog policy.</div><div class="compare-cell">Can feed even when worker tasks are dead.</div></div>
+        <div class="compare-row"><div class="compare-cell">Heartbeat aggregation</div><div class="compare-cell">Each critical task reports liveness before feed.</div><div class="compare-cell">Needs timeout and reset evidence policy.</div></div>
+        <div class="compare-row"><div class="compare-cell">Fault logging</div><div class="compare-cell">Stores reason before reset when possible.</div><div class="compare-cell">Must remain robust under failure pressure.</div></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Watchdog design is system health policy, not a timer checkbox.</div>
+      <div class="page">22</div>
+    </section>
+    <section class="slide" id="s23">
+      <div class="slide-header"><div class="context">FreeRTOS Module 15</div><div class="framing">Symptom-to-Evidence Matrix</div></div>
+      <div class="content">
+        <h2>Symptom-to-Evidence Matrix</h2>
+        
+      <table class="mini-table">
+        <thead><tr><th>Symptom</th><th>First evidence</th><th>Likely modules to revisit</th></tr></thead>
+        <tbody>
+          <tr><td>Random reset</td><td>assert location, fault log, stack margin, heap minimum</td><td>05, 08, 15</td></tr>
+          <tr><td>Missed event</td><td>ISR timestamp, queue/buffer depth, notification value, returned bits</td><td>07, 08, 12, 13, 14</td></tr>
+          <tr><td>Late response</td><td>trace response time, CPU load, priority timeline, object history</td><td>03, 04, 08, 11, 15</td></tr>
+          <tr><td>Stuck task</td><td>task list state, mutex owner, timeout log, deadlock graph</td><td>10, 11, 12, 15</td></tr>
+          <tr><td>Creation failure</td><td>heap minimum, return value, static allocation review</td><td>02, 05, 15</td></tr>
+        </tbody>
+      </table>
+    
+      </div>
+      <div class="takeaway">The symptom should point to a short evidence list.</div>
+      <div class="page">23</div>
+    </section>
+    <section class="slide" id="s24">
+      <div class="slide-header"><div class="context">FreeRTOS Module 15</div><div class="framing">Wrong Fix Patterns</div></div>
+      <div class="content">
+        <h2>Wrong Fix Patterns</h2>
+        
+      <div class="grid-3"><div class="panel tint-blue"><h3>Priority inflation</h3><ul><li>Raising priority hides queue pressure or long critical sections.</li><li>System becomes harder to reason about.</li><li>Fix by tracing wait reason first.</li></ul></div><div class="panel tint-teal"><h3>Memory padding</h3><ul><li>Increasing stack or heap without identifying the failing object.</li><li>Wastes RAM and leaves cause unknown.</li><li>Fix by measuring stack and heap separately.</li></ul></div><div class="panel tint-amber"><h3>Timeout guessing</h3><ul><li>Longer timeout hides deadlock or service delay.</li><li>Shorter timeout creates noisy failures.</li><li>Fix by defining recovery policy.</li></ul></div></div>
+    
+      </div>
+      <div class="takeaway">A fix without evidence is a new experiment pretending to be a solution.</div>
+      <div class="page">24</div>
+    </section>
+    <section class="slide" id="s25">
+      <div class="slide-header"><div class="context">FreeRTOS Module 15</div><div class="framing">Integration Review: Execution</div></div>
+      <div class="content">
+        <h2>Integration Review: Execution</h2>
+        
+      <div class="checklist">
+        <div class="check"><strong>Task set</strong>Every task has a purpose, priority rationale, stack estimate, and blocking point.</div>
+        <div class="check"><strong>Scheduler behavior</strong>CPU-bound tasks yield or block; deadlines have response-time evidence.</div>
+        <div class="check"><strong>Interrupt boundary</strong>ISRs are short, API-safe, and have xHigherPriorityTaskWoken evidence.</div>
+        <div class="check"><strong>Timer service</strong>Callbacks are short; daemon priority and command queue length are justified.</div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Execution review connects tasks, interrupts, and service work.</div>
+      <div class="page">25</div>
+    </section>
+    <section class="slide" id="s26">
+      <div class="slide-header"><div class="context">FreeRTOS Module 15</div><div class="framing">Integration Review: Memory</div></div>
+      <div class="content">
+        <h2>Integration Review: Memory</h2>
+        
+      <div class="checklist">
+        <div class="check"><strong>Allocation policy</strong>Dynamic and static object creation choices are deliberate and documented.</div>
+        <div class="check"><strong>Stack policy</strong>High-water marks are measured under stress, not guessed from examples.</div>
+        <div class="check"><strong>Heap policy</strong>Minimum-ever free heap is recorded; runtime allocation is reviewed.</div>
+        <div class="check"><strong>Buffer policy</strong>Queue, stream, message, and DMA buffer capacities match burst assumptions.</div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Memory review separates control blocks, stacks, heap, and payload buffers.</div>
+      <div class="page">26</div>
+    </section>
+    <section class="slide" id="s27">
+      <div class="slide-header"><div class="context">FreeRTOS Module 15</div><div class="framing">Integration Review: Communication</div></div>
+      <div class="content">
+        <h2>Integration Review: Communication</h2>
+        
+      <div class="checklist">
+        <div class="check"><strong>Payload shape</strong>Queue, stream buffer, message buffer, or notification choice preserves the needed information.</div>
+        <div class="check"><strong>Ownership</strong>Pointer queues, DMA buffers, and shared resources have explicit owners.</div>
+        <div class="check"><strong>Backpressure</strong>Every full queue or buffer has a failure policy and counter.</div>
+        <div class="check"><strong>Receiver model</strong>Single receiver, multiple receivers, and shared condition bits are not confused.</div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Communication review asks what crosses the boundary and who owns it.</div>
+      <div class="page">27</div>
+    </section>
+    <section class="slide" id="s28">
+      <div class="slide-header"><div class="context">FreeRTOS Module 15</div><div class="framing">Integration Review: Synchronization</div></div>
+      <div class="content">
+        <h2>Integration Review: Synchronization</h2>
+        
+      <div class="checklist">
+        <div class="check"><strong>Signal vs ownership</strong>Semaphores, mutexes, and notifications are not substituted casually.</div>
+        <div class="check"><strong>Mutex review</strong>Owner, hold time, timeout, lock ordering, and inversion evidence are visible.</div>
+        <div class="check"><strong>Event bits</strong>Bit meaning, setter, clear owner, and wait policy are documented.</div>
+        <div class="check"><strong>Critical sections</strong>Protected regions are tiny and have latency justification.</div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Synchronization review prevents elegant APIs from becoming hidden protocols.</div>
+      <div class="page">28</div>
+    </section>
+    <section class="slide" id="s29">
+      <div class="slide-header"><div class="context">FreeRTOS Module 15</div><div class="framing">STM32CubeIDE Integration Checklist</div></div>
+      <div class="content">
+        <h2>STM32CubeIDE Integration Checklist</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Build view</h3><ul><li>FreeRTOSConfig.h macros.</li><li>Linker map file.</li><li>Static versus dynamic allocation.</li><li>Compiler optimization level.</li></ul></div>
+        <div class="panel tint-teal"><h3>Debug view</h3><ul><li>Task-aware debug if available.</li><li>Fault registers.</li><li>Watch expressions for counters.</li><li>SWV or UART logging.</li></ul></div>
+        <div class="panel tint-green"><h3>Board view</h3><ul><li>NVIC priorities.</li><li>UART and DMA mapping.</li><li>Watchdog policy.</li><li>LED or GPIO heartbeat evidence.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Integration evidence should reach from source code to board behavior.</div>
+      <div class="page">29</div>
+    </section>
+    <section class="slide" id="s30">
+      <div class="slide-header"><div class="context">FreeRTOS Module 15</div><div class="framing">Source Reading Map</div></div>
+      <div class="content">
+        <h2>Source Reading Map</h2>
+        
+      <div class="grid-3">
+        <div class="source-card"><strong>tasks.c</strong>Scheduler, task states, stack APIs, runtime stats, task notification paths.</div>
+        <div class="source-card"><strong>queue.c</strong>Queues, semaphores, mutexes, queue sets, blocking and unblocking paths.</div>
+        <div class="source-card"><strong>timers.c / event_groups.c / stream_buffer.c</strong>Service-task behavior, bit synchronization, stream/message buffer pressure.</div>
+      </div>
+      <div class="callout" style="margin-top:22px;">Source reading should follow one symptom through one path, not wander through files alphabetically.</div>
+    
+      </div>
+      <div class="takeaway">The source map keeps diagnosis grounded in implementation.</div>
+      <div class="page">30</div>
+    </section>
+    <section class="slide" id="s31">
+      <div class="slide-header"><div class="context">FreeRTOS Module 15</div><div class="framing">Object Choice Revisited</div></div>
+      <div class="content">
+        <h2>Object Choice Revisited</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/infographics/object_selection_map.png" alt="Object selection map"></div>
+        <div class="panel tint-blue"><h3>Final Review Questions</h3><ul><li>Does the object preserve payload, count, condition, or ownership correctly?</li><li>Can the caller legally block?</li><li>Can the failure path be observed?</li><li>Can the design be explained from source and trace evidence?</li></ul><p class="asset-note">Shared generated infographic asset.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A final design review should revisit object choice with evidence.</div>
+      <div class="page">31</div>
+    </section>
+    <section class="slide" id="s32">
+      <div class="slide-header"><div class="context">FreeRTOS Module 15</div><div class="framing">Mini Case: Missed UART Command</div></div>
+      <div class="content">
+        <h2>Mini Case: Missed UART Command</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Symptom</h3><ul><li>Command sometimes missing.</li><li>UART ISR still fires.</li><li>Parser task appears alive.</li></ul></div>
+        <div class="panel tint-teal"><h3>Evidence</h3><ul><li>Stream buffer dropped byte count.</li><li>Parser wake latency.</li><li>Trigger level and buffer fill history.</li></ul></div>
+        <div class="panel tint-green"><h3>Decision</h3><ul><li>Adjust parser priority only if trace supports it.</li><li>Adjust buffer size only if pressure supports it.</li><li>Review ISR send return values.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The case links Module 08 and Module 14 evidence.</div>
+      <div class="page">32</div>
+    </section>
+    <section class="slide" id="s33">
+      <div class="slide-header"><div class="context">FreeRTOS Module 15</div><div class="framing">Mini Case: Random Reset Under Load</div></div>
+      <div class="content">
+        <h2>Mini Case: Random Reset Under Load</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Symptom</h3><ul><li>Reset occurs during burst workload.</li><li>No obvious source log line.</li><li>Reproduction is intermittent.</li></ul></div>
+        <div class="panel tint-teal"><h3>Evidence</h3><ul><li>assert location.</li><li>stack high-water marks.</li><li>minimum-ever heap.</li><li>fault status registers.</li></ul></div>
+        <div class="panel tint-amber"><h3>Decision</h3><ul><li>Separate stack from heap hypothesis.</li><li>Record failure before watchdog reset.</li><li>Use stress case with one changed variable.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The case links Module 05 and Module 15 evidence.</div>
+      <div class="page">33</div>
+    </section>
+    <section class="slide" id="s34">
+      <div class="slide-header"><div class="context">FreeRTOS Module 15</div><div class="framing">Mini Case: High-Priority Task Late</div></div>
+      <div class="content">
+        <h2>Mini Case: High-Priority Task Late</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Symptom</h3><ul><li>High-priority worker misses deadline.</li><li>Increasing priority does not help.</li><li>CPU load seems moderate.</li></ul></div>
+        <div class="panel tint-teal"><h3>Evidence</h3><ul><li>Response time trace.</li><li>mutex owner timeline.</li><li>queue or notification handoff time.</li><li>ISR exit to worker start.</li></ul></div>
+        <div class="panel tint-green"><h3>Decision</h3><ul><li>Check inversion before changing priority.</li><li>Check handoff object pressure.</li><li>Shorten hold time or redesign ownership.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The case links Modules 08, 11, and 13.</div>
+      <div class="page">34</div>
+    </section>
+    <section class="slide" id="s35">
+      <div class="slide-header"><div class="context">FreeRTOS Module 15</div><div class="framing">Tutorial Reading Setup</div></div>
+      <div class="content">
+        <h2>Tutorial Reading Setup</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Before running</h3><ul><li>Choose one earlier tutorial.</li><li>Predict task states and object pressure.</li><li>Choose two diagnostic counters.</li></ul></div>
+        <div class="panel tint-teal"><h3>During run</h3><ul><li>Collect stack and heap margins.</li><li>Collect object pressure counters.</li><li>Capture trace or timestamped logs.</li></ul></div>
+        <div class="panel tint-green"><h3>After run</h3><ul><li>Compare prediction and evidence.</li><li>Change one variable.</li><li>Write a one-page diagnosis note.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The final lab should transform a tutorial into a diagnosis exercise.</div>
+      <div class="page">35</div>
+    </section>
+    <section class="slide" id="s36">
+      <div class="slide-header"><div class="context">FreeRTOS Module 15</div><div class="framing">Capstone Project Boundary Check</div></div>
+      <div class="content">
+        <h2>Capstone Project Boundary Check</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Build</h3><ul><li>Two or more tasks.</li><li>One ISR handoff.</li><li>One communication object.</li><li>One health monitor snapshot.</li></ul></div>
+        <div class="panel tint-teal"><h3>Stress</h3><ul><li>Burst producer.</li><li>Delayed consumer.</li><li>Low memory margin.</li><li>Priority or mutex pressure.</li></ul></div>
+        <div class="panel tint-green"><h3>Explain</h3><ul><li>Object choices.</li><li>Failure counters.</li><li>Trace or timing evidence.</li><li>Smallest justified fix.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The capstone output is a design review plus evidence, not a demo that happens to run.</div>
+      <div class="page">36</div>
+    </section>
+    <section class="slide" id="s37">
+      <div class="slide-header"><div class="context">FreeRTOS Module 15</div><div class="framing">Code Review Checklist</div></div>
+      <div class="content">
+        <h2>Code Review Checklist</h2>
+        
+      <div class="grid-2">
+        <div class="panel tint-blue"><h3>Mechanism review</h3><ul><li>Return values checked.</li><li>Block times explicit.</li><li>FromISR variants correct.</li><li>Handles and object lifetimes valid.</li><li>Stack and heap margins measured.</li></ul></div>
+        <div class="panel tint-green"><h3>Design review</h3><ul><li>Object choice justified.</li><li>Ownership documented.</li><li>Backpressure visible.</li><li>Timeout recovery defined.</li><li>Health evidence collected under stress.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A final review should find missing evidence as readily as missing code.</div>
+      <div class="page">37</div>
+    </section>
+    <section class="slide" id="s38">
+      <div class="slide-header"><div class="context">FreeRTOS Module 15</div><div class="framing">Classroom Board Questions</div></div>
+      <div class="content">
+        <h2>Classroom Board Questions</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>What failed?</h3><ul><li>Memory.</li><li>Timing.</li><li>Communication.</li><li>Synchronization.</li><li>Interrupt boundary.</li></ul></div>
+        <div class="panel tint-teal"><h3>What evidence?</h3><ul><li>Trace.</li><li>Stack mark.</li><li>Heap minimum.</li><li>Object history.</li><li>Counter.</li></ul></div>
+        <div class="panel tint-amber"><h3>What changed?</h3><ul><li>One variable.</li><li>Predicted effect.</li><li>Measured result.</li><li>Recorded decision.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">These questions are the course&#x27;s final debugging habit.</div>
+      <div class="page">38</div>
+    </section>
+    <section class="slide" id="s39">
+      <div class="slide-header"><div class="context">FreeRTOS Module 15</div><div class="framing">Review Questions</div></div>
+      <div class="content">
+        <h2>Review Questions</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Question 1</h3><p>Why can increasing task priority hide the real cause of a missed deadline?</p></div>
+        <div class="panel tint-teal"><h3>Question 2</h3><p>Which evidence separates stack overflow risk from heap exhaustion risk?</p></div>
+        <div class="panel tint-amber"><h3>Question 3</h3><p>How would object history trace help debug a full queue or stuck mutex?</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A strong answer names symptom, evidence, hypothesis, and justified fix.</div>
+      <div class="page">39</div>
+    </section>
+    <section class="slide" id="s40">
+      <div class="slide-header"><div class="context">FreeRTOS Module 15</div><div class="framing">One-Slide Course Summary</div></div>
+      <div class="content">
+        <h2>One-Slide Course Summary</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Execution</h3><ul><li>Tasks, priorities, tick, blocking, interrupts, and deferred work define timing.</li></ul></div>
+        <div class="panel tint-teal"><h3>Objects</h3><ul><li>Queues, semaphores, mutexes, event groups, notifications, and buffers encode design semantics.</li></ul></div>
+        <div class="panel tint-green"><h3>Evidence</h3><ul><li>Stack, heap, trace, runtime stats, object history, and counters turn behavior into engineering decisions.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">FreeRTOS expertise is the ability to connect mechanism, design intent, and evidence.</div>
+      <div class="page">40</div>
+    </section>
+    <section class="slide" id="s41">
+      <div class="slide-header"><div class="context">FreeRTOS Module 15</div><div class="framing">References and Further Reading</div></div>
+      <div class="content">
+        <h2>References and Further Reading</h2>
+        
+      <p class="subtitle">References used in this module are separated from optional deeper reading.</p>
+      <div class="grid-2">
+        <div class="panel tint-blue">
+          <h3>References Used</h3>
+          <ul class="refs">
+            <li>FreeRTOS Kernel Book, Chapter 12, Troubleshooting and Diagnostics.</li>
+            <li>FreeRTOS Kernel Book, Figures 12.1 through 12.8.</li>
+            <li>FreeRTOS API reference: task diagnostics, heap APIs, hook functions, runtime stats, and trace configuration.</li>
+            <li>FreeRTOS Kernel source: tasks.c, queue.c, timers.c, event_groups.c, stream_buffer.c, and portable layer diagnostics.</li>
+            <li>Course Modules 03-14 as integrated design and troubleshooting references.</li>
+          </ul>
+        </div>
+        <div class="panel tint-green">
+          <h3>Further Reading</h3>
+          <ul class="refs">
+            <li>FreeRTOS+Trace or Percepio Tracealyzer documentation for time-based debugging and object history.</li>
+            <li>MCU vendor documentation for HardFault analysis, NVIC priorities, watchdogs, SWV/ITM, and map-file review.</li>
+            <li>FreeRTOS official documentation on configASSERT, stack overflow hooks, malloc failed hooks, and runtime stats configuration.</li>
+            <li>Embedded systems texts on real-time debugging, observability, watchdog architecture, and design review checklists.</li>
+          </ul>
+        </div>
+      </div>
+    
+      </div>
+      <div class="takeaway">References should support traceability and direct further study.</div>
+      <div class="page">41</div>
+    </section>
+  </main>
+  <script src="../shared_assets/slideshow.js"></script>
+</body>
+</html>

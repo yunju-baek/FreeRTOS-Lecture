@@ -1,0 +1,795 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FreeRTOS Module 08 - Interrupt Management and Deferred Processing</title>
+  <style>
+:root {
+  --indigo:#2e315b; --blue:#2563a6; --teal:#147d83; --green:#2f7d4e;
+  --amber:#9a6a16; --violet:#6d4aa2; --graphite:#2b2f36; --muted:#637083;
+  --line:#d8dee9; --paper:#fff; --bg:#f4f6f9; --code:#eef2f7;
+  --soft-blue:#eef5fc; --soft-teal:#edf8f8; --soft-amber:#fff7e8;
+}
+* { box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { margin:0; background:var(--bg); color:var(--graphite); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans",Arial,sans-serif; line-height:1.44; }
+.nav { position:sticky; top:0; z-index:10; width:1280px; margin:0 auto; padding:10px 16px; background:rgba(244,246,249,.96); border-bottom:1px solid var(--line); color:#4f5969; font-size:15px; }
+.nav a { margin-right:8px; color:var(--blue); text-decoration:none; font-weight:800; }
+.deck { width:1280px; margin:0 auto; padding:28px 0 64px; }
+.slide { position:relative; width:1280px; min-height:720px; margin:0 0 32px; overflow:hidden; background:var(--paper); border:1px solid var(--line); box-shadow:0 18px 40px rgba(38,49,91,.12); page-break-after:always; }
+.slide-header { display:flex; justify-content:space-between; align-items:center; height:54px; padding:0 34px; background:var(--indigo); color:#fff; font-size:18px; }
+.context { font-weight:800; }
+.framing { color:#e1e6ff; font-size:16px; }
+.content { padding:30px 42px 58px; }
+h1,h2,h3,p { margin-top:0; }
+h1 { margin-bottom:14px; color:#fff; font-size:45px; line-height:1.08; letter-spacing:0; }
+h2 { margin-bottom:10px; color:#20243d; font-size:34px; line-height:1.12; letter-spacing:0; }
+h3 { margin-bottom:10px; color:var(--indigo); font-size:22px; letter-spacing:0; }
+.subtitle { max-width:1060px; margin-bottom:22px; color:#4a5260; font-size:22px; line-height:1.36; }
+.small { color:var(--muted); font-size:17px; }
+ul,ol { margin:0; padding-left:22px; }
+li { font-size:18.2px; }
+li + li { margin-top:6px; }
+code { padding:1px 5px; border-radius:4px; background:var(--code); color:#1d3152; font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace; font-size:.93em; }
+pre { margin:0; padding:15px 17px; border-radius:8px; background:#1f2633; color:#edf2ff; font-size:14.2px; line-height:1.42; overflow:hidden; white-space:pre-wrap; }
+pre code { padding:0; background:transparent; color:inherit; font-size:inherit; }
+.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+.grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
+.grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+.grid-13 { display:grid; grid-template-columns:1.12fr .88fr; gap:22px; align-items:stretch; }
+.grid-31 { display:grid; grid-template-columns:.82fr 1.18fr; gap:22px; align-items:stretch; }
+.panel { border:1px solid var(--line); border-radius:8px; padding:17px 19px; background:#fff; }
+.tint-blue { border-top:5px solid var(--blue); } .tint-teal { border-top:5px solid var(--teal); } .tint-green { border-top:5px solid var(--green); } .tint-amber { border-top:5px solid var(--amber); } .tint-violet { border-top:5px solid var(--violet); }
+.question { padding:16px 18px; border-left:6px solid var(--blue); background:var(--soft-blue); font-size:20px; }
+.callout { padding:16px 18px; border-left:6px solid var(--teal); background:var(--soft-teal); font-size:19px; }
+.warning { padding:16px 18px; border-left:6px solid var(--amber); background:var(--soft-amber); font-size:19px; }
+.takeaway { position:absolute; left:42px; right:120px; bottom:22px; color:#515a6b; font-size:17px; font-weight:700; }
+.page { position:absolute; right:36px; bottom:22px; color:#7a8290; font-size:16px; font-weight:800; }
+.cover { color:#fff; background:linear-gradient(120deg,rgba(46,49,91,.98),rgba(20,125,131,.9)),#2e315b; }
+.cover .slide-header { background:transparent; border-bottom:1px solid rgba(255,255,255,.24); }
+.cover .content { display:grid; grid-template-columns:1.08fr .92fr; gap:46px; align-items:center; padding-top:54px; }
+.cover .subtitle { color:#eef5ff; }
+.cover-card { min-height:390px; padding:28px; border:1px solid rgba(255,255,255,.35); border-radius:10px; background:rgba(255,255,255,.08); }
+.cover-card h3 { color:#fff; font-size:25px; }
+.cover-card li { color:#edf2ff; font-size:20px; }
+.icon-card { min-height:150px; display:grid; grid-template-columns:86px 1fr; gap:14px; align-items:center; border:1px solid var(--line); border-radius:8px; padding:15px; background:#fff; }
+.icon-card img { width:76px; height:76px; object-fit:contain; }
+.icon-card strong { display:block; color:var(--indigo); font-size:19px; margin-bottom:5px; }
+.icon-card span { display:block; color:#4e5969; font-size:16.5px; }
+.figure-frame { display:flex; align-items:center; justify-content:center; min-height:410px; border:1px solid var(--line); border-radius:10px; background:#fbfcfe; padding:18px; }
+.figure-frame img { max-width:100%; max-height:420px; object-fit:contain; }
+.figure-frame.tall img { max-height:505px; }
+.asset-note { margin-top:8px; color:var(--muted); font-size:15px; }
+.mini-table { width:100%; border-collapse:collapse; font-size:17px; }
+.mini-table th,.mini-table td { padding:9px 10px; border:1px solid var(--line); vertical-align:top; }
+.mini-table th { background:#eef2f7; color:var(--indigo); text-align:left; }
+.flow { display:grid; grid-template-columns:1fr 48px 1fr 48px 1fr; gap:10px; align-items:center; }
+.flowbox { min-height:112px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fff; text-align:center; font-size:17px; }
+.flowbox strong { display:block; margin-bottom:8px; color:var(--indigo); font-size:19px; }
+.arrow { text-align:center; color:var(--blue); font-size:32px; font-weight:900; }
+.timeline { display:grid; gap:12px; margin-top:10px; }
+.lane { display:grid; grid-template-columns:150px 1fr; gap:12px; align-items:center; }
+.lane-label { padding:10px 12px; border-radius:8px; background:#edf2ff; color:var(--indigo); font-weight:900; text-align:center; }
+.lane-body { display:flex; gap:6px; align-items:center; min-height:46px; padding:8px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+.bar { height:30px; border-radius:6px; color:#fff; font-size:14px; font-weight:800; display:flex; align-items:center; justify-content:center; }
+.run { background:var(--blue); } .block { background:var(--amber); } .idle { background:var(--green); } .tick { width:6px; height:36px; background:var(--teal); border-radius:4px; }
+.w80 { width:80px; } .w120 { width:120px; } .w180 { width:180px; } .w240 { width:240px; }
+.refs li { margin-top:9px; font-size:18px; }
+@media print { body{background:#fff;} .nav{display:none;} .deck{padding:0;} .slide{margin:0; box-shadow:none; border:0;} }
+
+.api-list { display:flex; flex-wrap:wrap; gap:10px; margin-top:10px; }
+.api-list code { display:inline-block; padding:8px 10px; font-size:17px; }
+.decision-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+.decision { min-height:132px; padding:13px; border:1px solid var(--line); border-top:5px solid var(--blue); border-radius:8px; background:#fff; font-size:16px; }
+.decision:nth-child(2) { border-top-color:var(--teal); }
+.decision:nth-child(3) { border-top-color:var(--amber); }
+.decision:nth-child(4) { border-top-color:var(--green); }
+.decision strong { display:block; color:var(--indigo); font-size:18px; margin-bottom:6px; }
+.lane-stack { display:grid; gap:12px; margin-top:12px; }
+.lane { display:grid; grid-template-columns:160px 1fr; gap:12px; align-items:center; }
+.lane-label { padding:10px 12px; border-radius:8px; background:#edf2ff; color:var(--indigo); font-weight:900; text-align:center; }
+.lane-body { min-height:48px; display:flex; gap:7px; align-items:center; padding:8px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+.seg { min-width:80px; height:30px; padding:0 10px; display:flex; align-items:center; justify-content:center; border-radius:6px; color:#fff; font-weight:900; font-size:14px; }
+.blue { background:var(--blue); } .teal { background:var(--teal); } .amber { background:var(--amber); } .green { background:var(--green); } .violet { background:var(--violet); }
+.w120 { width:120px; } .w180 { width:180px; } .w240 { width:240px; }
+.mini-arch { display:grid; grid-template-columns:1fr 48px 1fr 48px 1fr; gap:10px; align-items:center; }
+.arch-node { min-height:96px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fff; text-align:center; font-size:17px; }
+.arch-node strong { display:block; color:var(--indigo); font-size:19px; margin-bottom:7px; }
+.arrow { text-align:center; color:var(--blue); font-size:32px; font-weight:900; }
+.source-card { min-height:120px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fbfcfe; font-size:16.5px; }
+.source-card strong { display:block; color:var(--indigo); font-size:18px; margin-bottom:6px; }
+
+.wide-flow { display:grid; grid-template-columns:1fr 44px 1fr 44px 1fr 44px 1fr; gap:8px; align-items:stretch; margin-top:16px; }
+.flow-node { min-height:112px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fff; font-size:16px; }
+.flow-node strong { display:block; margin-bottom:8px; color:var(--indigo); font-size:18px; }
+.flow-arrow { display:flex; align-items:center; justify-content:center; color:var(--blue); font-size:30px; font-weight:900; }
+.priority-stack { display:grid; gap:9px; margin-top:12px; }
+.priority-row { display:grid; grid-template-columns:220px 1fr 190px; gap:10px; align-items:center; }
+.priority-label { padding:10px 12px; border-radius:8px; color:#fff; font-weight:900; text-align:center; }
+.priority-note { min-height:42px; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:#fff; font-size:16px; }
+.ok { background:var(--green); } .warn-bg { background:var(--amber); } .bad { background:#c94c4c; } .blue-bg { background:var(--blue); }
+.do-dont { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:14px; }
+.do-dont .panel { min-height:310px; }
+.api-family { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:14px; }
+.api-box { padding:14px; border:1px solid var(--line); border-radius:8px; background:#fff; min-height:168px; }
+.api-box strong { display:block; color:var(--indigo); font-size:18px; margin-bottom:8px; }
+.icon-strip { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:16px; }
+.icon-mini { min-height:112px; padding:12px; border:1px solid var(--line); border-radius:8px; background:#fff; text-align:center; font-size:15px; }
+.icon-mini img { width:58px; height:58px; object-fit:contain; display:block; margin:0 auto 8px; }
+.trace-lane { display:grid; gap:9px; margin-top:14px; }
+.trace-row { display:grid; grid-template-columns:160px 1fr; gap:10px; align-items:center; }
+.trace-label { padding:9px 12px; border-radius:8px; background:#edf2ff; color:var(--indigo); font-weight:900; text-align:center; }
+.trace-body { min-height:42px; padding:9px 12px; border:1px solid var(--line); border-radius:8px; background:#fff; font-size:16px; }
+</style>
+  <link rel="stylesheet" href="../shared_assets/slideshow.css">
+</head>
+<body>
+  <nav class="nav"><a href="#s1">01</a><a href="#s2">02</a><a href="#s3">03</a><a href="#s4">04</a><a href="#s5">05</a><a href="#s6">06</a><a href="#s7">07</a><a href="#s8">08</a><a href="#s9">09</a><a href="#s10">10</a><a href="#s11">11</a><a href="#s12">12</a><a href="#s13">13</a><a href="#s14">14</a><a href="#s15">15</a><a href="#s16">16</a><a href="#s17">17</a><a href="#s18">18</a><a href="#s19">19</a><a href="#s20">20</a><a href="#s21">21</a><a href="#s22">22</a><a href="#s23">23</a><a href="#s24">24</a><a href="#s25">25</a><a href="#s26">26</a><a href="#s27">27</a><a href="#s28">28</a><a href="#s29">29</a><a href="#s30">30</a><a href="#s31">31</a><a href="#s32">32</a><a href="#s33">33</a><a href="#s34">34</a><a href="#s35">35</a><a href="#s36">36</a><a href="#s37">37</a><a href="#s38">38</a><a href="#s39">39</a><a href="#s40">40</a><button class="slideshow-toggle" type="button" data-slideshow-start>Slideshow</button></nav>
+  
+  <div class="slideshow-controls" aria-label="Slideshow controls">
+    <button class="slide-control" type="button" data-slide-prev>Prev</button>
+    <span class="slide-counter" data-slide-counter>01 / 40</span>
+    <button class="slide-control" type="button" data-slide-next>Next</button>
+    <button class="slide-control" type="button" data-slide-fullscreen>Full</button>
+    <button class="slide-control" type="button" data-slide-fill aria-pressed="false">Fill</button>
+    <button class="slide-control" type="button" data-slide-exit>Exit</button>
+  </div>
+  <div class="slideshow-hint">Keys: Left/Right or PageUp/PageDown to move, Home/End to jump, S to toggle slideshow, F for fullscreen, Z for fit/fill, Esc to exit.</div>
+
+  <main class="deck">
+    
+    <section class="slide cover" id="s1">
+      <div class="slide-header"><div class="context">FreeRTOS Module 08</div><div class="framing">Interrupt Management and Deferred Processing</div></div>
+      <div class="content">
+        <div class="cover-grid">
+          <div>
+            <h1>Interrupt Management and Deferred Processing</h1>
+            <p>Interrupts should capture events quickly, then move substantial processing into task context using the correct interrupt-safe API.</p>
+            <p class="cover-meta">Course: FreeRTOS Lecture<br>Embedded Systems Laboratory, Pusan National University<br>Instructor: Prof. Yunju Baek</p>
+          </div>
+          <div class="cover-card">
+            <h2>Learning path</h2>
+            <ul>
+              <li>Interrupt context versus task context</li>
+              <li>FromISR API families and immediate yield decisions</li>
+              <li>Cortex-M interrupt priority boundaries</li>
+              <li>Deferred work choices: semaphore, queue, notification, daemon task</li>
+              <li>Source reading and diagnostic evidence</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="takeaway">First target: treat an ISR as a boundary crossing, not as another task.</div>
+      <div class="page">01</div>
+    </section>
+    <section class="slide" id="s2">
+      <div class="slide-header"><div class="context">FreeRTOS Module 08</div><div class="framing">Course Position</div></div>
+      <div class="content">
+        <h2>Course Position</h2>
+        
+      <p class="subtitle">Module 07 introduced ISR queues. Module 08 widens that idea into a general hardware-to-kernel boundary.</p>
+      <div class="grid-3">
+        <div class="icon-card"><img src="../shared_assets/icons/interrupt_service.png" alt=""><div><strong>Interrupt event</strong><span>Hardware can interrupt task execution at a point the task did not choose.</span></div></div>
+        <div class="icon-card"><img src="../shared_assets/icons/isr_to_task_handoff.png" alt=""><div><strong>Deferred work</strong><span>The ISR captures the event, then wakes a task for heavier processing.</span></div></div>
+        <div class="icon-card"><img src="../shared_assets/icons/priority_ladder_generated.png" alt=""><div><strong>Priority boundary</strong><span>Not every hardware interrupt priority is allowed to call FreeRTOS APIs.</span></div></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The module is about boundary discipline: context, priority, and handoff.</div>
+      <div class="page">02</div>
+    </section>
+    <section class="slide" id="s3">
+      <div class="slide-header"><div class="context">FreeRTOS Module 08</div><div class="framing">Why Interrupts Need Their Own Rules</div></div>
+      <div class="content">
+        <h2>Why Interrupts Need Their Own Rules</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>They preempt tasks</h3><ul><li>An ISR runs because hardware requested attention.</li><li>The interrupted task did not call into the kernel voluntarily.</li><li>Long ISR work can delay task scheduling and other interrupts.</li></ul></div>
+        <div class="panel tint-teal"><h3>They cannot wait</h3><ul><li>Blocking has no meaning inside an ISR.</li><li>A block time in ordinary task APIs is not usable here.</li><li>Interrupt-safe APIs must return quickly.</li></ul></div>
+        <div class="panel tint-amber"><h3>They cross privilege layers</h3><ul><li>Hardware priority rules meet RTOS scheduling rules.</li><li>The port layer mediates the boundary.</li><li>Configuration errors often appear only under nesting or load.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The ISR rule set exists because interrupt context is not task context.</div>
+      <div class="page">03</div>
+    </section>
+    <section class="slide" id="s4">
+      <div class="slide-header"><div class="context">FreeRTOS Module 08</div><div class="framing">Terminology Before APIs</div></div>
+      <div class="content">
+        <h2>Terminology Before APIs</h2>
+        
+      <table class="mini-table"><thead><tr><th>Term</th><th>Meaning in this module</th></tr></thead><tbody><tr><td><strong>Interrupt</strong></td><td>A hardware or processor event that changes control flow to an interrupt handler.</td></tr><tr><td><strong>ISR</strong></td><td>Interrupt Service Routine; the function that runs in interrupt context.</td></tr><tr><td><strong>Deferred processing</strong></td><td>A design pattern where the ISR records the event and a task performs substantial work.</td></tr><tr><td><strong>FromISR API</strong></td><td>A FreeRTOS API variant designed for interrupt context and non-blocking behavior.</td></tr><tr><td><strong>xHigherPriorityTaskWoken</strong></td><td>A flag used by FromISR APIs to report that a higher-priority task became Ready.</td></tr><tr><td><strong>NVIC</strong></td><td>Nested Vectored Interrupt Controller on Cortex-M microcontrollers.</td></tr><tr><td><strong>Syscall interrupt ceiling</strong></td><td>The highest urgency interrupt level that is still allowed to call FreeRTOS API functions.</td></tr></tbody></table>
+    
+      </div>
+      <div class="takeaway">Name the execution context before selecting the API.</div>
+      <div class="page">04</div>
+    </section>
+    <section class="slide" id="s5">
+      <div class="slide-header"><div class="context">FreeRTOS Module 08</div><div class="framing">Execution Context Boundary</div></div>
+      <div class="content">
+        <h2>Execution Context Boundary</h2>
+        
+      <div class="wide-flow">
+        <div class="flow-node"><strong>Hardware event</strong>GPIO edge, UART RX, DMA complete, timer compare, or external signal</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>ISR context</strong>Read status, clear flag, capture minimal event information</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Kernel handoff</strong>FromISR API updates a kernel object and may unblock a task</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Task context</strong>Parse, copy, debounce, log, communicate, or update application state</div>
+      </div>
+      <div class="callout" style="margin-top:20px;">The boundary is successful only if the task has enough information to continue without making the ISR do the heavy work.</div>
+    
+      </div>
+      <div class="takeaway">Draw the boundary before reading the code.</div>
+      <div class="page">05</div>
+    </section>
+    <section class="slide" id="s6">
+      <div class="slide-header"><div class="context">FreeRTOS Module 08</div><div class="framing">Primary Visual Anchor</div></div>
+      <div class="content">
+        <h2>Primary Visual Anchor</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/infographics/isr_deferred_processing_choices.png" alt="ISR deferred processing choices"></div>
+        <div class="panel tint-blue"><h3>Reading Order</h3><ul><li>First ask whether payload crosses the boundary.</li><li>Then ask whether an event count can be lost.</li><li>Then ask whether exactly one task should receive the event.</li><li>Finally check the interrupt priority and yield-from-ISR path.</li></ul><p class="asset-note">Shared generated infographic asset.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Use a visual choice map before choosing a FreeRTOS object.</div>
+      <div class="page">06</div>
+    </section>
+    <section class="slide" id="s7">
+      <div class="slide-header"><div class="context">FreeRTOS Module 08</div><div class="framing">ISR Work Budget</div></div>
+      <div class="content">
+        <h2>ISR Work Budget</h2>
+        
+      <div class="do-dont">
+        <div class="panel tint-green"><h3>Appropriate ISR work</h3><ul><li>Read or acknowledge the peripheral status.</li><li>Copy one small data item or pointer if required.</li><li>Give a semaphore, send a queue item, or notify a task.</li><li>Set xHigherPriorityTaskWoken through the FromISR call.</li><li>Exit quickly so the scheduler and other interrupts can proceed.</li></ul></div>
+        <div class="panel tint-amber"><h3>Work to defer</h3><ul><li>Protocol parsing and long loops.</li><li>Printing, logging strings, or blocking I/O.</li><li>Memory allocation with uncertain latency.</li><li>Waiting for another event or resource.</li><li>Application policy decisions that can run in a task.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The ISR should create enough evidence for the worker, then leave.</div>
+      <div class="page">07</div>
+    </section>
+    <section class="slide" id="s8">
+      <div class="slide-header"><div class="context">FreeRTOS Module 08</div><div class="framing">FromISR API Family Map</div></div>
+      <div class="content">
+        <h2>FromISR API Family Map</h2>
+        
+      <p class="subtitle">The suffix is not cosmetic. It signals interrupt context constraints and a different scheduling handshake.</p>
+      <div class="api-family">
+        <div class="api-box"><strong>Signal or count</strong><div class="api-list"><code>xSemaphoreGiveFromISR()</code><code>vTaskNotifyGiveFromISR()</code><code>xTaskNotifyFromISR()</code></div></div>
+        <div class="api-box"><strong>Move payload</strong><div class="api-list"><code>xQueueSendFromISR()</code><code>xQueueOverwriteFromISR()</code><code>xStreamBufferSendFromISR()</code></div></div>
+        <div class="api-box"><strong>Request service work</strong><div class="api-list"><code>xTimerPendFunctionCallFromISR()</code><code>xEventGroupSetBitsFromISR()</code><code>portYIELD_FROM_ISR()</code></div></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Group FromISR calls by the kind of boundary crossing they express.</div>
+      <div class="page">08</div>
+    </section>
+    <section class="slide" id="s9">
+      <div class="slide-header"><div class="context">FreeRTOS Module 08</div><div class="framing">xHigherPriorityTaskWoken Flow</div></div>
+      <div class="content">
+        <h2>xHigherPriorityTaskWoken Flow</h2>
+        
+      <div class="wide-flow">
+        <div class="flow-node"><strong>Initialize flag</strong><code>BaseType_t xHigherPriorityTaskWoken = pdFALSE;</code></div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Call FromISR API</strong>The API may set the flag if a higher-priority task becomes Ready.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Test at ISR end</strong>The port macro receives the flag, not a guessed condition.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Yield if needed</strong>The awakened task can run immediately after interrupt exit.</div>
+      </div>
+      <pre><code>BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+xQueueSendFromISR(xQueue, &event, &xHigherPriorityTaskWoken);
+portYIELD_FROM_ISR(xHigherPriorityTaskWoken);</code></pre>
+    
+      </div>
+      <div class="takeaway">Ignoring the flag can turn a correct handoff into poor latency.</div>
+      <div class="page">09</div>
+    </section>
+    <section class="slide" id="s10">
+      <div class="slide-header"><div class="context">FreeRTOS Module 08</div><div class="framing">Yield From ISR Is a Port Boundary</div></div>
+      <div class="content">
+        <h2>Yield From ISR Is a Port Boundary</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Kernel decision</h3><ul><li>A task may become Ready during the ISR.</li><li>That task may outrank the interrupted task.</li><li>The kernel reports this through the FromISR flag.</li></ul></div>
+        <div class="panel tint-teal"><h3>Port mechanism</h3><ul><li>The exact yield macro is port-specific.</li><li>Cortex-M ports commonly pend a context switch.</li><li>Do not replace the macro with an ordinary task API.</li></ul></div>
+        <div class="panel tint-amber"><h3>Review point</h3><ul><li>Every ISR handoff should show the flag path.</li><li>The macro belongs near ISR exit.</li><li>Use examples and portmacro.h to confirm spelling.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The yield macro is where the abstract RTOS rule meets the processor port.</div>
+      <div class="page">10</div>
+    </section>
+    <section class="slide" id="s11">
+      <div class="slide-header"><div class="context">FreeRTOS Module 08</div><div class="framing">Kernel Book Figure 7.1: Deferred Processing</div></div>
+      <div class="content">
+        <h2>Kernel Book Figure 7.1: Deferred Processing</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_7_1_completing_interrupt_processing_in_a_high_priority_task.png" alt="Kernel Book Figure 7.1 deferred processing"></div>
+        <div class="panel tint-blue"><h3>Reading Focus</h3><ul><li>The ISR does the minimum work needed to unblock processing.</li><li>The high-priority task owns the substantial processing path.</li><li>Latency moves from ISR execution time to task wake-up latency.</li><li>This pattern is often called top half and bottom half in OS discussions.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Figure 7.1.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The figure explains why deferred processing is an execution design, not a shortcut.</div>
+      <div class="page">11</div>
+    </section>
+    <section class="slide" id="s12">
+      <div class="slide-header"><div class="context">FreeRTOS Module 08</div><div class="framing">Kernel Book Figure 7.2: Binary Semaphore Handoff</div></div>
+      <div class="content">
+        <h2>Kernel Book Figure 7.2: Binary Semaphore Handoff</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_7_2_using_a_binary_semaphore_to_implement_deferred_interrupt_processing.png" alt="Kernel Book Figure 7.2 binary semaphore handoff"></div>
+        <div class="panel tint-teal"><h3>Reading Focus</h3><ul><li>The semaphore carries a signal, not payload.</li><li>The task waits while no interrupt event exists.</li><li>The ISR gives the semaphore from interrupt context.</li><li>The worker task should perform the nontrivial processing.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Figure 7.2.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A binary semaphore is a clean signal when the event itself is enough.</div>
+      <div class="page">12</div>
+    </section>
+    <section class="slide" id="s13">
+      <div class="slide-header"><div class="context">FreeRTOS Module 08</div><div class="framing">Kernel Book Figure 7.3: Execution Sequence</div></div>
+      <div class="content">
+        <h2>Kernel Book Figure 7.3: Execution Sequence</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_7_3_using_a_binary_semaphore_to_synchronize_a_task_with_an_interrupt.png" alt="Kernel Book Figure 7.3 interrupt synchronization sequence"></div>
+        <div class="panel tint-blue"><h3>Reading Focus</h3><ul><li>Trace the task before the interrupt.</li><li>Mark where the ISR changes object state.</li><li>Track the transition from Blocked to Ready.</li><li>Connect the sequence to the yield-from-ISR decision.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Figure 7.3.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Use the sequence to practice task-state reasoning.</div>
+      <div class="page">13</div>
+    </section>
+    <section class="slide" id="s14">
+      <div class="slide-header"><div class="context">FreeRTOS Module 08</div><div class="framing">Backlog Under Interrupt Bursts</div></div>
+      <div class="content">
+        <h2>Backlog Under Interrupt Bursts</h2>
+        
+      <div class="grid-2">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_7_6_the_scenario_when_one_interrupt_occurs_before_the_task_has_finished_proc.png" alt="Kernel Book Figure 7.6 interrupt backlog"></div>
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_7_7_the_scenario_when_two_interrupts_occur_before_the_task_has_finished_proc.png" alt="Kernel Book Figure 7.7 interrupt backlog"></div>
+      </div>
+      <div class="callout" style="margin-top:14px;">These figures ask a design question: should repeated events be collapsed, counted, queued with payload, or handled by a faster worker?</div>
+    
+      </div>
+      <div class="takeaway">A single event and a burst event are different design problems.</div>
+      <div class="page">14</div>
+    </section>
+    <section class="slide" id="s15">
+      <div class="slide-header"><div class="context">FreeRTOS Module 08</div><div class="framing">Counting Events Instead of Remembering One Event</div></div>
+      <div class="content">
+        <h2>Counting Events Instead of Remembering One Event</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_7_8_using_a_counting_semaphore_to_count_events.png" alt="Kernel Book Figure 7.8 counting semaphore"></div>
+        <div class="panel tint-amber"><h3>When count matters</h3><ul><li>A binary semaphore can collapse repeated gives into one available signal.</li><li>A counting semaphore can preserve a bounded count of repeated events.</li><li>A queue is still needed when each event carries distinct payload.</li><li>Overflow behavior must be visible in diagnostics.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Figure 7.8.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Choose the object based on whether multiplicity and payload matter.</div>
+      <div class="page">15</div>
+    </section>
+    <section class="slide" id="s16">
+      <div class="slide-header"><div class="context">FreeRTOS Module 08</div><div class="framing">Handoff Object Comparison</div></div>
+      <div class="content">
+        <h2>Handoff Object Comparison</h2>
+        
+      <div class="decision-grid"><div class="decision"><strong>Binary semaphore</strong>Best when the interrupt means one condition became true and no payload needs to cross.</div><div class="decision"><strong>Counting semaphore</strong>Best when repeated events must be counted but do not need individual payloads.</div><div class="decision"><strong>Queue</strong>Best when event records, descriptors, or small payloads must cross the boundary.</div><div class="decision"><strong>Task notification</strong>Best for a single receiving task when a lightweight signal or value update is enough.</div></div>
+      <div class="icon-strip">
+        <div class="icon-mini"><img src="../shared_assets/icons/semaphore_signal.png" alt="">Signal</div>
+        <div class="icon-mini"><img src="../shared_assets/icons/queue_transfer_generated.png" alt="">Payload</div>
+        <div class="icon-mini"><img src="../shared_assets/icons/direct_task_notification.png" alt="">Direct receiver</div>
+        <div class="icon-mini"><img src="../shared_assets/icons/timer_service_generated.png" alt="">Daemon request</div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The object choice should match event semantics, not just API familiarity.</div>
+      <div class="page">16</div>
+    </section>
+    <section class="slide" id="s17">
+      <div class="slide-header"><div class="context">FreeRTOS Module 08</div><div class="framing">Cortex-M Priority Numbering Trap</div></div>
+      <div class="content">
+        <h2>Cortex-M Priority Numbering Trap</h2>
+        
+      <p class="subtitle">On Cortex-M, lower numeric priority values usually mean higher urgency. FreeRTOS configuration names must be read with that inversion in mind.</p>
+      <div class="priority-stack">
+        <div class="priority-row"><div class="priority-label bad">Very urgent ISR</div><div class="priority-note">May preempt kernel critical regions and must not call FreeRTOS APIs if above the syscall ceiling.</div><div class="priority-note">Numeric value can be small.</div></div>
+        <div class="priority-row"><div class="priority-label warn-bg">Syscall boundary</div><div class="priority-note"><code>configMAX_SYSCALL_INTERRUPT_PRIORITY</code> defines the interrupt API safety threshold for many Cortex-M ports.</div><div class="priority-note">Check shifted versus library values.</div></div>
+        <div class="priority-row"><div class="priority-label ok">API-safe ISR range</div><div class="priority-note">Interrupts at allowed priorities may use documented FromISR APIs.</div><div class="priority-note">Still no blocking.</div></div>
+        <div class="priority-row"><div class="priority-label blue-bg">Kernel tick/PendSV</div><div class="priority-note">The port uses processor exceptions and priorities to drive tick and context switching.</div><div class="priority-note">Port-specific details matter.</div></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Most Cortex-M interrupt bugs are configuration reading bugs before they are code bugs.</div>
+      <div class="page">17</div>
+    </section>
+    <section class="slide" id="s18">
+      <div class="slide-header"><div class="context">FreeRTOS Module 08</div><div class="framing">Kernel Book Figure 7.14: Interrupt Nesting Constants</div></div>
+      <div class="content">
+        <h2>Kernel Book Figure 7.14: Interrupt Nesting Constants</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_7_14_constants_affecting_interrupt_nesting_behavior.png" alt="Kernel Book Figure 7.14 interrupt nesting constants"></div>
+        <div class="panel tint-blue"><h3>Reading Focus</h3><ul><li>Separate kernel interrupt priority from syscall interrupt priority.</li><li>Read library-style priority macros and raw hardware priority fields carefully.</li><li>Match project configuration with vendor startup and NVIC settings.</li><li>Use assertions to catch illegal ISR API calls early.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Figure 7.14.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The constants are part of the module content, not build trivia.</div>
+      <div class="page">18</div>
+    </section>
+    <section class="slide" id="s19">
+      <div class="slide-header"><div class="context">FreeRTOS Module 08</div><div class="framing">Kernel Book Figure 7.15: Priority Bit Storage</div></div>
+      <div class="content">
+        <h2>Kernel Book Figure 7.15: Priority Bit Storage</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_7_15_how_a_priority_of_binary_101_is_stored_by_a_cortex_m_microcontroller_tha.png" alt="Kernel Book Figure 7.15 Cortex-M priority storage"></div>
+        <div class="panel tint-amber"><h3>Reading Focus</h3><ul><li>Cortex-M implements only some priority bits.</li><li>Priority values may be shifted before writing hardware registers.</li><li>Vendor HAL fields can hide or expose this shift.</li><li>FreeRTOSConfig.h must match the actual implemented priority bits.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Figure 7.15.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">If priority bit storage is misunderstood, API-safe ISR design becomes fragile.</div>
+      <div class="page">19</div>
+    </section>
+    <section class="slide" id="s20">
+      <div class="slide-header"><div class="context">FreeRTOS Module 08</div><div class="framing">FreeRTOSConfig.h Interrupt Checklist</div></div>
+      <div class="content">
+        <h2>FreeRTOSConfig.h Interrupt Checklist</h2>
+        
+      <div class="grid-2">
+        <div class="panel tint-blue"><h3>Macros to inspect</h3><div class="api-list"><code>configPRIO_BITS</code><code>configLIBRARY_LOWEST_INTERRUPT_PRIORITY</code><code>configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY</code><code>configKERNEL_INTERRUPT_PRIORITY</code><code>configMAX_SYSCALL_INTERRUPT_PRIORITY</code><code>configASSERT()</code></div></div>
+        <div class="panel tint-green"><h3>Review questions</h3><ul><li>Do the macro values match the MCU priority bits?</li><li>Are library macros and shifted hardware macros both understood?</li><li>Does every ISR that calls FreeRTOS APIs use an allowed priority?</li><li>Will configASSERT catch illegal priority usage during development?</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The configuration file is a lecture source, not just a build artifact.</div>
+      <div class="page">20</div>
+    </section>
+    <section class="slide" id="s21">
+      <div class="slide-header"><div class="context">FreeRTOS Module 08</div><div class="framing">STM32CubeIDE NVIC Review</div></div>
+      <div class="content">
+        <h2>STM32CubeIDE NVIC Review</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>CubeMX view</h3><ul><li>Find the NVIC priority value for each interrupt.</li><li>Check priority grouping assumptions.</li><li>Record which interrupts call FreeRTOS APIs.</li></ul></div>
+        <div class="panel tint-teal"><h3>Generated code</h3><ul><li>Open startup vector names.</li><li>Find HAL IRQ handler calls.</li><li>Locate user ISR hook or callback path.</li></ul></div>
+        <div class="panel tint-amber"><h3>FreeRTOS boundary</h3><ul><li>Map each ISR to allowed or forbidden API use.</li><li>Prefer queue/semaphore/notification handoff.</li><li>Leave high-urgency ISRs API-free when needed.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Students should know where the abstract priority rule appears in their IDE.</div>
+      <div class="page">21</div>
+    </section>
+    <section class="slide" id="s22">
+      <div class="slide-header"><div class="context">FreeRTOS Module 08</div><div class="framing">ISR Caller Context Rules</div></div>
+      <div class="content">
+        <h2>ISR Caller Context Rules</h2>
+        
+      <table class="mini-table">
+        <thead><tr><th>Question</th><th>Task context</th><th>ISR context</th></tr></thead>
+        <tbody>
+          <tr><td>Can it block?</td><td>Yes, if the API and timeout allow it</td><td>No</td></tr>
+          <tr><td>Which API family?</td><td>Ordinary task-context APIs</td><td>Documented FromISR APIs</td></tr>
+          <tr><td>How does scheduling continue?</td><td>API may block or unblock tasks directly</td><td>Use xHigherPriorityTaskWoken and port yield macro</td></tr>
+          <tr><td>What must be checked?</td><td>Return value, timeout, object state</td><td>Return value, priority legality, yield flag</td></tr>
+        </tbody>
+      </table>
+    
+      </div>
+      <div class="takeaway">The same kernel object has different legal operations at the interrupt boundary.</div>
+      <div class="page">22</div>
+    </section>
+    <section class="slide" id="s23">
+      <div class="slide-header"><div class="context">FreeRTOS Module 08</div><div class="framing">Forbidden and Allowed ISR Patterns</div></div>
+      <div class="content">
+        <h2>Forbidden and Allowed ISR Patterns</h2>
+        
+      <div class="do-dont">
+        <div class="panel tint-green"><h3>Allowed pattern</h3><ul><li>Clear interrupt source.</li><li>Read minimal peripheral data.</li><li>Call a documented FromISR API.</li><li>Pass xHigherPriorityTaskWoken into the API.</li><li>Request a yield from ISR when the flag says it is needed.</li></ul></div>
+        <div class="panel tint-amber"><h3>Danger pattern</h3><ul><li>Call ordinary blocking APIs.</li><li>Use printf-style logging inside the ISR.</li><li>Hold a long critical section in the handler.</li><li>Ignore the API return value.</li><li>Assign an API-calling ISR above the syscall priority ceiling.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A concrete yes/no checklist catches more bugs than vague advice.</div>
+      <div class="page">23</div>
+    </section>
+    <section class="slide" id="s24">
+      <div class="slide-header"><div class="context">FreeRTOS Module 08</div><div class="framing">Tutorial 10 Reading Path</div></div>
+      <div class="content">
+        <h2>Tutorial 10 Reading Path</h2>
+        
+      <p class="subtitle">Tutorial 10 is useful because the queue operation crosses the ISR-to-task boundary.</p>
+      <div class="trace-lane">
+        <div class="trace-row"><div class="trace-label">Before run</div><div class="trace-body">Find the queue handle, receiver task, and the simulated interrupt or ISR-like path.</div></div>
+        <div class="trace-row"><div class="trace-label">API call</div><div class="trace-body">Mark every FromISR call and the variable used for xHigherPriorityTaskWoken.</div></div>
+        <div class="trace-row"><div class="trace-label">After ISR</div><div class="trace-body">Predict which task should run and why the scheduler is allowed to switch.</div></div>
+        <div class="trace-row"><div class="trace-label">Variation</div><div class="trace-body">Change queue length or receiver priority and explain the observed latency and failure path.</div></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Tutorial reading should produce a timing explanation, not only console output.</div>
+      <div class="page">24</div>
+    </section>
+    <section class="slide" id="s25">
+      <div class="slide-header"><div class="context">FreeRTOS Module 08</div><div class="framing">Tutorial 12 Reading Path</div></div>
+      <div class="content">
+        <h2>Tutorial 12 Reading Path</h2>
+        
+      <p class="subtitle">Tutorial 12 supports the semaphore-based deferred processing story.</p>
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Locate objects</h3><ul><li>Find semaphore creation.</li><li>Find the blocked task.</li><li>Find the interrupt-side give operation.</li></ul></div>
+        <div class="panel tint-teal"><h3>Predict states</h3><ul><li>Worker starts Blocked.</li><li>ISR gives the semaphore.</li><li>Worker becomes Ready and may run immediately.</li></ul></div>
+        <div class="panel tint-green"><h3>Design comparison</h3><ul><li>When would a queue be better?</li><li>When would a task notification be better?</li><li>What diagnostic would show missed events?</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The semaphore example is a signal design, not a payload design.</div>
+      <div class="page">25</div>
+    </section>
+    <section class="slide" id="s26">
+      <div class="slide-header"><div class="context">FreeRTOS Module 08</div><div class="framing">Mini Case: Button Interrupt With Debounce</div></div>
+      <div class="content">
+        <h2>Mini Case: Button Interrupt With Debounce</h2>
+        
+      <div class="wide-flow">
+        <div class="flow-node"><strong>GPIO edge ISR</strong>Clear pending bit and record a short edge event.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Deferred decision</strong>Notify a debounce task or reset a software timer.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Task/timer context</strong>Wait for stable level and apply debounce policy.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Application event</strong>Send clean button event to UI, control, or logging task.</div>
+      </div>
+      <div class="callout" style="margin-top:20px;">The ISR should not implement the debounce loop. It should trigger the mechanism that can wait.</div>
+    
+      </div>
+      <div class="takeaway">Waiting belongs in task or timer context, not in the ISR.</div>
+      <div class="page">26</div>
+    </section>
+    <section class="slide" id="s27">
+      <div class="slide-header"><div class="context">FreeRTOS Module 08</div><div class="framing">Mini Case: UART Receive Interrupt</div></div>
+      <div class="content">
+        <h2>Mini Case: UART Receive Interrupt</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Byte event</h3><ul><li>ISR reads the received byte or DMA status.</li><li>For byte streams, a stream buffer may fit.</li><li>For packets, a message buffer or queue descriptor may fit.</li></ul></div>
+        <div class="panel tint-teal"><h3>Worker task</h3><ul><li>Parses protocol outside the ISR.</li><li>Handles framing, checksum, and timeouts.</li><li>Can block on additional input.</li></ul></div>
+        <div class="panel tint-amber"><h3>Pressure evidence</h3><ul><li>Dropped byte count.</li><li>Buffer high-water mark.</li><li>Worker wake latency.</li><li>Parser backlog.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The handoff object should match the data shape.</div>
+      <div class="page">27</div>
+    </section>
+    <section class="slide" id="s28">
+      <div class="slide-header"><div class="context">FreeRTOS Module 08</div><div class="framing">Mini Case: DMA Completion Interrupt</div></div>
+      <div class="content">
+        <h2>Mini Case: DMA Completion Interrupt</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>ISR responsibility</h3><ul><li>Clear DMA interrupt flags.</li><li>Capture buffer index or descriptor pointer.</li><li>Wake the processing task.</li></ul></div>
+        <div class="panel tint-teal"><h3>Task responsibility</h3><ul><li>Invalidate cache if required by MCU architecture.</li><li>Parse or transform the buffer.</li><li>Return buffer ownership to the pool.</li></ul></div>
+        <div class="panel tint-green"><h3>Object choice</h3><ul><li>Queue descriptor if multiple buffers exist.</li><li>Notification if one task owns a known buffer.</li><li>Counting semaphore if only completion count matters.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">DMA examples make ownership and cache boundaries visible.</div>
+      <div class="page">28</div>
+    </section>
+    <section class="slide" id="s29">
+      <div class="slide-header"><div class="context">FreeRTOS Module 08</div><div class="framing">Diagnostic Evidence for ISR Designs</div></div>
+      <div class="content">
+        <h2>Diagnostic Evidence for ISR Designs</h2>
+        
+      <div class="icon-strip">
+        <div class="icon-mini"><img src="../shared_assets/icons/trace_diagnostics.png" alt="">Trace timeline</div>
+        <div class="icon-mini"><img src="../shared_assets/icons/timing_deadline.png" alt="">Wake latency</div>
+        <div class="icon-mini"><img src="../shared_assets/icons/config_assertion.png" alt="">Priority assert</div>
+        <div class="icon-mini"><img src="../shared_assets/icons/debugging_boundary.png" alt="">Boundary log</div>
+      </div>
+      <div class="grid-3" style="margin-top:18px;">
+        <div class="panel tint-blue"><h3>Timing</h3><ul><li>ISR entry and exit timestamp.</li><li>Worker task first instruction timestamp.</li><li>Maximum observed wake delay.</li></ul></div>
+        <div class="panel tint-teal"><h3>Capacity</h3><ul><li>Queue depth or buffer high-water mark.</li><li>Dropped event count.</li><li>Overrun or missed edge count.</li></ul></div>
+        <div class="panel tint-amber"><h3>Legality</h3><ul><li>configASSERT location.</li><li>NVIC priority table.</li><li>List of ISRs calling FreeRTOS APIs.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Do not tune priorities until the evidence says which pressure point exists.</div>
+      <div class="page">29</div>
+    </section>
+    <section class="slide" id="s30">
+      <div class="slide-header"><div class="context">FreeRTOS Module 08</div><div class="framing">Failure Modes Worth Naming Early</div></div>
+      <div class="content">
+        <h2>Failure Modes Worth Naming Early</h2>
+        
+      <div class="grid-3"><div class="panel tint-blue"><h3>Long ISR</h3><ul><li>Protocol parsing or printing inside interrupt context.</li><li>Other interrupts and task scheduling are delayed.</li><li>Fix by moving work to a task and measuring wake latency.</li></ul></div><div class="panel tint-teal"><h3>Missing yield</h3><ul><li>A worker task wakes but does not run promptly.</li><li>xHigherPriorityTaskWoken is ignored or not passed to the port macro.</li><li>Fix by following the port&#x27;s FromISR example pattern.</li></ul></div><div class="panel tint-amber"><h3>Priority violation</h3><ul><li>ISR calls FreeRTOS API from a priority above the allowed ceiling.</li><li>Bug may appear only with nesting or load.</li><li>Fix by aligning NVIC settings and FreeRTOSConfig.h.</li></ul></div></div>
+    
+      </div>
+      <div class="takeaway">Students should recognize these three bugs quickly during code review.</div>
+      <div class="page">30</div>
+    </section>
+    <section class="slide" id="s31">
+      <div class="slide-header"><div class="context">FreeRTOS Module 08</div><div class="framing">Source Reading: Port Layer</div></div>
+      <div class="content">
+        <h2>Source Reading: Port Layer</h2>
+        
+      <div class="grid-3">
+        <div class="source-card"><strong>portable/.../port.c</strong>Read tick, PendSV, critical section, and interrupt priority assertion behavior for the target port.</div>
+        <div class="source-card"><strong>portmacro.h</strong>Find the port yield-from-ISR macro and context switch trigger definitions.</div>
+        <div class="source-card"><strong>FreeRTOSConfig.h</strong>Connect interrupt priority macros with the MCU and vendor library naming convention.</div>
+      </div>
+      <div class="warning" style="margin-top:22px;">Port-layer details are not optional when teaching interrupt safety on Cortex-M.</div>
+    
+      </div>
+      <div class="takeaway">The port explains how the abstract FreeRTOS rule reaches the processor.</div>
+      <div class="page">31</div>
+    </section>
+    <section class="slide" id="s32">
+      <div class="slide-header"><div class="context">FreeRTOS Module 08</div><div class="framing">Source Reading: Kernel Object Paths</div></div>
+      <div class="content">
+        <h2>Source Reading: Kernel Object Paths</h2>
+        
+      <div class="grid-3">
+        <div class="source-card"><strong>queue.c</strong>Queue, semaphore, mutex, and queue-set implementation paths share this file; read FromISR entry points.</div>
+        <div class="source-card"><strong>tasks.c</strong>Task unblock, ready-list update, and scheduler interaction become visible here.</div>
+        <div class="source-card"><strong>timers.c</strong>Daemon-task deferred callbacks provide an alternative when the ISR wants task-context service work.</div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Source reading should follow one event from ISR to task wake-up.</div>
+      <div class="page">32</div>
+    </section>
+    <section class="slide" id="s33">
+      <div class="slide-header"><div class="context">FreeRTOS Module 08</div><div class="framing">Design Decision Table</div></div>
+      <div class="content">
+        <h2>Design Decision Table</h2>
+        
+      <table class="mini-table">
+        <thead><tr><th>Decision</th><th>Question</th><th>Good evidence</th></tr></thead>
+        <tbody>
+          <tr><td>ISR content</td><td>What is the minimum event capture?</td><td>Short handler, no blocking, clear peripheral flag</td></tr>
+          <tr><td>Handoff object</td><td>Is the event a signal, count, payload, byte stream, or direct receiver notification?</td><td>Object choice matches data shape</td></tr>
+          <tr><td>Priority legality</td><td>Can this interrupt call FreeRTOS APIs?</td><td>NVIC priority table and FreeRTOSConfig.h agree</td></tr>
+          <tr><td>Immediate scheduling</td><td>Can a higher-priority worker run immediately?</td><td>xHigherPriorityTaskWoken path is present</td></tr>
+          <tr><td>Overload behavior</td><td>What happens under burst interrupts?</td><td>Queue depth, count, drop counter, or trace event exists</td></tr>
+        </tbody>
+      </table>
+    
+      </div>
+      <div class="takeaway">Interrupt design review should join semantics, priority, and evidence.</div>
+      <div class="page">33</div>
+    </section>
+    <section class="slide" id="s34">
+      <div class="slide-header"><div class="context">FreeRTOS Module 08</div><div class="framing">Object Selection Revisited</div></div>
+      <div class="content">
+        <h2>Object Selection Revisited</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/infographics/object_selection_map.png" alt="Object selection map"></div>
+        <div class="panel tint-blue"><h3>Interrupt-specific filters</h3><ul><li>Is the chosen API available with a FromISR variant?</li><li>Will the object preserve event count or payload if bursts occur?</li><li>Is exactly one task the receiver?</li><li>Is the ISR priority allowed to call the kernel?</li><li>Can the receiving task keep up?</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The general object map becomes stricter at the interrupt boundary.</div>
+      <div class="page">34</div>
+    </section>
+    <section class="slide" id="s35">
+      <div class="slide-header"><div class="context">FreeRTOS Module 08</div><div class="framing">Compact Self Lab: Boundary Audit</div></div>
+      <div class="content">
+        <h2>Compact Self Lab: Boundary Audit</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Build</h3><ul><li>Create or inspect one ISR-to-task handoff example.</li><li>Record the object used for the handoff.</li><li>List the exact FromISR calls.</li></ul></div>
+        <div class="panel tint-teal"><h3>Modify</h3><ul><li>Change worker task priority.</li><li>Create a burst of events.</li><li>Add a diagnostic counter for failed handoff.</li></ul></div>
+        <div class="panel tint-green"><h3>Explain</h3><ul><li>State which context owns each step.</li><li>Explain whether immediate yield should occur.</li><li>Document the interrupt priority setting.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The lab output should be a short boundary audit, not a large application.</div>
+      <div class="page">35</div>
+    </section>
+    <section class="slide" id="s36">
+      <div class="slide-header"><div class="context">FreeRTOS Module 08</div><div class="framing">Classroom Board Exercise</div></div>
+      <div class="content">
+        <h2>Classroom Board Exercise</h2>
+        
+      <p class="subtitle">Give students a peripheral event and ask them to choose the handoff design.</p>
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Scenario A</h3><ul><li>Button edge.</li><li>No payload.</li><li>Debounce required.</li><li>What should run where?</li></ul></div>
+        <div class="panel tint-teal"><h3>Scenario B</h3><ul><li>UART byte stream.</li><li>Payload is bytes.</li><li>Bursts possible.</li><li>Which buffer or queue?</li></ul></div>
+        <div class="panel tint-amber"><h3>Scenario C</h3><ul><li>DMA buffer complete.</li><li>Descriptor or buffer pointer.</li><li>Ownership must move.</li><li>Which diagnostics?</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A good answer names object, context, priority, and overload behavior.</div>
+      <div class="page">36</div>
+    </section>
+    <section class="slide" id="s37">
+      <div class="slide-header"><div class="context">FreeRTOS Module 08</div><div class="framing">Review Questions</div></div>
+      <div class="content">
+        <h2>Review Questions</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Question 1</h3><p>Why is parsing a communication protocol inside an ISR usually a poor design?</p></div>
+        <div class="panel tint-teal"><h3>Question 2</h3><p>What does xHigherPriorityTaskWoken mean, and why should the ISR not guess the answer?</p></div>
+        <div class="panel tint-amber"><h3>Question 3</h3><p>How can Cortex-M interrupt priority numbering make a FreeRTOS API call look correct but be illegal?</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The answer should combine execution context, scheduling, and configuration.</div>
+      <div class="page">37</div>
+    </section>
+    <section class="slide" id="s38">
+      <div class="slide-header"><div class="context">FreeRTOS Module 08</div><div class="framing">One-Slide Summary</div></div>
+      <div class="content">
+        <h2>One-Slide Summary</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Mechanism</h3><ul><li>ISR captures the event.</li><li>FromISR API updates a kernel object.</li><li>A worker task handles substantial work.</li></ul></div>
+        <div class="panel tint-teal"><h3>Design rule</h3><ul><li>Select signal, count, payload, or direct notification deliberately.</li><li>Preserve xHigherPriorityTaskWoken flow.</li><li>Keep ISR work short.</li></ul></div>
+        <div class="panel tint-green"><h3>Safety evidence</h3><ul><li>NVIC priority table.</li><li>FreeRTOSConfig.h priority macros.</li><li>Trace and counters under interrupt bursts.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Interrupt management is a disciplined boundary design.</div>
+      <div class="page">38</div>
+    </section>
+    <section class="slide" id="s39">
+      <div class="slide-header"><div class="context">FreeRTOS Module 08</div><div class="framing">Bridge to Module 09</div></div>
+      <div class="content">
+        <h2>Bridge to Module 09</h2>
+        
+      <p class="subtitle">Software timers use another deferred path: time-based commands processed by the timer daemon task, not by hardware interrupt code directly.</p>
+      <div class="grid-3">
+        <div class="icon-card"><img src="../shared_assets/icons/interrupt_service.png" alt=""><div><strong>Interrupt boundary</strong><span>Module 08 captured hardware events quickly.</span></div></div>
+        <div class="icon-card"><img src="../shared_assets/icons/software_timer.png" alt=""><div><strong>Timer object</strong><span>Module 09 introduces future events represented by timer objects.</span></div></div>
+        <div class="icon-card"><img src="../shared_assets/icons/timer_service_generated.png" alt=""><div><strong>Daemon task</strong><span>Callbacks run in a service task context that must remain lightweight.</span></div></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Deferred work appears again in timer command and callback design.</div>
+      <div class="page">39</div>
+    </section>
+    <section class="slide" id="s40">
+      <div class="slide-header"><div class="context">FreeRTOS Module 08</div><div class="framing">References and Further Reading</div></div>
+      <div class="content">
+        <h2>References and Further Reading</h2>
+        
+      <p class="subtitle">References used in this module are separated from optional deeper reading.</p>
+      <div class="grid-2">
+        <div class="panel tint-blue">
+          <h3>References Used</h3>
+          <ul class="refs">
+            <li>FreeRTOS Kernel Book, Chapter 7, Interrupt Management.</li>
+            <li>FreeRTOS Kernel Book, Figures 7.1, 7.2, 7.3, 7.6, 7.7, 7.8, 7.14, and 7.15.</li>
+            <li>Lab Project FreeRTOS Tutorials, Tutorial 10 and Tutorial 12.</li>
+            <li>FreeRTOS Kernel source: queue.c, tasks.c, timers.c, and Cortex-M port files.</li>
+          </ul>
+        </div>
+        <div class="panel tint-green">
+          <h3>Further Reading</h3>
+          <ul class="refs">
+            <li>FreeRTOS API reference: interrupt-safe API families and task notification FromISR variants.</li>
+            <li>FreeRTOS Cortex-M interrupt priority documentation and FreeRTOSConfig.h priority macro notes.</li>
+            <li>Arm Cortex-M NVIC documentation for priority grouping and implemented priority bits.</li>
+            <li>STM32CubeIDE and STM32CubeMX documentation for NVIC priority configuration workflow.</li>
+          </ul>
+        </div>
+      </div>
+    
+      </div>
+      <div class="takeaway">References should support traceability and direct further study.</div>
+      <div class="page">40</div>
+    </section>
+  </main>
+  <script src="../shared_assets/slideshow.js"></script>
+</body>
+</html>

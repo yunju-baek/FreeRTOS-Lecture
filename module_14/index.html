@@ -1,0 +1,820 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FreeRTOS Module 14 - Stream Buffers and Message Buffers</title>
+  <style>
+:root {
+  --indigo:#2e315b; --blue:#2563a6; --teal:#147d83; --green:#2f7d4e;
+  --amber:#9a6a16; --violet:#6d4aa2; --graphite:#2b2f36; --muted:#637083;
+  --line:#d8dee9; --paper:#fff; --bg:#f4f6f9; --code:#eef2f7;
+  --soft-blue:#eef5fc; --soft-teal:#edf8f8; --soft-amber:#fff7e8;
+}
+* { box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { margin:0; background:var(--bg); color:var(--graphite); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans",Arial,sans-serif; line-height:1.44; }
+.nav { position:sticky; top:0; z-index:10; width:1280px; margin:0 auto; padding:10px 16px; background:rgba(244,246,249,.96); border-bottom:1px solid var(--line); color:#4f5969; font-size:15px; }
+.nav a { margin-right:8px; color:var(--blue); text-decoration:none; font-weight:800; }
+.deck { width:1280px; margin:0 auto; padding:28px 0 64px; }
+.slide { position:relative; width:1280px; min-height:720px; margin:0 0 32px; overflow:hidden; background:var(--paper); border:1px solid var(--line); box-shadow:0 18px 40px rgba(38,49,91,.12); page-break-after:always; }
+.slide-header { display:flex; justify-content:space-between; align-items:center; height:54px; padding:0 34px; background:var(--indigo); color:#fff; font-size:18px; }
+.context { font-weight:800; }
+.framing { color:#e1e6ff; font-size:16px; }
+.content { padding:30px 42px 58px; }
+h1,h2,h3,p { margin-top:0; }
+h1 { margin-bottom:14px; color:#fff; font-size:45px; line-height:1.08; letter-spacing:0; }
+h2 { margin-bottom:10px; color:#20243d; font-size:34px; line-height:1.12; letter-spacing:0; }
+h3 { margin-bottom:10px; color:var(--indigo); font-size:22px; letter-spacing:0; }
+.subtitle { max-width:1060px; margin-bottom:22px; color:#4a5260; font-size:22px; line-height:1.36; }
+.small { color:var(--muted); font-size:17px; }
+ul,ol { margin:0; padding-left:22px; }
+li { font-size:18.2px; }
+li + li { margin-top:6px; }
+code { padding:1px 5px; border-radius:4px; background:var(--code); color:#1d3152; font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace; font-size:.93em; }
+pre { margin:0; padding:15px 17px; border-radius:8px; background:#1f2633; color:#edf2ff; font-size:14.2px; line-height:1.42; overflow:hidden; white-space:pre-wrap; }
+pre code { padding:0; background:transparent; color:inherit; font-size:inherit; }
+.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+.grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
+.grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+.grid-13 { display:grid; grid-template-columns:1.12fr .88fr; gap:22px; align-items:stretch; }
+.grid-31 { display:grid; grid-template-columns:.82fr 1.18fr; gap:22px; align-items:stretch; }
+.panel { border:1px solid var(--line); border-radius:8px; padding:17px 19px; background:#fff; }
+.tint-blue { border-top:5px solid var(--blue); } .tint-teal { border-top:5px solid var(--teal); } .tint-green { border-top:5px solid var(--green); } .tint-amber { border-top:5px solid var(--amber); } .tint-violet { border-top:5px solid var(--violet); }
+.question { padding:16px 18px; border-left:6px solid var(--blue); background:var(--soft-blue); font-size:20px; }
+.callout { padding:16px 18px; border-left:6px solid var(--teal); background:var(--soft-teal); font-size:19px; }
+.warning { padding:16px 18px; border-left:6px solid var(--amber); background:var(--soft-amber); font-size:19px; }
+.takeaway { position:absolute; left:42px; right:120px; bottom:22px; color:#515a6b; font-size:17px; font-weight:700; }
+.page { position:absolute; right:36px; bottom:22px; color:#7a8290; font-size:16px; font-weight:800; }
+.cover { color:#fff; background:linear-gradient(120deg,rgba(46,49,91,.98),rgba(20,125,131,.9)),#2e315b; }
+.cover .slide-header { background:transparent; border-bottom:1px solid rgba(255,255,255,.24); }
+.cover .content { display:grid; grid-template-columns:1.08fr .92fr; gap:46px; align-items:center; padding-top:54px; }
+.cover .subtitle { color:#eef5ff; }
+.cover-card { min-height:390px; padding:28px; border:1px solid rgba(255,255,255,.35); border-radius:10px; background:rgba(255,255,255,.08); }
+.cover-card h3 { color:#fff; font-size:25px; }
+.cover-card li { color:#edf2ff; font-size:20px; }
+.icon-card { min-height:150px; display:grid; grid-template-columns:86px 1fr; gap:14px; align-items:center; border:1px solid var(--line); border-radius:8px; padding:15px; background:#fff; }
+.icon-card img { width:76px; height:76px; object-fit:contain; }
+.icon-card strong { display:block; color:var(--indigo); font-size:19px; margin-bottom:5px; }
+.icon-card span { display:block; color:#4e5969; font-size:16.5px; }
+.figure-frame { display:flex; align-items:center; justify-content:center; min-height:410px; border:1px solid var(--line); border-radius:10px; background:#fbfcfe; padding:18px; }
+.figure-frame img { max-width:100%; max-height:420px; object-fit:contain; }
+.figure-frame.tall img { max-height:505px; }
+.asset-note { margin-top:8px; color:var(--muted); font-size:15px; }
+.mini-table { width:100%; border-collapse:collapse; font-size:17px; }
+.mini-table th,.mini-table td { padding:9px 10px; border:1px solid var(--line); vertical-align:top; }
+.mini-table th { background:#eef2f7; color:var(--indigo); text-align:left; }
+.flow { display:grid; grid-template-columns:1fr 48px 1fr 48px 1fr; gap:10px; align-items:center; }
+.flowbox { min-height:112px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fff; text-align:center; font-size:17px; }
+.flowbox strong { display:block; margin-bottom:8px; color:var(--indigo); font-size:19px; }
+.arrow { text-align:center; color:var(--blue); font-size:32px; font-weight:900; }
+.timeline { display:grid; gap:12px; margin-top:10px; }
+.lane { display:grid; grid-template-columns:150px 1fr; gap:12px; align-items:center; }
+.lane-label { padding:10px 12px; border-radius:8px; background:#edf2ff; color:var(--indigo); font-weight:900; text-align:center; }
+.lane-body { display:flex; gap:6px; align-items:center; min-height:46px; padding:8px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+.bar { height:30px; border-radius:6px; color:#fff; font-size:14px; font-weight:800; display:flex; align-items:center; justify-content:center; }
+.run { background:var(--blue); } .block { background:var(--amber); } .idle { background:var(--green); } .tick { width:6px; height:36px; background:var(--teal); border-radius:4px; }
+.w80 { width:80px; } .w120 { width:120px; } .w180 { width:180px; } .w240 { width:240px; }
+.refs li { margin-top:9px; font-size:18px; }
+@media print { body{background:#fff;} .nav{display:none;} .deck{padding:0;} .slide{margin:0; box-shadow:none; border:0;} }
+
+.api-list { display:flex; flex-wrap:wrap; gap:10px; margin-top:10px; }
+.api-list code { display:inline-block; padding:8px 10px; font-size:17px; }
+.decision-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+.decision { min-height:132px; padding:13px; border:1px solid var(--line); border-top:5px solid var(--blue); border-radius:8px; background:#fff; font-size:16px; }
+.decision:nth-child(2) { border-top-color:var(--teal); }
+.decision:nth-child(3) { border-top-color:var(--amber); }
+.decision:nth-child(4) { border-top-color:var(--green); }
+.decision strong { display:block; color:var(--indigo); font-size:18px; margin-bottom:6px; }
+.lane-stack { display:grid; gap:12px; margin-top:12px; }
+.lane { display:grid; grid-template-columns:160px 1fr; gap:12px; align-items:center; }
+.lane-label { padding:10px 12px; border-radius:8px; background:#edf2ff; color:var(--indigo); font-weight:900; text-align:center; }
+.lane-body { min-height:48px; display:flex; gap:7px; align-items:center; padding:8px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+.seg { min-width:80px; height:30px; padding:0 10px; display:flex; align-items:center; justify-content:center; border-radius:6px; color:#fff; font-weight:900; font-size:14px; }
+.blue { background:var(--blue); } .teal { background:var(--teal); } .amber { background:var(--amber); } .green { background:var(--green); } .violet { background:var(--violet); }
+.w120 { width:120px; } .w180 { width:180px; } .w240 { width:240px; }
+.mini-arch { display:grid; grid-template-columns:1fr 48px 1fr 48px 1fr; gap:10px; align-items:center; }
+.arch-node { min-height:96px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fff; text-align:center; font-size:17px; }
+.arch-node strong { display:block; color:var(--indigo); font-size:19px; margin-bottom:7px; }
+.arrow { text-align:center; color:var(--blue); font-size:32px; font-weight:900; }
+.source-card { min-height:120px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fbfcfe; font-size:16.5px; }
+.source-card strong { display:block; color:var(--indigo); font-size:18px; margin-bottom:6px; }
+
+.flow4 { display:grid; grid-template-columns:1fr 40px 1fr 40px 1fr 40px 1fr; gap:8px; align-items:stretch; margin-top:16px; }
+.flow-node { min-height:116px; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fff; font-size:16px; }
+.flow-node strong { display:block; color:var(--indigo); font-size:18px; margin-bottom:8px; }
+.flow-arrow { display:flex; align-items:center; justify-content:center; color:var(--blue); font-size:28px; font-weight:900; }
+.shape-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:14px; }
+.shape-card { min-height:158px; padding:14px; border:1px solid var(--line); border-top:5px solid var(--blue); border-radius:8px; background:#fff; font-size:16px; }
+.shape-card:nth-child(2){border-top-color:var(--teal);} .shape-card:nth-child(3){border-top-color:var(--amber);} .shape-card:nth-child(4){border-top-color:var(--green);}
+.shape-card strong { display:block; color:var(--indigo); font-size:18px; margin-bottom:8px; }
+.compare-rows { display:grid; gap:10px; margin-top:14px; }
+.compare-row { display:grid; grid-template-columns:170px 1fr 1fr; gap:10px; align-items:stretch; }
+.compare-head { padding:10px; border-radius:8px; background:var(--indigo); color:#fff; font-weight:900; text-align:center; }
+.compare-cell { min-height:52px; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:#fff; font-size:16px; }
+.icon-strip { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:16px; }
+.icon-mini { min-height:112px; padding:12px; border:1px solid var(--line); border-radius:8px; background:#fff; text-align:center; font-size:15px; }
+.icon-mini img { width:58px; height:58px; object-fit:contain; display:block; margin:0 auto 8px; }
+.buffer-bar { display:grid; grid-template-columns:repeat(12,1fr); gap:5px; margin-top:14px; }
+.byte { min-height:42px; display:flex; align-items:center; justify-content:center; border-radius:6px; background:#edf2ff; color:#2e315b; font-weight:900; font-size:13px; }
+.byte.mark { background:#dff7f3; color:#09666b; }
+.byte.bound { background:#fff1d2; color:#805000; }
+</style>
+  <link rel="stylesheet" href="../shared_assets/slideshow.css">
+</head>
+<body>
+  <nav class="nav"><a href="#s1">01</a><a href="#s2">02</a><a href="#s3">03</a><a href="#s4">04</a><a href="#s5">05</a><a href="#s6">06</a><a href="#s7">07</a><a href="#s8">08</a><a href="#s9">09</a><a href="#s10">10</a><a href="#s11">11</a><a href="#s12">12</a><a href="#s13">13</a><a href="#s14">14</a><a href="#s15">15</a><a href="#s16">16</a><a href="#s17">17</a><a href="#s18">18</a><a href="#s19">19</a><a href="#s20">20</a><a href="#s21">21</a><a href="#s22">22</a><a href="#s23">23</a><a href="#s24">24</a><a href="#s25">25</a><a href="#s26">26</a><a href="#s27">27</a><a href="#s28">28</a><a href="#s29">29</a><a href="#s30">30</a><a href="#s31">31</a><a href="#s32">32</a><a href="#s33">33</a><a href="#s34">34</a><a href="#s35">35</a><a href="#s36">36</a><a href="#s37">37</a><a href="#s38">38</a><a href="#s39">39</a><a href="#s40">40</a><a href="#s41">41</a><button class="slideshow-toggle" type="button" data-slideshow-start>Slideshow</button></nav>
+  
+  <div class="slideshow-controls" aria-label="Slideshow controls">
+    <button class="slide-control" type="button" data-slide-prev>Prev</button>
+    <span class="slide-counter" data-slide-counter>01 / 41</span>
+    <button class="slide-control" type="button" data-slide-next>Next</button>
+    <button class="slide-control" type="button" data-slide-fullscreen>Full</button>
+    <button class="slide-control" type="button" data-slide-fill aria-pressed="false">Fill</button>
+    <button class="slide-control" type="button" data-slide-exit>Exit</button>
+  </div>
+  <div class="slideshow-hint">Keys: Left/Right or PageUp/PageDown to move, Home/End to jump, S to toggle slideshow, F for fullscreen, Z for fit/fill, Esc to exit.</div>
+
+  <main class="deck">
+    
+    <section class="slide cover" id="s1">
+      <div class="slide-header"><div class="context">FreeRTOS Module 14</div><div class="framing">Stream Buffers and Message Buffers</div></div>
+      <div class="content">
+        <div class="cover-grid">
+          <div>
+            <h1>Stream Buffers and Message Buffers</h1>
+            <p>Stream buffers move bytes without message boundaries. Message buffers move variable-length messages while preserving boundaries. The right choice depends on payload shape.</p>
+            <p class="cover-meta">Course: FreeRTOS Lecture<br>Embedded Systems Laboratory, Pusan National University<br>Instructor: Prof. Yunju Baek</p>
+          </div>
+          <div class="cover-card">
+            <h2>Learning path</h2>
+            <ul>
+              <li>Byte stream versus message boundary</li>
+              <li>Trigger level and wake-up behavior</li>
+              <li>Single writer and single reader assumptions</li>
+              <li>ISR-to-parser and task-to-task payload paths</li>
+              <li>Object-choice review against queues and notifications</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="takeaway">First target: choose the buffer from the shape of the data, not the convenience of the API name.</div>
+      <div class="page">01</div>
+    </section>
+    <section class="slide" id="s2">
+      <div class="slide-header"><div class="context">FreeRTOS Module 14</div><div class="framing">Course Position</div></div>
+      <div class="content">
+        <h2>Course Position</h2>
+        
+      <p class="subtitle">Module 13 used a task notification for a small direct event or value. Module 14 puts payload back at the center.</p>
+      <div class="grid-3">
+        <div class="icon-card"><img src="../shared_assets/icons/stream_buffer_flow.png" alt=""><div><strong>Stream buffer</strong><span>A continuous byte stream without preserved message boundaries.</span></div></div>
+        <div class="icon-card"><img src="../shared_assets/icons/message_buffer_flow.png" alt=""><div><strong>Message buffer</strong><span>A variable-length message path that preserves message boundaries.</span></div></div>
+        <div class="icon-card"><img src="../shared_assets/icons/uart_peripheral.png" alt=""><div><strong>Peripheral bytes</strong><span>UART-like input makes byte-stream behavior practical.</span></div></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The module is about data shape and wake-up policy.</div>
+      <div class="page">02</div>
+    </section>
+    <section class="slide" id="s3">
+      <div class="slide-header"><div class="context">FreeRTOS Module 14</div><div class="framing">Problem Frame</div></div>
+      <div class="content">
+        <h2>Problem Frame</h2>
+        
+      <div class="shape-grid">
+        <div class="shape-card"><strong>Continuous bytes</strong>UART or socket-like input arrives as an ordered byte stream and parser logic finds frames.</div>
+        <div class="shape-card"><strong>Message boundaries</strong>Command packets should be received as complete variable-length messages.</div>
+        <div class="shape-card"><strong>Wake-up threshold</strong>Trigger level changes when a blocked receiver wakes and how much latency is introduced.</div>
+        <div class="shape-card"><strong>Endpoint assumption</strong>FreeRTOS stream and message buffers are designed for one writer and one reader unless external protection is added.</div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Payload shape decides the object.</div>
+      <div class="page">03</div>
+    </section>
+    <section class="slide" id="s4">
+      <div class="slide-header"><div class="context">FreeRTOS Module 14</div><div class="framing">Terminology Before APIs</div></div>
+      <div class="content">
+        <h2>Terminology Before APIs</h2>
+        
+      <table class="mini-table"><thead><tr><th>Term</th><th>Meaning in this module</th></tr></thead><tbody><tr><td><strong>Stream buffer</strong></td><td>A FreeRTOS object for byte-stream communication without message boundaries.</td></tr><tr><td><strong>Message buffer</strong></td><td>A FreeRTOS object for variable-length messages that preserve boundaries.</td></tr><tr><td><strong>Trigger level</strong></td><td>Number of bytes that should be present before a blocked receiver is woken.</td></tr><tr><td><strong>Single writer</strong></td><td>The intended design assumption that one task or ISR writes to the buffer.</td></tr><tr><td><strong>Single reader</strong></td><td>The intended design assumption that one task reads from the buffer.</td></tr><tr><td><strong>Message boundary</strong></td><td>The separation between complete messages or packets.</td></tr><tr><td><strong>Partial read</strong></td><td>A stream-buffer receive can return fewer bytes than the sender originally wrote.</td></tr><tr><td><strong>Payload ownership</strong></td><td>The rule that says who owns data before send, while buffered, and after receive.</td></tr></tbody></table>
+    
+      </div>
+      <div class="takeaway">The boundary question separates stream and message buffer design.</div>
+      <div class="page">04</div>
+    </section>
+    <section class="slide" id="s5">
+      <div class="slide-header"><div class="context">FreeRTOS Module 14</div><div class="framing">Primary Visual Anchor</div></div>
+      <div class="content">
+        <h2>Primary Visual Anchor</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/infographics/stream_message_buffer_comparison.png" alt="Stream and message buffer comparison"></div>
+        <div class="panel tint-blue"><h3>Reading Order</h3><ul><li>Stream buffer preserves byte order but not packet boundaries.</li><li>Message buffer preserves one message at a time.</li><li>Trigger level changes wake-up behavior.</li><li>Single writer and single reader assumptions must be reviewed.</li></ul><p class="asset-note">Shared generated infographic asset.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The comparison visual should be the module&#x27;s anchor.</div>
+      <div class="page">05</div>
+    </section>
+    <section class="slide" id="s6">
+      <div class="slide-header"><div class="context">FreeRTOS Module 14</div><div class="framing">Byte Stream Mental Model</div></div>
+      <div class="content">
+        <h2>Byte Stream Mental Model</h2>
+        
+      <p class="subtitle">A stream buffer is a byte conveyor. The receiver may receive chunks that do not match application frame boundaries.</p>
+      <div class="buffer-bar">
+        <div class="byte">H</div><div class="byte">E</div><div class="byte">L</div><div class="byte">L</div><div class="byte">O</div><div class="byte mark">\n</div>
+        <div class="byte">O</div><div class="byte">K</div><div class="byte mark">\n</div><div class="byte">T</div><div class="byte">E</div><div class="byte">M</div>
+      </div>
+      <div class="grid-3" style="margin-top:18px;">
+        <div class="panel tint-blue"><h3>Preserved</h3><ul><li>Byte order.</li><li>Stored bytes until read.</li><li>Wake-up when trigger or timeout allows.</li></ul></div>
+        <div class="panel tint-amber"><h3>Not preserved</h3><ul><li>Application packet boundaries.</li><li>Original send call grouping.</li><li>Multiple-reader routing.</li></ul></div>
+        <div class="panel tint-green"><h3>Parser job</h3><ul><li>Find delimiters.</li><li>Assemble frames.</li><li>Handle partial data and overflow.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A stream receiver is usually a parser.</div>
+      <div class="page">06</div>
+    </section>
+    <section class="slide" id="s7">
+      <div class="slide-header"><div class="context">FreeRTOS Module 14</div><div class="framing">Message Boundary Mental Model</div></div>
+      <div class="content">
+        <h2>Message Boundary Mental Model</h2>
+        
+      <p class="subtitle">A message buffer stores each variable-length message with length metadata so the receiver gets one complete message.</p>
+      <div class="buffer-bar">
+        <div class="byte bound">len</div><div class="byte">C</div><div class="byte">M</div><div class="byte">D</div><div class="byte">1</div><div class="byte bound">len</div>
+        <div class="byte">S</div><div class="byte">T</div><div class="byte">A</div><div class="byte">T</div><div class="byte">U</div><div class="byte">S</div>
+      </div>
+      <div class="grid-3" style="margin-top:18px;">
+        <div class="panel tint-blue"><h3>Preserved</h3><ul><li>Message boundary.</li><li>Variable-length payload as one unit.</li><li>Receive operation returns one message.</li></ul></div>
+        <div class="panel tint-amber"><h3>Cost</h3><ul><li>Length metadata consumes space.</li><li>Max message size must fit buffer.</li><li>No general multi-consumer routing.</li></ul></div>
+        <div class="panel tint-green"><h3>Good fit</h3><ul><li>Commands.</li><li>Packets.</li><li>Records where boundaries matter.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A message buffer receiver should not have to rediscover packet boundaries.</div>
+      <div class="page">07</div>
+    </section>
+    <section class="slide" id="s8">
+      <div class="slide-header"><div class="context">FreeRTOS Module 14</div><div class="framing">API Surface Map</div></div>
+      <div class="content">
+        <h2>API Surface Map</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Stream buffer</h3><div class="api-list"><code>xStreamBufferCreate()</code><code>xStreamBufferSend()</code><code>xStreamBufferReceive()</code><code>xStreamBufferSendFromISR()</code><code>xStreamBufferReceiveFromISR()</code></div></div>
+        <div class="panel tint-teal"><h3>Message buffer</h3><div class="api-list"><code>xMessageBufferCreate()</code><code>xMessageBufferSend()</code><code>xMessageBufferReceive()</code><code>xMessageBufferSendFromISR()</code><code>xMessageBufferReceiveFromISR()</code></div></div>
+        <div class="panel tint-amber"><h3>Inspect/reset</h3><div class="api-list"><code>xStreamBufferBytesAvailable()</code><code>xStreamBufferSpacesAvailable()</code><code>xStreamBufferSetTriggerLevel()</code><code>xStreamBufferReset()</code></div></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The API families look parallel, but receiver contracts differ.</div>
+      <div class="page">08</div>
+    </section>
+    <section class="slide" id="s9">
+      <div class="slide-header"><div class="context">FreeRTOS Module 14</div><div class="framing">Configuration and Allocation</div></div>
+      <div class="content">
+        <h2>Configuration and Allocation</h2>
+        
+      <div class="grid-2">
+        <div class="panel tint-blue"><h3>Build and allocation choices</h3><div class="api-list"><code>configSUPPORT_STATIC_ALLOCATION</code><code>configSUPPORT_DYNAMIC_ALLOCATION</code><code>xStreamBufferCreateStatic()</code><code>xMessageBufferCreateStatic()</code><code>configUSE_TRACE_FACILITY</code></div></div>
+        <div class="panel tint-green"><h3>Review questions</h3><ul><li>How much buffer storage is required for bursts?</li><li>Does static allocation improve predictability?</li><li>Is the trigger level documented?</li><li>Is trace enabled for pressure diagnosis?</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Buffers are memory objects first and communication objects second.</div>
+      <div class="page">09</div>
+    </section>
+    <section class="slide" id="s10">
+      <div class="slide-header"><div class="context">FreeRTOS Module 14</div><div class="framing">Trigger Level and Wake-Up Behavior</div></div>
+      <div class="content">
+        <h2>Trigger Level and Wake-Up Behavior</h2>
+        
+      <div class="compare-rows">
+        <div class="compare-row"><div class="compare-head">Trigger level</div><div class="compare-head">Benefit</div><div class="compare-head">Risk</div></div>
+        <div class="compare-row"><div class="compare-cell">Low</div><div class="compare-cell">Receiver wakes quickly and latency stays low.</div><div class="compare-cell">More wake-ups and smaller reads.</div></div>
+        <div class="compare-row"><div class="compare-cell">High</div><div class="compare-cell">Receiver wakes less often and may process larger chunks.</div><div class="compare-cell">Latency rises and timeout behavior matters more.</div></div>
+        <div class="compare-row"><div class="compare-cell">Too high</div><div class="compare-cell">May reduce CPU overhead in a narrow case.</div><div class="compare-cell">Receiver can sleep while useful data is already present.</div></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Trigger level is a latency-throughput design choice.</div>
+      <div class="page">10</div>
+    </section>
+    <section class="slide" id="s11">
+      <div class="slide-header"><div class="context">FreeRTOS Module 14</div><div class="framing">Single Writer and Single Reader Assumption</div></div>
+      <div class="content">
+        <h2>Single Writer and Single Reader Assumption</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Default assumption</h3><ul><li>One writer endpoint.</li><li>One reader endpoint.</li><li>No built-in multi-producer routing policy.</li></ul></div>
+        <div class="panel tint-amber"><h3>If violated</h3><ul><li>External mutual exclusion may be required.</li><li>Message ownership becomes harder.</li><li>Queue or gatekeeper may be clearer.</li></ul></div>
+        <div class="panel tint-green"><h3>Review evidence</h3><ul><li>List every writer.</li><li>List every reader.</li><li>Document ISR versus task endpoint.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Endpoint count is part of object selection.</div>
+      <div class="page">11</div>
+    </section>
+    <section class="slide" id="s12">
+      <div class="slide-header"><div class="context">FreeRTOS Module 14</div><div class="framing">Stream Buffer Send and Receive Path</div></div>
+      <div class="content">
+        <h2>Stream Buffer Send and Receive Path</h2>
+        
+      <div class="flow4">
+        <div class="flow-node"><strong>Writer</strong>Task or ISR writes bytes into the stream buffer.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Buffer</strong>Stores ordered bytes until receiver consumes them.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Trigger/timeout</strong>Receiver wakes based on bytes available or wait timeout.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Parser</strong>Application code creates message boundaries from the byte stream.</div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Stream buffer logic ends before protocol parsing begins.</div>
+      <div class="page">12</div>
+    </section>
+    <section class="slide" id="s13">
+      <div class="slide-header"><div class="context">FreeRTOS Module 14</div><div class="framing">Message Buffer Send and Receive Path</div></div>
+      <div class="content">
+        <h2>Message Buffer Send and Receive Path</h2>
+        
+      <div class="flow4">
+        <div class="flow-node"><strong>Writer</strong>Builds a complete variable-length message.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Buffer</strong>Stores message length and payload together.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Receiver</strong>Receives one complete message if destination storage is large enough.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Handler</strong>Processes one command, record, or packet at a time.</div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Message buffer design protects packet boundaries.</div>
+      <div class="page">13</div>
+    </section>
+    <section class="slide" id="s14">
+      <div class="slide-header"><div class="context">FreeRTOS Module 14</div><div class="framing">Stream or Message Decision Table</div></div>
+      <div class="content">
+        <h2>Stream or Message Decision Table</h2>
+        
+      <table class="mini-table">
+        <thead><tr><th>Payload shape</th><th>Better fit</th><th>Reason</th></tr></thead>
+        <tbody>
+          <tr><td>UART line input</td><td>Stream buffer</td><td>Bytes arrive continuously; parser finds delimiters.</td></tr>
+          <tr><td>Binary command packet</td><td>Message buffer</td><td>Receiver should process complete packets only.</td></tr>
+          <tr><td>Fixed-size control struct</td><td>Queue</td><td>Fixed item size and multiple pending items are natural.</td></tr>
+          <tr><td>Wake one parser task</td><td>Task notification plus separate buffer</td><td>Notification wakes; buffer carries data.</td></tr>
+        </tbody>
+      </table>
+    
+      </div>
+      <div class="takeaway">The payload shape table should be completed before writing code.</div>
+      <div class="page">14</div>
+    </section>
+    <section class="slide" id="s15">
+      <div class="slide-header"><div class="context">FreeRTOS Module 14</div><div class="framing">Queue Comparison</div></div>
+      <div class="content">
+        <h2>Queue Comparison</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_5_1_an_example_sequence_of_writes_to_and_reads_from_a_queue.png" alt="Kernel Book Figure 5.1 queue sequence"></div>
+        <div class="panel tint-blue"><h3>Comparison Focus</h3><ul><li>Queue items have fixed size.</li><li>Queue preserves item boundaries by design.</li><li>Stream buffer is byte oriented.</li><li>Message buffer preserves variable-length message boundaries.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Figure 5.1, used for object comparison.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Queues are still the right answer for many fixed-record designs.</div>
+      <div class="page">15</div>
+    </section>
+    <section class="slide" id="s16">
+      <div class="slide-header"><div class="context">FreeRTOS Module 14</div><div class="framing">Variable Payload Context</div></div>
+      <div class="content">
+        <h2>Variable Payload Context</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_5_4_an_example_scenario_where_structures_are_sent_on_a_queue.png" alt="Kernel Book Figure 5.4 structure messages"></div>
+        <div class="panel tint-teal"><h3>Comparison Focus</h3><ul><li>Structured queue messages fit fixed-size records.</li><li>Pointers can avoid large copies but add ownership rules.</li><li>Message buffers avoid fixed item size when payload length varies.</li><li>Stream buffers avoid message framing when data is continuous.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Figure 5.4, used for object comparison.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Variable payload design is about copy cost, boundaries, and ownership.</div>
+      <div class="page">16</div>
+    </section>
+    <section class="slide" id="s17">
+      <div class="slide-header"><div class="context">FreeRTOS Module 14</div><div class="framing">Communication Path Context</div></div>
+      <div class="content">
+        <h2>Communication Path Context</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_10_6_the_communication_paths_from_the_application_tasks_to_the_cloud_server_a.png" alt="Kernel Book Figure 10.6 communication paths"></div>
+        <div class="panel tint-blue"><h3>Reading Focus</h3><ul><li>Separate wake-up signal from payload path.</li><li>Network or cloud paths often contain multiple object types.</li><li>A stream may carry bytes while a notification wakes a task.</li><li>Architecture should name each payload boundary.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Figure 10.6.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Real systems combine signaling and payload objects.</div>
+      <div class="page">17</div>
+    </section>
+    <section class="slide" id="s18">
+      <div class="slide-header"><div class="context">FreeRTOS Module 14</div><div class="framing">ISR Byte Feed Pattern</div></div>
+      <div class="content">
+        <h2>ISR Byte Feed Pattern</h2>
+        
+      <div class="flow4">
+        <div class="flow-node"><strong>UART RX ISR</strong>Reads byte or DMA chunk and clears interrupt flag.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Stream send</strong>xStreamBufferSendFromISR stores bytes and reports wake condition.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Yield decision</strong>xHigherPriorityTaskWoken drives portYIELD_FROM_ISR when needed.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Parser task</strong>Receives chunks and reconstructs frames.</div>
+      </div>
+    
+      </div>
+      <div class="takeaway">ISR byte feed still follows Module 08 interrupt handoff rules.</div>
+      <div class="page">18</div>
+    </section>
+    <section class="slide" id="s19">
+      <div class="slide-header"><div class="context">FreeRTOS Module 14</div><div class="framing">Command Packet Pattern</div></div>
+      <div class="content">
+        <h2>Command Packet Pattern</h2>
+        
+      <div class="flow4">
+        <div class="flow-node"><strong>Producer</strong>Builds one complete command or response packet.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Message send</strong>xMessageBufferSend stores one message boundary.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Consumer</strong>xMessageBufferReceive returns one complete message.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Handler</strong>Processes command without scanning for boundaries.</div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Message buffers remove boundary reconstruction from the receiver.</div>
+      <div class="page">19</div>
+    </section>
+    <section class="slide" id="s20">
+      <div class="slide-header"><div class="context">FreeRTOS Module 14</div><div class="framing">Message Buffer Size and Failure</div></div>
+      <div class="content">
+        <h2>Message Buffer Size and Failure</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Size facts</h3><ul><li>Message buffer stores payload plus length metadata.</li><li>One message must fit in the buffer.</li><li>Receive storage must fit the incoming message.</li></ul></div>
+        <div class="panel tint-amber"><h3>Failure pressure</h3><ul><li>Send fails or blocks when space is insufficient.</li><li>Receive can fail if destination buffer is too small.</li><li>Large worst-case messages can starve smaller messages.</li></ul></div>
+        <div class="panel tint-green"><h3>Evidence</h3><ul><li>Spaces available.</li><li>Failed send count.</li><li>Maximum observed message size.</li><li>Receive buffer size audit.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A message buffer is only as good as its size policy.</div>
+      <div class="page">20</div>
+    </section>
+    <section class="slide" id="s21">
+      <div class="slide-header"><div class="context">FreeRTOS Module 14</div><div class="framing">Backpressure and Overflow</div></div>
+      <div class="content">
+        <h2>Backpressure and Overflow</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Producer faster</h3><ul><li>Buffer fills.</li><li>Send blocks or fails.</li><li>ISR path may drop bytes or messages.</li></ul></div>
+        <div class="panel tint-teal"><h3>Consumer slower</h3><ul><li>Parser backlog grows.</li><li>Latency increases.</li><li>Trigger level alone cannot fix undercapacity.</li></ul></div>
+        <div class="panel tint-amber"><h3>Design response</h3><ul><li>Increase buffer only after measuring.</li><li>Raise consumer priority if justified.</li><li>Apply flow control or drop policy.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Backpressure is a design signal, not just a buffer-size complaint.</div>
+      <div class="page">21</div>
+    </section>
+    <section class="slide" id="s22">
+      <div class="slide-header"><div class="context">FreeRTOS Module 14</div><div class="framing">Stream Buffer Versus Message Buffer</div></div>
+      <div class="content">
+        <h2>Stream Buffer Versus Message Buffer</h2>
+        
+      <div class="compare-rows">
+        <div class="compare-row"><div class="compare-head">Aspect</div><div class="compare-head">Stream buffer</div><div class="compare-head">Message buffer</div></div>
+        <div class="compare-row"><div class="compare-cell">Data unit</div><div class="compare-cell">Bytes.</div><div class="compare-cell">Variable-length messages.</div></div>
+        <div class="compare-row"><div class="compare-cell">Boundary</div><div class="compare-cell">Application parser creates boundaries.</div><div class="compare-cell">Buffer preserves boundaries.</div></div>
+        <div class="compare-row"><div class="compare-cell">Receive</div><div class="compare-cell">Can return partial byte chunks.</div><div class="compare-cell">Returns one complete message.</div></div>
+        <div class="compare-row"><div class="compare-cell">Good fit</div><div class="compare-cell">UART RX, byte protocols, continuous streams.</div><div class="compare-cell">Commands, packets, variable-length records.</div></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The difference is not performance first; it is boundary semantics first.</div>
+      <div class="page">22</div>
+    </section>
+    <section class="slide" id="s23">
+      <div class="slide-header"><div class="context">FreeRTOS Module 14</div><div class="framing">Object Selection Revisited</div></div>
+      <div class="content">
+        <h2>Object Selection Revisited</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/infographics/object_selection_map.png" alt="Object selection map"></div>
+        <div class="panel tint-blue"><h3>Decision Filter</h3><ul><li>Queue for fixed-size records or pointer items.</li><li>Stream buffer for continuous bytes.</li><li>Message buffer for variable-length message boundaries.</li><li>Notification for wake-up without payload.</li><li>Event group for condition bits without payload.</li></ul><p class="asset-note">Shared generated infographic asset.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Object choice should preserve exactly the information the receiver needs.</div>
+      <div class="page">23</div>
+    </section>
+    <section class="slide" id="s24">
+      <div class="slide-header"><div class="context">FreeRTOS Module 14</div><div class="framing">Mini Case: UART Line Parser</div></div>
+      <div class="content">
+        <h2>Mini Case: UART Line Parser</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Producer</h3><ul><li>UART ISR or DMA completion provides bytes.</li><li>Stream buffer stores ordered bytes.</li><li>ISR stays short.</li></ul></div>
+        <div class="panel tint-teal"><h3>Parser</h3><ul><li>Task reads chunks.</li><li>Searches for newline or frame delimiter.</li><li>Handles partial frame across receives.</li></ul></div>
+        <div class="panel tint-amber"><h3>Diagnostics</h3><ul><li>Bytes dropped.</li><li>Maximum fill level.</li><li>Parser wake latency.</li><li>Frame error count.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A UART line parser is a stream-buffer lesson.</div>
+      <div class="page">24</div>
+    </section>
+    <section class="slide" id="s25">
+      <div class="slide-header"><div class="context">FreeRTOS Module 14</div><div class="framing">Mini Case: Command Dispatcher</div></div>
+      <div class="content">
+        <h2>Mini Case: Command Dispatcher</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Producer</h3><ul><li>Command builder creates complete packet.</li><li>Message buffer send preserves one command.</li><li>Send failure indicates buffer pressure.</li></ul></div>
+        <div class="panel tint-teal"><h3>Consumer</h3><ul><li>Dispatcher receives exactly one command.</li><li>No delimiter scan needed.</li><li>Handler validates command length and type.</li></ul></div>
+        <div class="panel tint-green"><h3>Review</h3><ul><li>Maximum command length.</li><li>Buffer capacity.</li><li>Drop or block policy.</li><li>Single reader assumption.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A command dispatcher is a message-buffer lesson.</div>
+      <div class="page">25</div>
+    </section>
+    <section class="slide" id="s26">
+      <div class="slide-header"><div class="context">FreeRTOS Module 14</div><div class="framing">Mini Case: DMA Chunk Receiver</div></div>
+      <div class="content">
+        <h2>Mini Case: DMA Chunk Receiver</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Chunk source</h3><ul><li>DMA half/full complete event.</li><li>ISR provides buffer span or bytes.</li><li>Cache and ownership may matter on some MCUs.</li></ul></div>
+        <div class="panel tint-teal"><h3>Buffer choice</h3><ul><li>Stream buffer for continuous bytes.</li><li>Queue descriptor for external buffers.</li><li>Message buffer for complete variable packets.</li></ul></div>
+        <div class="panel tint-amber"><h3>Risk</h3><ul><li>Copy cost.</li><li>Buffer overflow.</li><li>Lost chunk under burst.</li><li>Unclear ownership of DMA memory.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">DMA designs may need a descriptor queue instead of copying bytes.</div>
+      <div class="page">26</div>
+    </section>
+    <section class="slide" id="s27">
+      <div class="slide-header"><div class="context">FreeRTOS Module 14</div><div class="framing">Failure Modes Worth Naming Early</div></div>
+      <div class="content">
+        <h2>Failure Modes Worth Naming Early</h2>
+        
+      <div class="grid-3"><div class="panel tint-blue"><h3>Boundary loss</h3><ul><li>Stream buffer used for packets without parser discipline.</li><li>Receiver assumes one receive equals one message.</li><li>Fix with message buffer or explicit frame parser.</li></ul></div><div class="panel tint-teal"><h3>Wrong endpoint count</h3><ul><li>Multiple writers or readers use the buffer without protection.</li><li>Interleaving or ownership confusion appears.</li><li>Fix with external lock, queue, or gatekeeper.</li></ul></div><div class="panel tint-amber"><h3>Trigger surprise</h3><ul><li>Trigger level delays receiver more than expected.</li><li>Low trigger causes excessive wakeups.</li><li>Fix by measuring latency and fill level.</li></ul></div></div>
+    
+      </div>
+      <div class="takeaway">Most buffer bugs are payload-shape bugs.</div>
+      <div class="page">27</div>
+    </section>
+    <section class="slide" id="s28">
+      <div class="slide-header"><div class="context">FreeRTOS Module 14</div><div class="framing">Diagnostic Evidence</div></div>
+      <div class="content">
+        <h2>Diagnostic Evidence</h2>
+        
+      <div class="icon-strip">
+        <div class="icon-mini"><img src="../shared_assets/icons/stream_buffer_flow.png" alt="">Bytes available</div>
+        <div class="icon-mini"><img src="../shared_assets/icons/message_buffer_flow.png" alt="">Message size</div>
+        <div class="icon-mini"><img src="../shared_assets/icons/timing_deadline.png" alt="">Wake latency</div>
+        <div class="icon-mini"><img src="../shared_assets/icons/trace_diagnostics.png" alt="">Trace</div>
+      </div>
+      <div class="grid-3" style="margin-top:18px;">
+        <div class="panel tint-blue"><h3>Capacity</h3><ul><li>Bytes available.</li><li>Spaces available.</li><li>Failed send count.</li></ul></div>
+        <div class="panel tint-teal"><h3>Payload</h3><ul><li>Max message size.</li><li>Frame error count.</li><li>Partial receive count.</li></ul></div>
+        <div class="panel tint-amber"><h3>Timing</h3><ul><li>ISR send timestamp.</li><li>Receiver wake timestamp.</li><li>Parser backlog duration.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Measure capacity, payload shape, and timing together.</div>
+      <div class="page">28</div>
+    </section>
+    <section class="slide" id="s29">
+      <div class="slide-header"><div class="context">FreeRTOS Module 14</div><div class="framing">Trace View for Buffer Pressure</div></div>
+      <div class="content">
+        <h2>Trace View for Buffer Pressure</h2>
+        
+      <div class="grid-13">
+        <div class="figure-frame tall"><img src="../shared_assets/book_figures/figure_12_6_figure_12_6_freertos_trace_kernel_object_history_view_one_of_more_than_2.png" alt="Kernel object history trace view"></div>
+        <div class="panel tint-blue"><h3>Reading Focus</h3><ul><li>Trace send and receive events.</li><li>Match buffer pressure with task scheduling.</li><li>Look for receive delays after trigger condition.</li><li>Use evidence before changing buffer size or priority.</li></ul><p class="asset-note">Source: FreeRTOS Kernel Book, Chapter 12 trace figure.</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Buffer tuning should be evidence-driven.</div>
+      <div class="page">29</div>
+    </section>
+    <section class="slide" id="s30">
+      <div class="slide-header"><div class="context">FreeRTOS Module 14</div><div class="framing">Tutorial 19 Reading Path</div></div>
+      <div class="content">
+        <h2>Tutorial 19 Reading Path</h2>
+        
+      <div class="flow4">
+        <div class="flow-node"><strong>Create</strong>Find stream buffer size and trigger level.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Send</strong>Find writer context and send block time.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Receive</strong>Find receiver chunk size and timeout.</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-node"><strong>Explain</strong>Map output to bytes available and parser behavior.</div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Tutorial 19 should be read as stream pressure and trigger behavior.</div>
+      <div class="page">30</div>
+    </section>
+    <section class="slide" id="s31">
+      <div class="slide-header"><div class="context">FreeRTOS Module 14</div><div class="framing">Tutorial 20 Reading Path</div></div>
+      <div class="content">
+        <h2>Tutorial 20 Reading Path</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Create</h3><ul><li>Find message buffer size.</li><li>Find maximum expected message size.</li><li>Check static or dynamic allocation.</li></ul></div>
+        <div class="panel tint-teal"><h3>Send and receive</h3><ul><li>Find complete message construction.</li><li>Find receive buffer size.</li><li>Check return values.</li></ul></div>
+        <div class="panel tint-green"><h3>Variation</h3><ul><li>Send message too large.</li><li>Reduce receive buffer.</li><li>Compare with queue of fixed-size structs.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Tutorial 20 should prove that boundaries are preserved.</div>
+      <div class="page">31</div>
+    </section>
+    <section class="slide" id="s32">
+      <div class="slide-header"><div class="context">FreeRTOS Module 14</div><div class="framing">Source Reading: stream_buffer.c</div></div>
+      <div class="content">
+        <h2>Source Reading: stream_buffer.c</h2>
+        
+      <div class="grid-3">
+        <div class="source-card"><strong>Ring storage</strong>Read how bytes are copied into and out of buffer storage.</div>
+        <div class="source-card"><strong>Trigger level</strong>Find how trigger level interacts with blocked receiver wake-up.</div>
+        <div class="source-card"><strong>FromISR paths</strong>Trace send and receive variants used at interrupt boundaries.</div>
+      </div>
+      <div class="warning" style="margin-top:22px;">Source reading should connect buffer state with task wake-up behavior.</div>
+    
+      </div>
+      <div class="takeaway">stream_buffer.c is the shared implementation foundation.</div>
+      <div class="page">32</div>
+    </section>
+    <section class="slide" id="s33">
+      <div class="slide-header"><div class="context">FreeRTOS Module 14</div><div class="framing">Source Reading: message_buffer.h</div></div>
+      <div class="content">
+        <h2>Source Reading: message_buffer.h</h2>
+        
+      <div class="grid-2">
+        <div class="panel tint-blue"><h3>Wrapper layer</h3><ul><li>Message buffer APIs wrap stream buffer mechanisms.</li><li>Length metadata creates message boundaries.</li><li>Receive semantics differ from raw stream reads.</li></ul></div>
+        <div class="panel tint-teal"><h3>Review focus</h3><ul><li>Maximum message size.</li><li>Destination buffer size.</li><li>Return value when send or receive cannot complete.</li><li>Single writer and reader assumption.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Implementation reuse does not remove receiver-contract differences.</div>
+      <div class="page">33</div>
+    </section>
+    <section class="slide" id="s34">
+      <div class="slide-header"><div class="context">FreeRTOS Module 14</div><div class="framing">Design Decision Table</div></div>
+      <div class="content">
+        <h2>Design Decision Table</h2>
+        
+      <table class="mini-table">
+        <thead><tr><th>Decision</th><th>Question</th><th>Evidence</th></tr></thead>
+        <tbody>
+          <tr><td>Payload shape</td><td>Continuous bytes or complete messages?</td><td>Parser requirement or boundary requirement</td></tr>
+          <tr><td>Endpoint count</td><td>Exactly one writer and one reader?</td><td>Endpoint list and protection policy</td></tr>
+          <tr><td>Wake policy</td><td>What trigger level and timeout make sense?</td><td>Latency and wake frequency measurement</td></tr>
+          <tr><td>Capacity</td><td>How much burst can be absorbed?</td><td>Spaces available, failed send count, max fill level</td></tr>
+          <tr><td>Alternative</td><td>Would queue, notification, or event group be clearer?</td><td>Payload, order, boundary, and receiver model</td></tr>
+        </tbody>
+      </table>
+    
+      </div>
+      <div class="takeaway">Buffer selection should be a payload-shape decision table.</div>
+      <div class="page">34</div>
+    </section>
+    <section class="slide" id="s35">
+      <div class="slide-header"><div class="context">FreeRTOS Module 14</div><div class="framing">Testing Checklist</div></div>
+      <div class="content">
+        <h2>Testing Checklist</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Nominal path</h3><ul><li>Stream bytes received in order.</li><li>Message boundary preserved.</li><li>Trigger level behavior observed.</li></ul></div>
+        <div class="panel tint-teal"><h3>Pressure path</h3><ul><li>Producer faster than consumer.</li><li>Large message near buffer limit.</li><li>ISR burst into stream buffer.</li></ul></div>
+        <div class="panel tint-green"><h3>Failure path</h3><ul><li>Send failure handled.</li><li>Receive buffer too small handled.</li><li>Parser detects malformed stream.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A buffer lab should include overflow and boundary tests.</div>
+      <div class="page">35</div>
+    </section>
+    <section class="slide" id="s36">
+      <div class="slide-header"><div class="context">FreeRTOS Module 14</div><div class="framing">Code Review Checklist</div></div>
+      <div class="content">
+        <h2>Code Review Checklist</h2>
+        
+      <div class="grid-2">
+        <div class="panel tint-blue"><h3>Mechanism review</h3><ul><li>Are return values checked?</li><li>Are block times explicit?</li><li>Is FromISR path correct?</li><li>Is static or dynamic allocation intentional?</li></ul></div>
+        <div class="panel tint-green"><h3>Design review</h3><ul><li>Does object match payload shape?</li><li>Are endpoints single writer and reader?</li><li>Is trigger level justified?</li><li>Is overflow policy visible?</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">Review payload shape before tuning buffer size.</div>
+      <div class="page">36</div>
+    </section>
+    <section class="slide" id="s37">
+      <div class="slide-header"><div class="context">FreeRTOS Module 14</div><div class="framing">Project Boundary Check</div></div>
+      <div class="content">
+        <h2>Project Boundary Check</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Build</h3><ul><li>Create stream buffer for UART-like bytes.</li><li>Create message buffer for variable command packets.</li><li>Log bytes available and failed sends.</li></ul></div>
+        <div class="panel tint-teal"><h3>Modify</h3><ul><li>Change trigger level.</li><li>Send packet larger than expected.</li><li>Introduce producer burst.</li></ul></div>
+        <div class="panel tint-green"><h3>Explain</h3><ul><li>Draw payload boundary.</li><li>Explain wake-up timing.</li><li>Choose queue or notification when buffer is wrong.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The lab output should include payload-shape evidence.</div>
+      <div class="page">37</div>
+    </section>
+    <section class="slide" id="s38">
+      <div class="slide-header"><div class="context">FreeRTOS Module 14</div><div class="framing">Review Questions</div></div>
+      <div class="content">
+        <h2>Review Questions</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Question 1</h3><p>Why can a stream buffer receiver get partial data that does not match a protocol frame?</p></div>
+        <div class="panel tint-teal"><h3>Question 2</h3><p>What extra information does a message buffer preserve compared with a stream buffer?</p></div>
+        <div class="panel tint-amber"><h3>Question 3</h3><p>When should a queue or notification be used instead of a stream or message buffer?</p></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">A strong answer names payload shape, boundaries, endpoints, and pressure evidence.</div>
+      <div class="page">38</div>
+    </section>
+    <section class="slide" id="s39">
+      <div class="slide-header"><div class="context">FreeRTOS Module 14</div><div class="framing">One-Slide Summary</div></div>
+      <div class="content">
+        <h2>One-Slide Summary</h2>
+        
+      <div class="grid-3">
+        <div class="panel tint-blue"><h3>Stream buffer</h3><ul><li>Ordered bytes.</li><li>No message boundary.</li><li>Parser task owns framing.</li></ul></div>
+        <div class="panel tint-teal"><h3>Message buffer</h3><ul><li>Variable-length messages.</li><li>Boundary preserved.</li><li>Receiver gets one complete message.</li></ul></div>
+        <div class="panel tint-green"><h3>Evidence</h3><ul><li>Trigger level.</li><li>Buffer pressure.</li><li>Endpoint count.</li><li>Payload-size limits.</li></ul></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The buffer must preserve the information the receiver needs.</div>
+      <div class="page">39</div>
+    </section>
+    <section class="slide" id="s40">
+      <div class="slide-header"><div class="context">FreeRTOS Module 14</div><div class="framing">Bridge to Module 15</div></div>
+      <div class="content">
+        <h2>Bridge to Module 15</h2>
+        
+      <p class="subtitle">Module 15 closes the course by turning the same evidence habits into diagnostics, troubleshooting, integration, and design review.</p>
+      <div class="grid-3">
+        <div class="icon-card"><img src="../shared_assets/icons/stream_buffer_flow.png" alt=""><div><strong>Payload pressure</strong><span>Buffers create measurable capacity and latency evidence.</span></div></div>
+        <div class="icon-card"><img src="../shared_assets/icons/trace_diagnostics.png" alt=""><div><strong>Trace</strong><span>Diagnostics reveal object history and task timing.</span></div></div>
+        <div class="icon-card"><img src="../shared_assets/icons/debugging_boundary.png" alt=""><div><strong>Integration</strong><span>Final systems require boundary checks across modules.</span></div></div>
+      </div>
+    
+      </div>
+      <div class="takeaway">The final module turns object-specific checks into system-level debugging.</div>
+      <div class="page">40</div>
+    </section>
+    <section class="slide" id="s41">
+      <div class="slide-header"><div class="context">FreeRTOS Module 14</div><div class="framing">References and Further Reading</div></div>
+      <div class="content">
+        <h2>References and Further Reading</h2>
+        
+      <p class="subtitle">References used in this module are separated from optional deeper reading.</p>
+      <div class="grid-2">
+        <div class="panel tint-blue">
+          <h3>References Used</h3>
+          <ul class="refs">
+            <li>FreeRTOS API reference: stream buffer and message buffer APIs.</li>
+            <li>FreeRTOS Kernel source: stream_buffer.c and message_buffer.h.</li>
+            <li>FreeRTOS Kernel Book, Chapter 5 queue figures for fixed-record comparison.</li>
+            <li>FreeRTOS Kernel Book, Chapter 10 communication-path figure 10.6.</li>
+            <li>FreeRTOS Kernel Book, Chapter 12 trace figure for kernel object history.</li>
+            <li>Lab Project FreeRTOS Tutorials, Tutorial 19 and Tutorial 20.</li>
+          </ul>
+        </div>
+        <div class="panel tint-green">
+          <h3>Further Reading</h3>
+          <ul class="refs">
+            <li>FreeRTOS API reference: stream buffer trigger levels, static creation, and FromISR variants.</li>
+            <li>FreeRTOS API reference: message buffer send and receive failure behavior.</li>
+            <li>MCU UART and DMA documentation for interrupt or DMA-driven byte ingestion.</li>
+            <li>Tracealyzer or FreeRTOS trace documentation for buffer pressure and task wake-up analysis.</li>
+          </ul>
+        </div>
+      </div>
+    
+      </div>
+      <div class="takeaway">References should support traceability and direct further study.</div>
+      <div class="page">41</div>
+    </section>
+  </main>
+  <script src="../shared_assets/slideshow.js"></script>
+</body>
+</html>

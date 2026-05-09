@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="680" viewBox="0 0 1120 680" role="img" aria-labelledby="title desc">
+  <title id="title">FreeRTOS linked kernel architecture</title>
+  <desc id="desc">Layered diagram with application tasks, FreeRTOS common kernel code, portable layer, hardware boundary, and FreeRTOSConfig.h.</desc>
+  <defs>
+    <style>
+      .title { font: 700 32px Arial, Helvetica, sans-serif; fill: #2E315B; }
+      .sub { font: 500 17px Arial, Helvetica, sans-serif; fill: #4b5563; }
+      .layer-title { font: 700 23px Arial, Helvetica, sans-serif; fill: #ffffff; }
+      .label { font: 700 17px Arial, Helvetica, sans-serif; fill: #26313f; }
+      .small { font: 700 14px Arial, Helvetica, sans-serif; fill: #26313f; }
+      .panel-title { font: 700 19px Arial, Helvetica, sans-serif; fill: #2E315B; }
+      .panel-text { font: 600 14px Arial, Helvetica, sans-serif; fill: #4b5563; }
+    </style>
+    <filter id="shadow" x="-8%" y="-8%" width="116%" height="124%">
+      <feDropShadow dx="0" dy="8" stdDeviation="9" flood-color="#1f2937" flood-opacity="0.14"/>
+    </filter>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M1,1 L11,6 L1,11 Z" fill="#2E315B"/>
+    </marker>
+  </defs>
+
+  <rect width="1120" height="680" rx="22" fill="#F6F7F9"/>
+  <rect x="34" y="34" width="1052" height="612" rx="24" fill="#ffffff" filter="url(#shadow)"/>
+  <text x="70" y="88" class="title">FreeRTOS as a linked kernel inside firmware</text>
+  <text x="70" y="119" class="sub">Application code, kernel service, port layer, and hardware boundary build into one firmware image.</text>
+
+  <g transform="translate(70 155)">
+    <rect x="0" y="0" width="700" height="76" rx="14" fill="#2563A6"/>
+    <text x="22" y="45" class="layer-title">Application code</text>
+    <rect x="275" y="18" width="118" height="40" rx="9" fill="#EAF2FB"/>
+    <text x="297" y="43" class="small">Sensor Task</text>
+    <rect x="408" y="18" width="122" height="40" rx="9" fill="#EAF2FB"/>
+    <text x="430" y="43" class="small">Control Task</text>
+    <rect x="545" y="18" width="112" height="40" rx="9" fill="#EAF2FB"/>
+    <text x="570" y="43" class="small">Comm Task</text>
+
+    <rect x="0" y="104" width="700" height="114" rx="14" fill="#147D83"/>
+    <text x="22" y="149" class="layer-title">Common kernel code</text>
+    <g transform="translate(290 124)">
+      <rect x="0" y="0" width="88" height="32" rx="8" fill="#E9F7F7"/>
+      <text x="18" y="21" class="small">tasks.c</text>
+      <rect x="100" y="0" width="88" height="32" rx="8" fill="#E9F7F7"/>
+      <text x="117" y="21" class="small">queue.c</text>
+      <rect x="200" y="0" width="92" height="32" rx="8" fill="#E9F7F7"/>
+      <text x="218" y="21" class="small">timers.c</text>
+      <rect x="304" y="0" width="132" height="32" rx="8" fill="#E9F7F7"/>
+      <text x="317" y="21" class="small">event_groups.c</text>
+      <rect x="0" y="44" width="138" height="32" rx="8" fill="#E9F7F7"/>
+      <text x="12" y="65" class="small">stream_buffer.c</text>
+      <rect x="150" y="44" width="76" height="32" rx="8" fill="#E9F7F7"/>
+      <text x="170" y="65" class="small">list.c</text>
+    </g>
+
+    <rect x="0" y="246" width="700" height="86" rx="14" fill="#6D4AA2"/>
+    <text x="22" y="299" class="layer-title">Portable layer</text>
+    <rect x="280" y="270" width="120" height="38" rx="9" fill="#F0EAF9"/>
+    <text x="294" y="294" class="small">context switch</text>
+    <rect x="414" y="270" width="112" height="38" rx="9" fill="#F0EAF9"/>
+    <text x="435" y="294" class="small">tick interrupt</text>
+    <rect x="540" y="270" width="144" height="38" rx="9" fill="#F0EAF9"/>
+    <text x="552" y="294" class="small">interrupt mask</text>
+
+    <rect x="0" y="360" width="700" height="82" rx="14" fill="#2F7D4E"/>
+    <text x="22" y="411" class="layer-title">Hardware / BSP boundary</text>
+    <rect x="310" y="383" width="64" height="36" rx="8" fill="#EAF5EE"/>
+    <text x="327" y="406" class="small">MCU</text>
+    <rect x="388" y="383" width="128" height="36" rx="8" fill="#EAF5EE"/>
+    <text x="402" y="406" class="small">timer peripheral</text>
+    <rect x="530" y="383" width="64" height="36" rx="8" fill="#EAF5EE"/>
+    <text x="547" y="406" class="small">UART</text>
+    <rect x="608" y="383" width="64" height="36" rx="8" fill="#EAF5EE"/>
+    <text x="625" y="406" class="small">GPIO</text>
+  </g>
+
+  <g transform="translate(815 210)">
+    <rect x="0" y="0" width="220" height="208" rx="18" fill="#FFF8EA" stroke="#9A6A16" stroke-width="3"/>
+    <text x="24" y="38" class="panel-title">FreeRTOSConfig.h</text>
+    <line x1="-44" y1="104" x2="0" y2="104" stroke="#2E315B" stroke-width="4" marker-end="url(#arrow)"/>
+    <rect x="22" y="62" width="176" height="34" rx="8" fill="#ffffff"/>
+    <text x="34" y="84" class="small">configUSE_PREEMPTION</text>
+    <rect x="22" y="106" width="176" height="34" rx="8" fill="#ffffff"/>
+    <text x="34" y="128" class="small">configTICK_RATE_HZ</text>
+    <rect x="22" y="150" width="176" height="34" rx="8" fill="#ffffff"/>
+    <text x="34" y="172" class="small">configTOTAL_HEAP_SIZE</text>
+  </g>
+
+  <g transform="translate(814 452)">
+    <rect x="0" y="0" width="222" height="116" rx="18" fill="#F2F4F8" stroke="#D9DEE8" stroke-width="2"/>
+    <text x="22" y="34" class="panel-title">Mental model</text>
+    <text x="22" y="64" class="panel-text">Not a separate OS process.</text>
+    <text x="22" y="88" class="panel-text">A linked kernel layer</text>
+    <text x="22" y="110" class="panel-text">inside the firmware image.</text>
+  </g>
+</svg>
